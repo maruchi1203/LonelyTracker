@@ -17,10 +17,12 @@ spring:
     hibernate:
       # 개발 중에는 update, 스키마가 안정되면 validate + Flyway 도입 검토
       ddl-auto: update
+    # 이 아래는 Hibernate에 그대로 전달되는 Map이다.
+    # 키에 점이 들어가면 YAML 계층으로 오해되므로 [] 로 감싸 한 덩어리임을 명시한다.
     properties:
-      hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+      # dialect는 지정하지 않는다. JDBC 연결을 보고 Hibernate가 알아서 고르며,
+      # 명시하면 HHH90000025 경고가 뜬다.
+      "[hibernate.format_sql]": true
     open-in-view: false
 
   jackson:
@@ -31,12 +33,14 @@ spring:
     # 자동 재시작 기능 자체는 그대로 동작한다.
     add-properties: false
 
+  web:
+    error:
+      # 켜두면 예외 스택트레이스가 그대로 API 응답에 실려 나간다.
+      # Boot 4에서 server.error.* → spring.web.error.* 로 옮겨졌다.
+      include-stacktrace: never
+
 server:
   port: 8080
-  error:
-    # devtools가 기본값을 always로 바꿔놓기 때문에 명시적으로 꺼준다.
-    # 켜두면 예외 스택트레이스가 그대로 API 응답에 실려 나간다.
-    include-stacktrace: never
 
 management:
   endpoints:
@@ -46,4 +50,5 @@ management:
 
 logging:
   level:
-    org.hibernate.SQL: debug
+    # logging.level 도 Map이라 점이 든 로거 이름은 [] 로 감싼다
+    "[org.hibernate.SQL]": debug
