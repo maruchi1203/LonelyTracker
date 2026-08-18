@@ -1,0 +1,24 @@
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+
+# --- secrets ---
+.env
+.env.*
+!.env.example
+application-local.yml
+application-local.properties
+
+# --- backend (Gradle) ---
+backend/build/
+backend/.gradle/
+backend/out/
+backend/bin/
+
+# --- frontend (Node) ---
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*

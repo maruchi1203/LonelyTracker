@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: lonelytracker-backend
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/lonelytracker}
+    username: ${DB_USERNAME:lonelytracker}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      # 개발 중에는 update, 스키마가 안정되면 validate + Flyway 도입 검토
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    open-in-view: false
+
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    org.hibernate.SQL: debug
