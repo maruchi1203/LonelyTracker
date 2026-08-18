@@ -40,7 +40,9 @@ final class ScheduleSpecs {
             if (path == null) {
                 return null;
             }
-            // INNER JOIN이면 미분류 일정이 자동으로 빠지는데, 그게 의도한 동작이다
+
+            // Schedule을 기준으로 Category를 INNER JOIN하고, 하위 목록을 
+            // INNER JOIN이면 미분류 일정이 자동으로 빠짐
             Join<Schedule, Category> category = root.join("category", JoinType.INNER);
             return cb.or(
                     cb.equal(category.get("path"), path),

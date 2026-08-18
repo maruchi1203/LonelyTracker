@@ -1,6 +1,5 @@
 package com.lonelytracker.backend.schedule;
 
-import com.lonelytracker.backend.category.Category;
 import com.lonelytracker.backend.category.CategoryService;
 import com.lonelytracker.backend.common.NotFoundException;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;

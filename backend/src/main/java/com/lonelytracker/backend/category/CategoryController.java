@@ -26,19 +26,19 @@ public class CategoryController {
 
     private final CategoryService categoryService;
 
-    /** 전체 목록. 경로순이라 부모가 항상 자식보다 먼저 온다 — 사이드바를 순서대로 그리면 된다. */
+    // 전체 목록 호출
     @GetMapping
     public List<CategoryResponse> findAll() {
         return categoryService.findAll();
     }
 
-    /** 전체 경로로 생성. 중간 단계가 없으면 함께 만들어진다. */
+    // 전체 경로로 생성
     @PostMapping
     public ResponseEntity<CategoryResponse> create(@Valid @RequestBody CategoryCreateRequest request) {
-        CategoryResponse created = categoryService.create(request.path(), request.color());
+        CategoryResponse createdCategory = categoryService.create(request.path(), request.color());
         return ResponseEntity
-                .created(URI.create("/api/categories/" + created.id()))
-                .body(created);
+                .created(URI.create("/api/categories/" + createdCategory.id()))
+                .body(createdCategory);
     }
 
     /** 이름 변경. 후손들의 경로도 함께 갱신된다. */
@@ -54,10 +54,10 @@ public class CategoryController {
         return categoryService.updateAppearance(id, request);
     }
 
-    /** 삭제. 하위가 있으면 400, 이 분류를 쓰던 일정은 미분류로 남는다. */
+    /** 삭제. 하위 카테고리도 함께 지우고, 딸린 일정은 부모 카테고리로 옮긴다. */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        categoryService.delete(id);
+        categoryService.deleteWithAllDescendants(id);
         return ResponseEntity.noContent().build();
     }
 }

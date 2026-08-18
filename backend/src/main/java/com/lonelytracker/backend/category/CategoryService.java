@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -67,7 +68,7 @@ public class CategoryService {
      */
     @Transactional
     public CategoryResponse rename(Long id, String newName) {
-        Category category = getOrThrow(id);
+        Category category = checkAndGetId(id);
 
         String name = newName.strip();
         if (name.contains(CategoryPath.SEPARATOR)) {
@@ -85,7 +86,7 @@ public class CategoryService {
             throw new IllegalArgumentException("같은 위치에 이미 존재하는 이름입니다: " + newPath);
         }
 
-        // 후손을 먼저 옮긴다. 자신의 path가 바뀐 뒤에는 옛 경로로 찾을 수 없다.
+        // 하위 항목을 먼저 옮김
         for (Category descendant : categoryRepository.findDescendants(CategoryPath.descendantPattern(oldPath))) {
             String moved = newPath + descendant.getPath().substring(oldPath.length());
             descendant.rename(descendant.getName(), moved);
@@ -95,31 +96,36 @@ public class CategoryService {
         return CategoryResponse.from(category);
     }
 
+    // 구별용 색상이나 표시순서를 변경함
     @Transactional
     public CategoryResponse updateAppearance(Long id, CategoryAppearanceRequest request) {
-        Category category = getOrThrow(id);
+        Category category = checkAndGetId(id);
         category.updateAppearance(request.color(), request.displayOrder(),
                 request.collapsed(), request.archived());
         return CategoryResponse.from(category);
     }
 
     /**
-     * 하위 카테고리가 있으면 지우지 않는다. 계층이 끊기기 때문이다.
-     * 이 카테고리를 쓰던 일정은 삭제하지 않고 미분류로 남긴다.
+     * 하위 카테고리가 있으면 전부 삭제한다.
      */
     @Transactional
-    public void delete(Long id) {
-        Category category = getOrThrow(id);
+    public void deleteWithAllDescendants(Long id) {
+        Category target = checkAndGetId(id);
+        Category newCategory = target.getParent();          // null이면 미분류
 
-        if (!categoryRepository.findDescendants(CategoryPath.descendantPattern(category.getPath())).isEmpty()) {
-            throw new IllegalArgumentException("하위 카테고리가 있어 삭제할 수 없습니다. 먼저 하위를 정리하세요");
-        }
+        List<Category> doomed = new ArrayList<>();
+        doomed.add(target);
+        doomed.addAll(categoryRepository.findDescendants(
+                CategoryPath.descendantPattern(target.getPath())));   // ① 후손 수집
 
-        scheduleRepository.clearCategory(id);
-        categoryRepository.delete(category);
+        List<Long> doomedIds = doomed.stream().map(Category::getId).toList();
+
+        scheduleRepository.moveCategory(doomedIds, newCategory);      // ② 일정 떼어내기
+        categoryRepository.deleteAllByIdInBatch(doomedIds);           // ③ 한 번에 삭제
     }
 
-    private Category getOrThrow(Long id) {
+    // id가 없다면 Throw하는 로직
+    private Category checkAndGetId(Long id) {
         return categoryRepository.findById(id)
                 .orElseThrow(() -> new CategoryNotFoundException("카테고리를 찾을 수 없습니다. id=" + id));
     }
