@@ -97,7 +97,8 @@ com.lonelytracker.backend
 │  ├─ Schedule.java            // 엔티티
 │  ├─ ScheduleStatus.java      // enum
 │  ├─ ScheduleSource.java      // enum
-│  ├─ ScheduleRepository.java  // JpaRepository
+│  ├─ ScheduleRepository.java  // JpaRepository + JpaSpecificationExecutor
+│  ├─ ScheduleSpecs.java       // 동적 조회 조건
 │  ├─ ScheduleService.java
 │  ├─ ScheduleController.java
 │  └─ dto/
@@ -106,7 +107,9 @@ com.lonelytracker.backend
 │     ├─ ScheduleStatusRequest.java
 │     └─ ScheduleResponse.java
 └─ common
-   └─ GlobalExceptionHandler.java
+   ├─ GlobalExceptionHandler.java
+   ├─ NotFoundException.java
+   └─ JpaConfig.java           // @EnableJpaAuditing
 ```
 
 엔티티를 그대로 반환하지 않고 `ScheduleResponse`로 감싸는 이유: JPA 지연 로딩이 JSON 직렬화 중에 터지는 문제를 원천 차단하고, 나중에 필드가 늘어도 API 계약이 흔들리지 않게 하기 위함.
@@ -120,6 +123,13 @@ com.lonelytracker.backend
 | 7일차 | `GET /api/reports/weekly?week=` | 주간 수행률 요약 |
 
 `parse`를 "바로 저장"이 아니라 "초안 반환"으로 둔 이유: AI가 시각을 잘못 잡았을 때 사용자가 고칠 여지를 남기기 위함. 확정 저장은 기존 `POST /api/schedules`를 재사용.
+
+## 5-1. 구현하며 확정한 사항 (2026-08-18)
+
+- **조회는 Specification(동적 쿼리)으로 구현.** 처음엔 JPQL에 `(:from is null or ...)` 패턴을 썼으나, PostgreSQL이 null 비교만 있는 파라미터의 타입을 추론하지 못해 `could not determine data type of parameter` 오류가 났다. 조건이 있을 때만 predicate를 붙이는 방식이 SQL도 더 깔끔하다.
+- **요청 DTO의 `allDay`는 `Boolean`(래퍼).** 원시 `boolean`이면 JSON에서 필드를 생략했을 때 Jackson이 실패한다. 선택 필드이므로 래퍼를 쓰고 서비스에서 null을 false로 취급한다.
+- **수정/상태변경은 `saveAndFlush`로 flush 후 응답 생성.** `@LastModifiedDate`가 flush 시점에 채워지기 때문에, 그냥 반환하면 응답의 `updatedAt`이 갱신 전 값으로 나간다.
+- **`server.error.include-stacktrace: never` + `spring.devtools.add-properties: false`.** devtools가 스택트레이스 노출을 기본값으로 켜두기 때문에 명시적으로 껐다.
 
 ## 6. 미결 사항
 

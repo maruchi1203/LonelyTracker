@@ -2,6 +2,11 @@ spring:
   application:
     name: lonelytracker-backend
 
+  # .env 를 properties 형식으로 읽어들인다. optional: 이라 파일이 없어도 앱은 뜬다
+  # (배포 환경에서는 .env 없이 실제 환경변수를 쓰기 때문)
+  config:
+    import: optional:file:.env[.properties]
+
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/lonelytracker}
     username: ${DB_USERNAME:lonelytracker}
@@ -21,8 +26,17 @@ spring:
   jackson:
     default-property-inclusion: non_null
 
+  devtools:
+    # devtools가 심어두는 개발용 기본값(대표적으로 스택트레이스 노출)을 쓰지 않는다.
+    # 자동 재시작 기능 자체는 그대로 동작한다.
+    add-properties: false
+
 server:
   port: 8080
+  error:
+    # devtools가 기본값을 always로 바꿔놓기 때문에 명시적으로 꺼준다.
+    # 켜두면 예외 스택트레이스가 그대로 API 응답에 실려 나간다.
+    include-stacktrace: never
 
 management:
   endpoints:
