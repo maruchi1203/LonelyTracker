@@ -1,5 +1,6 @@
 package com.lonelytracker.backend.schedule.dto;
 
+import com.lonelytracker.backend.category.dto.CategorySummary;
 import com.lonelytracker.backend.schedule.Schedule;
 import com.lonelytracker.backend.schedule.ScheduleStatus;
 
@@ -18,7 +19,7 @@ public record ScheduleResponse(
         LocalDateTime endAt,
         boolean allDay,
         ScheduleStatus status,
-        String category,
+        CategorySummary category,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -31,7 +32,7 @@ public record ScheduleResponse(
                 schedule.getEndAt(),
                 schedule.isAllDay(),
                 schedule.getStatus(),
-                schedule.getCategory(),
+                CategorySummary.from(schedule.getCategory()),
                 schedule.getCreatedAt(),
                 schedule.getUpdatedAt()
         );

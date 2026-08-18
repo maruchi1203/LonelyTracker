@@ -24,7 +24,8 @@ public record ScheduleUpdateRequest(
         Boolean allDay,
 
         // 역슬래시로 계층 표현. 예: 능력\개발\SpringBoot
-        @Size(max = 100, message = "category는 100자를 넘을 수 없습니다")
-        String category
+        // 없는 경로면 중간 단계까지 함께 생성된다
+        @Size(max = 255, message = "categoryPath는 255자를 넘을 수 없습니다")
+        String categoryPath
 ) {
 }

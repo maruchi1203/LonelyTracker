@@ -42,7 +42,11 @@ export default function ScheduleList({ schedules, onToggleStatus, onDelete }: Pr
             <span className="title">{schedule.title}</span>
             <span className="meta">
               {formatRange(schedule)}
-              {schedule.category && <span className="tag">{schedule.category}</span>}
+              {schedule.category && (
+                <span className="tag" title={schedule.category.path}>
+                  {schedule.category.name}
+                </span>
+              )}
               <span className="status">{STATUS_LABEL[schedule.status]}</span>
             </span>
           </div>

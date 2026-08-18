@@ -1,12 +1,12 @@
-package com.lonelytracker.backend.schedule;
+package com.lonelytracker.backend.category;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
  * 카테고리는 역슬래시로 계층을 표현한다. 예: {@code 능력\개발\SpringBoot}
  * <p>
- * 별도 테이블로 계층을 만들지 않고 문자열 경로로 두는 이유는, v1 규모에서
- * 조인 없이 prefix 조회만으로 "하위 포함 필터"가 해결되기 때문이다.
+ * DB에서는 parent_id 로 계층을 잡지만, 조회와 입력은 이 경로 문자열을 쓴다.
  */
 public final class CategoryPath {
 
@@ -24,12 +24,36 @@ public final class CategoryPath {
     private CategoryPath() {
     }
 
-    /** {@code 능력\개발} → {@code ["능력", "개발"]} */
+    /** {@code 능력\개발} → {@code ["능력", "개발"]}. 빈 세그먼트는 버린다. */
     public static List<String> segments(String category) {
         if (category == null || category.isBlank()) {
             return List.of();
         }
-        return List.of(category.strip().split("\\\\"));
+        return Arrays.stream(category.strip().split("\\\\"))
+                .map(String::strip)
+                .filter(s -> !s.isEmpty())
+                .toList();
+    }
+
+    /** 앞뒤 공백과 중복 구분자를 정리한 정규 경로. 유효하지 않으면 null. */
+    public static String normalize(String category) {
+        List<String> segments = segments(category);
+        return segments.isEmpty() ? null : String.join(SEPARATOR, segments);
+    }
+
+    /** {@code 능력\개발\SpringBoot} → {@code 능력\개발}. 최상위면 null. */
+    public static String parentOf(String path) {
+        List<String> segments = segments(path);
+        if (segments.size() <= 1) {
+            return null;
+        }
+        return String.join(SEPARATOR, segments.subList(0, segments.size() - 1));
+    }
+
+    /** 마지막 세그먼트. {@code 능력\개발} → {@code 개발} */
+    public static String nameOf(String path) {
+        List<String> segments = segments(path);
+        return segments.isEmpty() ? null : segments.get(segments.size() - 1);
     }
 
     /** 하위 카테고리까지 포함해 조회하기 위한 LIKE 패턴. {@code 능력} → {@code 능력\%} */

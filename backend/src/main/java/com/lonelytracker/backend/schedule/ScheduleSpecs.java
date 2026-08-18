@@ -1,5 +1,9 @@
 package com.lonelytracker.backend.schedule;
 
+import com.lonelytracker.backend.category.Category;
+import com.lonelytracker.backend.category.CategoryPath;
+import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
@@ -30,15 +34,17 @@ final class ScheduleSpecs {
      * {@code 능력} 으로 조회하면 {@code 능력}, {@code 능력\개발} 은 걸리고
      * {@code 능력강화} 처럼 이름만 비슷한 것은 걸리지 않는다(구분자를 붙여 비교하므로).
      */
-    static Specification<Schedule> inCategory(String category) {
+    static Specification<Schedule> inCategory(String rawPath) {
         return (root, query, cb) -> {
-            if (category == null || category.isBlank()) {
+            String path = CategoryPath.normalize(rawPath);
+            if (path == null) {
                 return null;
             }
-            String exact = category.strip();
+            // INNER JOIN이면 미분류 일정이 자동으로 빠지는데, 그게 의도한 동작이다
+            Join<Schedule, Category> category = root.join("category", JoinType.INNER);
             return cb.or(
-                    cb.equal(root.get("category"), exact),
-                    cb.like(root.get("category"), CategoryPath.descendantPattern(exact),
+                    cb.equal(category.get("path"), path),
+                    cb.like(category.get("path"), CategoryPath.descendantPattern(path),
                             CategoryPath.LIKE_ESCAPE)
             );
         };

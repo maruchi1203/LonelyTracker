@@ -23,7 +23,7 @@ export default function ScheduleForm({ onSubmit, knownCategories, disabled }: Pr
       // datetime-local은 "2026-08-19T15:00" 형식이라 초를 붙여 백엔드 LocalDateTime에 맞춘다
       startAt: `${startAt}:00`,
       endAt: endAt ? `${endAt}:00` : undefined,
-      category: category || undefined,
+      categoryPath: category || undefined,
     })
 
     setTitle('')

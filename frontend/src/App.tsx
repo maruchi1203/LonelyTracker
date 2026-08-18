@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
+import { fetchCategories } from './api/categories'
 import { changeStatus, createSchedule, deleteSchedule, fetchSchedules } from './api/schedules'
 import CategoryFilter from './components/CategoryFilter'
 import ScheduleForm from './components/ScheduleForm'
 import ScheduleList from './components/ScheduleList'
-import { collectCategories, type Schedule, type ScheduleCreateRequest } from './types/schedule'
+import type { Category, Schedule, ScheduleCreateRequest } from './types/schedule'
 import './App.css'
 
 export default function App() {
   const [schedules, setSchedules] = useState<Schedule[]>([])
-  const [categories, setCategories] = useState<string[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -16,10 +17,10 @@ export default function App() {
   const fail = (e: unknown, fallback: string) =>
     setError(e instanceof Error ? e.message : fallback)
 
-  /** 카테고리 목록은 필터와 무관하게 전체 기준으로 뽑아야 선택 후에도 남아 있다 */
+  /** 카테고리는 이제 독립 리소스라 일정 목록과 무관하게 가져온다 */
   const loadCategories = useCallback(async () => {
     try {
-      setCategories(collectCategories(await fetchSchedules()))
+      setCategories(await fetchCategories())
     } catch {
       // 목록 조회 쪽에서 이미 에러를 보여주므로 여기서는 조용히 넘어간다
     }
@@ -89,7 +90,11 @@ export default function App() {
         </p>
       </header>
 
-      <ScheduleForm onSubmit={handleCreate} knownCategories={categories} disabled={loading} />
+      <ScheduleForm
+        onSubmit={handleCreate}
+        knownCategories={categories.map((c) => c.path)}
+        disabled={loading}
+      />
 
       <CategoryFilter
         categories={categories}

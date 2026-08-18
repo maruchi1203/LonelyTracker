@@ -1,5 +1,7 @@
 package com.lonelytracker.backend.schedule;
 
+import com.lonelytracker.backend.category.Category;
+import com.lonelytracker.backend.category.CategoryService;
 import com.lonelytracker.backend.common.NotFoundException;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
@@ -19,6 +21,7 @@ import java.util.List;
 public class ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
+    private final CategoryService categoryService;
 
     public List<ScheduleResponse> search(LocalDateTime from, LocalDateTime to,
                                         ScheduleStatus status, String category) {
@@ -47,7 +50,7 @@ public class ScheduleService {
                 .startAt(request.startAt())
                 .endAt(request.endAt())
                 .allDay(Boolean.TRUE.equals(request.allDay()))
-                .category(request.category())
+                .category(categoryService.getOrCreate(request.categoryPath()))
                 .build();
 
         return ScheduleResponse.from(scheduleRepository.save(schedule));
@@ -65,7 +68,7 @@ public class ScheduleService {
                 request.startAt(),
                 request.endAt(),
                 Boolean.TRUE.equals(request.allDay()),
-                request.category()
+                categoryService.getOrCreate(request.categoryPath())
         );
         // 는 flush 시점에 채워진다. 응답에 갱신된 updatedAt을 담으려면 먼저 flush.
         return ScheduleResponse.from(scheduleRepository.saveAndFlush(schedule));

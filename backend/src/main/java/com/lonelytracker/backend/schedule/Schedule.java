@@ -1,14 +1,18 @@
 package com.lonelytracker.backend.schedule;
 
 import jakarta.persistence.Column;
+import com.lonelytracker.backend.category.Category;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.EnumType;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -25,9 +29,7 @@ import java.time.LocalDateTime;
 @Table(name = "schedule", indexes = {
         @Index(name = "idx_schedule_start_at", columnList = "start_at"),
         @Index(name = "idx_schedule_status", columnList = "status"),
-        // 카테고리 필터는 정확일치 + 하위카테고리 prefix LIKE 로 조회한다.
-        // prefix LIKE 는 앞이 고정이라 이 인덱스를 탈 수 있다.
-        @Index(name = "idx_schedule_category", columnList = "category")
+        @Index(name = "idx_schedule_category_id", columnList = "category_id")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -67,9 +69,13 @@ public class Schedule {
     @Builder.Default
     private ScheduleStatus status = ScheduleStatus.PLANNED;
 
-    // 분류(\를 통해 하위 카테고리 생성 가능)
-    @Column(length = 100)
-    private String category;
+    /**
+     * 분류. 계층은 Category 쪽에서 관리한다.
+     * LAZY라서 DTO 변환은 트랜잭션 안에서 끝내야 한다(open-in-view: false).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -84,7 +90,7 @@ public class Schedule {
      * 영속 상태의 엔티티라면 트랜잭션 종료 시 변경 감지(dirty checking)로 자동 UPDATE된다.
      */
     public void update(String title, String description, LocalDateTime startAt,
-                       LocalDateTime endAt, boolean allDay, String category) {
+                       LocalDateTime endAt, boolean allDay, Category category) {
         this.title = title;
         this.description = description;
         this.startAt = startAt;
