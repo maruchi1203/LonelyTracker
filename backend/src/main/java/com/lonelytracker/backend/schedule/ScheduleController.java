@@ -1,11 +1,9 @@
 package com.lonelytracker.backend.schedule;
 
-import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
-import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
-import com.lonelytracker.backend.schedule.dto.ScheduleStatusRequest;
-import com.lonelytracker.backend.schedule.dto.ScheduleUpdateRequest;
+import com.lonelytracker.backend.schedule.dto.*;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,10 +32,12 @@ public class ScheduleController {
     public List<ScheduleResponse> search(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
-            @RequestParam(required = false) ScheduleStatus status) {
-        return scheduleService.search(from, to, status);
+            @RequestParam(required = false) ScheduleStatus status,
+            @RequestParam(required = false) String category) {
+        return scheduleService.search(from, to, status, category);
     }
 
+    // ID 기준으로 
     @GetMapping("/{id}")
     public ScheduleResponse findById(@PathVariable Long id) {
         return scheduleService.findById(id);

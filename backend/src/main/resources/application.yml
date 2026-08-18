@@ -13,10 +13,19 @@ spring:
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
+  # 스키마 변경은 Flyway가 담당한다. db/migration 의 V*.sql 중
+  # 아직 적용되지 않은 것만 앱 시작 시 순서대로 실행된다.
+  flyway:
+    # 이미 schedule 테이블이 있는 기존 DB에 도입하는 중이라 필요하다.
+    # 현재 상태를 version 1로 간주하고 V2부터 적용한다. 빈 DB에서는 V1부터 전부 실행된다.
+    baseline-on-migrate: true
+    baseline-version: 1
+
   jpa:
     hibernate:
-      # 개발 중에는 update, 스키마가 안정되면 validate + Flyway 도입 검토
-      ddl-auto: update
+      # 스키마를 고치는 주체는 Flyway 하나뿐이어야 한다.
+      # validate는 엔티티와 실제 테이블이 어긋나면 기동 시점에 바로 알려준다.
+      ddl-auto: validate
     # 이 아래는 Hibernate에 그대로 전달되는 Map이다.
     # 키에 점이 들어가면 YAML 계층으로 오해되므로 [] 로 감싸 한 덩어리임을 명시한다.
     properties:

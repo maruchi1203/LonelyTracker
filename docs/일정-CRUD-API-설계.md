@@ -9,22 +9,21 @@
 |---|---|---|---|
 | `id` | Long | PK, auto | 식별자 |
 | `title` | String(200) | not null | 일정 제목 |
-| `description` | String(2000) | nullable | 상세 메모 |
+| `description` | TEXT | nullable | 상세 메모. **마크다운 원문**을 그대로 저장하고 렌더링은 화면이 담당 |
 | `startAt` | LocalDateTime | not null | 시작 시각 |
 | `endAt` | LocalDateTime | nullable | 종료 시각 (없으면 시점 일정) |
 | `allDay` | boolean | not null, default false | 종일 일정 여부 |
 | `status` | enum | not null, default `PLANNED` | `PLANNED` / `DONE` / `SKIPPED` |
-| `category` | String(50) | nullable | 육체 / 정신 / 능력 / 취미 등 |
-| `source` | enum | not null, default `MANUAL` | `MANUAL` / `AI_PARSED` |
+| `category` | String(100) | nullable | 계층 경로. `\`로 하위 구분 (예: `능력\개발\SpringBoot`) |
 | `createdAt` | LocalDateTime | not null | 생성 시각 (`@CreatedDate`) |
 | `updatedAt` | LocalDateTime | not null | 수정 시각 (`@LastModifiedDate`) |
 
 **설계 의도**
 - `status`는 4순위 기능인 "주간 수행률 리포트"의 계산 근거. 1일차부터 넣어두면 나중에 마이그레이션이 필요 없음.
-- `source`는 자연어 파싱(2순위)으로 만들어진 일정을 구분하기 위한 필드. AI 파싱 정확도를 나중에 되짚어볼 때 필요.
-- `category`는 지금은 자유 문자열. 값이 굳어지면 enum으로 승격.
+- `category`는 자유 문자열이며 `\`로 계층을 표현한다. 별도 테이블 없이 문자열 경로로 둔 이유는, v1 규모에서 조인 없이 prefix 조회만으로 "하위 포함 필터"가 해결되기 때문.
+- 일정의 성격 구분(수동 입력 / AI 파싱 등)은 별도 필드를 두지 않고 `category`로 처리한다.
 
-**인덱스**: `startAt` (기간 조회가 가장 흔한 쿼리), `status`.
+**인덱스**: `startAt` (기간 조회가 가장 흔한 쿼리), `status`, `category` (prefix LIKE는 앞이 고정이라 인덱스를 탄다).
 
 ## 2. 엔드포인트
 
@@ -32,7 +31,7 @@
 
 | 메서드 | 경로 | 설명 | 성공 응답 |
 |---|---|---|---|
-| `GET` | `/api/schedules?from=&to=&status=` | 기간·상태로 목록 조회 | 200 + 배열 |
+| `GET` | `/api/schedules?from=&to=&status=&category=` | 기간·상태·카테고리로 목록 조회 | 200 + 배열 |
 | `GET` | `/api/schedules/{id}` | 단건 조회 | 200 |
 | `POST` | `/api/schedules` | 생성 | 201 + `Location` 헤더 |
 | `PUT` | `/api/schedules/{id}` | 전체 수정 | 200 |
@@ -40,6 +39,7 @@
 | `DELETE` | `/api/schedules/{id}` | 삭제 | 204 |
 
 `from` / `to`는 ISO-8601 (`2026-08-18T00:00:00`). 생략 시 전체 조회.
+`category`는 **하위 카테고리까지 포함**해 조회한다. `능력`으로 조회하면 `능력`, `능력\개발`은 걸리고 `능력강화`는 걸리지 않는다.
 `PATCH .../status`를 따로 둔 이유: 목록에서 체크박스 하나 누르는 동작에 전체 객체를 왕복시키지 않기 위함.
 
 ## 3. 요청 / 응답 형태
@@ -130,6 +130,17 @@ com.lonelytracker.backend
 - **요청 DTO의 `allDay`는 `Boolean`(래퍼).** 원시 `boolean`이면 JSON에서 필드를 생략했을 때 Jackson이 실패한다. 선택 필드이므로 래퍼를 쓰고 서비스에서 null을 false로 취급한다.
 - **수정/상태변경은 `saveAndFlush`로 flush 후 응답 생성.** `@LastModifiedDate`가 flush 시점에 채워지기 때문에, 그냥 반환하면 응답의 `updatedAt`이 갱신 전 값으로 나간다.
 - **`server.error.include-stacktrace: never` + `spring.devtools.add-properties: false`.** devtools가 스택트레이스 노출을 기본값으로 켜두기 때문에 명시적으로 껐다.
+
+## 5-2. 스키마 관리 (2026-08-18 도입)
+
+`ddl-auto: update` 는 컬럼 삭제와 타입 변경을 하지 않아 손으로 SQL을 돌려야 했다.
+Flyway로 전환하고 `ddl-auto` 는 `validate` 로 내렸다. 스키마를 고치는 주체는 Flyway 하나뿐이다.
+
+- 마이그레이션 위치: `backend/src/main/resources/db/migration/`
+- `V1__init.sql` — 기존 스키마 베이스라인. 이미 테이블이 있는 DB에서는 실행되지 않고 기록만 된다.
+- `V2__drop_source_and_widen_columns.sql` — source 제거, description → TEXT, category → varchar(100), 카테고리 인덱스.
+- **이미 적용된 파일은 수정 금지.** checksum이 어긋나면 앱이 기동을 거부한다. 변경이 필요하면 새 버전을 추가한다.
+- Boot 4에서는 `spring-boot-flyway` 모듈이 있어야 자동 실행된다. `flyway-core` 만으로는 아무 일도 일어나지 않는다.
 
 ## 6. 미결 사항
 

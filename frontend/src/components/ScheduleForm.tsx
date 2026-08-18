@@ -3,12 +3,12 @@ import type { ScheduleCreateRequest } from '../types/schedule'
 
 interface Props {
   onSubmit: (body: ScheduleCreateRequest) => Promise<void>
+  /** 자동완성 후보. 이미 쓰인 카테고리를 그대로 제안한다 */
+  knownCategories: string[]
   disabled?: boolean
 }
 
-const CATEGORIES = ['육체', '정신', '능력', '취미']
-
-export default function ScheduleForm({ onSubmit, disabled }: Props) {
+export default function ScheduleForm({ onSubmit, knownCategories, disabled }: Props) {
   const [title, setTitle] = useState('')
   const [startAt, setStartAt] = useState('')
   const [endAt, setEndAt] = useState('')
@@ -70,14 +70,20 @@ export default function ScheduleForm({ onSubmit, disabled }: Props) {
 
         <div className="field">
           <label htmlFor="category">분류 (선택)</label>
-          <select id="category" value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="">없음</option>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
+          {/* 자유 입력. 역슬래시로 하위 분류를 만든다 — 예: 능력\개발 */}
+          <input
+            id="category"
+            list="category-options"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="예: 능력\개발"
+            maxLength={100}
+          />
+          <datalist id="category-options">
+            {knownCategories.map((c) => (
+              <option key={c} value={c} />
             ))}
-          </select>
+          </datalist>
         </div>
       </div>
 

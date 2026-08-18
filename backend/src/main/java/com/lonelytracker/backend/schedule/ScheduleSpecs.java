@@ -24,4 +24,23 @@ final class ScheduleSpecs {
         return (root, query, cb) ->
                 status == null ? null : cb.equal(root.get("status"), status);
     }
+
+    /**
+     * 해당 카테고리와 그 하위 카테고리를 모두 포함한다.
+     * {@code 능력} 으로 조회하면 {@code 능력}, {@code 능력\개발} 은 걸리고
+     * {@code 능력강화} 처럼 이름만 비슷한 것은 걸리지 않는다(구분자를 붙여 비교하므로).
+     */
+    static Specification<Schedule> inCategory(String category) {
+        return (root, query, cb) -> {
+            if (category == null || category.isBlank()) {
+                return null;
+            }
+            String exact = category.strip();
+            return cb.or(
+                    cb.equal(root.get("category"), exact),
+                    cb.like(root.get("category"), CategoryPath.descendantPattern(exact),
+                            CategoryPath.LIKE_ESCAPE)
+            );
+        };
+    }
 }

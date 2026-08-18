@@ -1,4 +1,4 @@
-import type { ApiError, Schedule, ScheduleCreateRequest, ScheduleStatus } from '../types/schedule'
+import type { ApiError, Schedule, ScheduleCreateRequest, ScheduleQuery, ScheduleStatus } from '../types/schedule'
 
 // vite.config.ts의 프록시가 /api 를 localhost:8080으로 넘긴다.
 // 그래서 호스트를 하드코딩하지 않는다 — 배포 시 그대로 동작한다.
@@ -20,15 +20,13 @@ async function handle<T>(res: Response): Promise<T> {
   return (await res.json()) as T
 }
 
-export async function fetchSchedules(params?: {
-  from?: string
-  to?: string
-  status?: ScheduleStatus
-}): Promise<Schedule[]> {
+export async function fetchSchedules(params?: ScheduleQuery): Promise<Schedule[]> {
   const query = new URLSearchParams()
   if (params?.from) query.set('from', params.from)
   if (params?.to) query.set('to', params.to)
   if (params?.status) query.set('status', params.status)
+  // URLSearchParams가 역슬래시를 알아서 인코딩한다
+  if (params?.category) query.set('category', params.category)
 
   const suffix = query.toString() ? `?${query}` : ''
   return handle<Schedule[]>(await fetch(`${BASE}${suffix}`))

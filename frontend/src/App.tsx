@@ -1,40 +1,58 @@
 import { useCallback, useEffect, useState } from 'react'
 import { changeStatus, createSchedule, deleteSchedule, fetchSchedules } from './api/schedules'
+import CategoryFilter from './components/CategoryFilter'
 import ScheduleForm from './components/ScheduleForm'
 import ScheduleList from './components/ScheduleList'
-import type { Schedule, ScheduleCreateRequest } from './types/schedule'
+import { collectCategories, type Schedule, type ScheduleCreateRequest } from './types/schedule'
 import './App.css'
 
 export default function App() {
   const [schedules, setSchedules] = useState<Schedule[]>([])
+  const [categories, setCategories] = useState<string[]>([])
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
+  const fail = (e: unknown, fallback: string) =>
+    setError(e instanceof Error ? e.message : fallback)
+
+  /** 카테고리 목록은 필터와 무관하게 전체 기준으로 뽑아야 선택 후에도 남아 있다 */
+  const loadCategories = useCallback(async () => {
+    try {
+      setCategories(collectCategories(await fetchSchedules()))
+    } catch {
+      // 목록 조회 쪽에서 이미 에러를 보여주므로 여기서는 조용히 넘어간다
+    }
+  }, [])
+
+  const load = useCallback(async (category: string | null) => {
     setLoading(true)
     setError(null)
     try {
-      setSchedules(await fetchSchedules())
+      setSchedules(await fetchSchedules(category ? { category } : undefined))
     } catch (e) {
-      setError(e instanceof Error ? e.message : '목록을 불러오지 못했습니다')
+      fail(e, '목록을 불러오지 못했습니다')
     } finally {
       setLoading(false)
     }
   }, [])
 
-  // 화면이 처음 뜰 때 한 번 목록을 불러온다
   useEffect(() => {
-    void load()
-  }, [load])
+    void load(selectedCategory)
+  }, [load, selectedCategory])
+
+  useEffect(() => {
+    void loadCategories()
+  }, [loadCategories])
 
   const handleCreate = async (body: ScheduleCreateRequest) => {
     setError(null)
     try {
-      const created = await createSchedule(body)
-      // 서버가 정렬해서 주므로, 새로 만든 뒤에는 목록을 다시 받아 순서를 맞춘다
-      setSchedules((prev) => [...prev, created].sort((a, b) => a.startAt.localeCompare(b.startAt)))
+      await createSchedule(body)
+      // 새 일정이 현재 필터에 맞는지는 서버가 판단하므로 다시 받아온다
+      await Promise.all([load(selectedCategory), loadCategories()])
     } catch (e) {
-      setError(e instanceof Error ? e.message : '일정을 추가하지 못했습니다')
+      fail(e, '일정을 추가하지 못했습니다')
     }
   }
 
@@ -44,7 +62,7 @@ export default function App() {
       const updated = await changeStatus(schedule.id, schedule.status === 'DONE' ? 'PLANNED' : 'DONE')
       setSchedules((prev) => prev.map((s) => (s.id === updated.id ? updated : s)))
     } catch (e) {
-      setError(e instanceof Error ? e.message : '상태를 변경하지 못했습니다')
+      fail(e, '상태를 변경하지 못했습니다')
     }
   }
 
@@ -53,8 +71,9 @@ export default function App() {
     try {
       await deleteSchedule(id)
       setSchedules((prev) => prev.filter((s) => s.id !== id))
+      await loadCategories()
     } catch (e) {
-      setError(e instanceof Error ? e.message : '일정을 삭제하지 못했습니다')
+      fail(e, '일정을 삭제하지 못했습니다')
     }
   }
 
@@ -65,11 +84,18 @@ export default function App() {
       <header>
         <h1>일정 관리</h1>
         <p className="summary">
+          {selectedCategory && <span className="scope">{selectedCategory} · </span>}
           전체 {schedules.length}건 · 완료 {doneCount}건
         </p>
       </header>
 
-      <ScheduleForm onSubmit={handleCreate} disabled={loading} />
+      <ScheduleForm onSubmit={handleCreate} knownCategories={categories} disabled={loading} />
+
+      <CategoryFilter
+        categories={categories}
+        selected={selectedCategory}
+        onSelect={setSelectedCategory}
+      />
 
       {error && <p className="error">{error}</p>}
 

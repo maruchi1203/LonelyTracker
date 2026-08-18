@@ -20,11 +20,13 @@ public class ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
 
-    public List<ScheduleResponse> search(LocalDateTime from, LocalDateTime to, ScheduleStatus status) {
+    public List<ScheduleResponse> search(LocalDateTime from, LocalDateTime to,
+                                        ScheduleStatus status, String category) {
         Specification<Schedule> spec = Specification
                 .allOf(ScheduleSpecs.startAtFrom(from))
                 .and(ScheduleSpecs.startAtTo(to))
-                .and(ScheduleSpecs.hasStatus(status));
+                .and(ScheduleSpecs.hasStatus(status))
+                .and(ScheduleSpecs.inCategory(category));
 
         return scheduleRepository.findAll(spec, Sort.by(Sort.Direction.ASC, "startAt")).stream()
                 .map(ScheduleResponse::from)

@@ -24,7 +24,10 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "schedule", indexes = {
         @Index(name = "idx_schedule_start_at", columnList = "start_at"),
-        @Index(name = "idx_schedule_status", columnList = "status")
+        @Index(name = "idx_schedule_status", columnList = "status"),
+        // 카테고리 필터는 정확일치 + 하위카테고리 prefix LIKE 로 조회한다.
+        // prefix LIKE 는 앞이 고정이라 이 인덱스를 탈 수 있다.
+        @Index(name = "idx_schedule_category", columnList = "category")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -41,7 +44,11 @@ public class Schedule {
     @Column(nullable = false, length = 200)
     private String title;
 
-    @Column(length = 2000)
+    /**
+     * 마크다운 원문을 그대로 보관한다. 렌더링은 화면에서 담당한다.
+     * 문서처럼 길어질 수 있어 varchar 대신 TEXT를 쓴다.
+     */
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @Column(name = "start_at", nullable = false)
@@ -53,19 +60,16 @@ public class Schedule {
     @Column(name = "all_day", nullable = false)
     private boolean allDay;
 
-    // ORDINAL(숫자)로 저장하면 enum 순서만 바뀌어도 기존 데이터의 의미가 달라진다. 반드시 STRING.
+    // ORDINAL(숫자)로 지정하면 enum 순서가 바뀌는 사태가 발생할 때
+    // "enum 값-enum 이름"이 불일치하는 상황이 될 수 있음
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
     private ScheduleStatus status = ScheduleStatus.PLANNED;
 
-    @Column(length = 50)
+    // 분류(\를 통해 하위 카테고리 생성 가능)
+    @Column(length = 100)
     private String category;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    @Builder.Default
-    private ScheduleSource source = ScheduleSource.MANUAL;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)

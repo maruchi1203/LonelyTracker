@@ -1,7 +1,6 @@
 package com.lonelytracker.backend.schedule.dto;
 
 import com.lonelytracker.backend.schedule.Schedule;
-import com.lonelytracker.backend.schedule.ScheduleSource;
 import com.lonelytracker.backend.schedule.ScheduleStatus;
 
 import java.time.LocalDateTime;
@@ -20,7 +19,6 @@ public record ScheduleResponse(
         boolean allDay,
         ScheduleStatus status,
         String category,
-        ScheduleSource source,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -34,7 +32,6 @@ public record ScheduleResponse(
                 schedule.isAllDay(),
                 schedule.getStatus(),
                 schedule.getCategory(),
-                schedule.getSource(),
                 schedule.getCreatedAt(),
                 schedule.getUpdatedAt()
         );
