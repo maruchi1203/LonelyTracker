@@ -3,12 +3,12 @@ import type { Category } from '../types/schedule'
 interface Props {
   categories: Category[]
   selected: string | null
-  onSelect: (path: string | null) => void
+  onSelect: (name: string | null) => void
 }
 
 /**
- * 카테고리 사이드바. 선택하면 하위 카테고리까지 함께 조회된다(필터링은 서버가 수행).
- * 목록이 경로순으로 오므로 그대로 그리면 부모가 자식보다 먼저 나온다.
+ * 카테고리 필터. 계층이 없어져 이름이 정확히 일치하는 일정만 조회한다.
+ * 목록은 표시 순서대로 오므로 그대로 그린다.
  */
 export default function CategoryFilter({ categories, selected, onSelect }: Props) {
   if (categories.length === 0) return null
@@ -29,13 +29,9 @@ export default function CategoryFilter({ categories, selected, onSelect }: Props
           <button
             key={category.id}
             type="button"
-            className={selected === category.path ? 'active' : undefined}
-            style={{
-              marginLeft: `${category.depth * 0.75}rem`,
-              borderColor: category.color ?? undefined,
-            }}
-            onClick={() => onSelect(category.path)}
-            title={category.path}
+            className={selected === category.name ? 'active' : undefined}
+            style={{ borderColor: category.color ?? undefined }}
+            onClick={() => onSelect(category.name)}
           >
             {category.name}
           </button>

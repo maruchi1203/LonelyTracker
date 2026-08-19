@@ -2,30 +2,15 @@
 
 export type ScheduleStatus = 'PLANNED' | 'DONE' | 'SKIPPED'
 
-/** 카테고리 계층 구분자. 예: 능력\개발\SpringBoot */
-export const CATEGORY_SEPARATOR = '\\'
-
-/** 사이드바용 전체 정보 (GET /api/categories) */
+/** 사용자가 고를 수 있는 카테고리 목록의 한 항목 (GET /api/categories) */
 export interface Category {
   id: number
   name: string
-  path: string
-  parentId: number | null
-  depth: number
-  displayOrder: number
   color?: string
-  collapsed: boolean
+  displayOrder: number
   archived: boolean
   createdAt: string
   updatedAt: string
-}
-
-/** 일정에 붙어 오는 축약형 */
-export interface CategorySummary {
-  id: number
-  name: string
-  path: string
-  color?: string
 }
 
 export interface Schedule {
@@ -37,7 +22,8 @@ export interface Schedule {
   endAt?: string
   allDay: boolean
   status: ScheduleStatus
-  category?: CategorySummary
+  /** 카테고리 이름을 문자열로 기록한다. 목록에 없는 이름도 들어갈 수 있다 */
+  category?: string
   createdAt: string
   updatedAt: string
 }
@@ -48,8 +34,7 @@ export interface ScheduleCreateRequest {
   startAt: string
   endAt?: string
   allDay?: boolean
-  /** 없는 경로면 중간 단계까지 서버가 함께 만든다 */
-  categoryPath?: string
+  category?: string
 }
 
 /** 목록 조회 조건. 준 것만 AND로 걸린다. */
@@ -57,8 +42,15 @@ export interface ScheduleQuery {
   from?: string
   to?: string
   status?: ScheduleStatus
-  /** 하위 카테고리까지 포함해 조회된다 */
+  /** 이름이 정확히 일치하는 일정만 */
   category?: string
+}
+
+export interface User {
+  id: number
+  username: string
+  displayName?: string
+  createdAt: string
 }
 
 /** 백엔드 GlobalExceptionHandler가 내려주는 에러 형태 */

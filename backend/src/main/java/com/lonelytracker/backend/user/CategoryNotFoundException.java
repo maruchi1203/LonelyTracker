@@ -1,4 +1,4 @@
-package com.lonelytracker.backend.category;
+package com.lonelytracker.backend.user;
 
 import com.lonelytracker.backend.common.NotFoundException;
 

@@ -1,7 +1,8 @@
 package com.lonelytracker.backend.schedule;
 
+import com.lonelytracker.backend.common.FieldLengths;
 import jakarta.persistence.Column;
-import com.lonelytracker.backend.category.Category;
+import com.lonelytracker.backend.user.User;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Enumerated;
@@ -29,7 +30,8 @@ import java.time.LocalDateTime;
 @Table(name = "schedule", indexes = {
         @Index(name = "idx_schedule_start_at", columnList = "start_at"),
         @Index(name = "idx_schedule_status", columnList = "status"),
-        @Index(name = "idx_schedule_category_id", columnList = "category_id")
+        @Index(name = "idx_schedule_category", columnList = "category"),
+        @Index(name = "idx_schedule_user_id", columnList = "user_id")
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
@@ -43,12 +45,13 @@ public class Schedule {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 200)
+    // 제목(일정명)
+    @Column(nullable = false, length = FieldLengths.TITLE)
     private String title;
 
     /**
-     * 마크다운 원문을 그대로 보관한다. 렌더링은 화면에서 담당한다.
-     * 문서처럼 길어질 수 있어 varchar 대신 TEXT를 쓴다.
+     * 마크다운 원문을 그대로 보관함
+     * 렌더링은 화면에서 담당
      */
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -70,12 +73,18 @@ public class Schedule {
     private ScheduleStatus status = ScheduleStatus.PLANNED;
 
     /**
-     * 분류. 계층은 Category 쪽에서 관리한다.
-     * LAZY라서 DTO 변환은 트랜잭션 안에서 끝내야 한다(open-in-view: false).
+     * 소유자. 인증이 붙기 전까지는 기본 사용자가 들어간다.
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    private Category category;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    /**
+     * 분류. 사용자의 카테고리 목록과 FK로 묶지 않고 <b>이름을 문자열로</b> 기록한다.
+     * 목록에서 이름을 바꾸거나 지워도 이미 남긴 기록은 그대로 보존된다.
+     */
+    @Column(length = FieldLengths.CATEGORY_NAME)
+    private String category;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -90,7 +99,7 @@ public class Schedule {
      * 영속 상태의 엔티티라면 트랜잭션 종료 시 변경 감지(dirty checking)로 자동 UPDATE된다.
      */
     public void update(String title, String description, LocalDateTime startAt,
-                       LocalDateTime endAt, boolean allDay, Category category) {
+                       LocalDateTime endAt, boolean allDay, String category) {
         this.title = title;
         this.description = description;
         this.startAt = startAt;

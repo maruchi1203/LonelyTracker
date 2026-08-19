@@ -23,7 +23,7 @@ export default function ScheduleForm({ onSubmit, knownCategories, disabled }: Pr
       // datetime-local은 "2026-08-19T15:00" 형식이라 초를 붙여 백엔드 LocalDateTime에 맞춘다
       startAt: `${startAt}:00`,
       endAt: endAt ? `${endAt}:00` : undefined,
-      categoryPath: category || undefined,
+      category: category || undefined,
     })
 
     setTitle('')
@@ -70,13 +70,13 @@ export default function ScheduleForm({ onSubmit, knownCategories, disabled }: Pr
 
         <div className="field">
           <label htmlFor="category">분류 (선택)</label>
-          {/* 자유 입력. 역슬래시로 하위 분류를 만든다 — 예: 능력\개발 */}
+          {/* 자유 입력. 목록에 없는 이름도 쓸 수 있다 */}
           <input
             id="category"
             list="category-options"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            placeholder="예: 능력\개발"
+            placeholder="예: 능력"
             maxLength={100}
           />
           <datalist id="category-options">

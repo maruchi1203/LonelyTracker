@@ -1,10 +1,11 @@
 package com.lonelytracker.backend.schedule;
 
-import com.lonelytracker.backend.category.CategoryService;
 import com.lonelytracker.backend.common.NotFoundException;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleUpdateRequest;
+import com.lonelytracker.backend.user.CurrentUserProvider;
+import com.lonelytracker.backend.user.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -20,15 +21,16 @@ import java.util.List;
 public class ScheduleService {
 
     private final ScheduleRepository scheduleRepository;
-    private final CategoryService categoryService;
+    private final CurrentUserProvider currentUserProvider;
 
     public List<ScheduleResponse> search(LocalDateTime from, LocalDateTime to,
-                                        ScheduleStatus status, String category) {
+                                         ScheduleStatus status, String category) {
         Specification<Schedule> spec = Specification
-                .allOf(ScheduleSpecs.startAtFrom(from))
+                .allOf(ScheduleSpecs.ownedBy(currentUserProvider.get().getId()))
+                .and(ScheduleSpecs.startAtFrom(from))
                 .and(ScheduleSpecs.startAtTo(to))
                 .and(ScheduleSpecs.hasStatus(status))
-                .and(ScheduleSpecs.inCategory(category));
+                .and(ScheduleSpecs.hasCategory(category));
 
         return scheduleRepository.findAll(spec, Sort.by(Sort.Direction.ASC, "startAt")).stream()
                 .map(ScheduleResponse::from)
@@ -44,12 +46,13 @@ public class ScheduleService {
         validatePeriod(request.startAt(), request.endAt());
 
         Schedule schedule = Schedule.builder()
+                .user(currentUserProvider.get())
                 .title(request.title())
                 .description(request.description())
                 .startAt(request.startAt())
                 .endAt(request.endAt())
                 .allDay(Boolean.TRUE.equals(request.allDay()))
-                .category(categoryService.getOrCreate(request.categoryPath()))
+                .category(normalizeCategory(request.category()))
                 .build();
 
         return ScheduleResponse.from(scheduleRepository.save(schedule));
@@ -60,16 +63,15 @@ public class ScheduleService {
         validatePeriod(request.startAt(), request.endAt());
 
         Schedule schedule = getOrThrow(id);
-        // save()를 부르지 않아도 트랜잭션이 끝날 때 변경 감지로 UPDATE가 나간다
         schedule.update(
                 request.title(),
                 request.description(),
                 request.startAt(),
                 request.endAt(),
                 Boolean.TRUE.equals(request.allDay()),
-                categoryService.getOrCreate(request.categoryPath())
+                normalizeCategory(request.category())
         );
-        // 는 flush 시점에 채워진다. 응답에 갱신된 updatedAt을 담으려면 먼저 flush.
+        // @LastModifiedDate는 flush 시점에 채워진다. 응답에 갱신된 updatedAt을 담으려면 먼저 flush.
         return ScheduleResponse.from(scheduleRepository.saveAndFlush(schedule));
     }
 
@@ -85,9 +87,25 @@ public class ScheduleService {
         scheduleRepository.delete(getOrThrow(id));
     }
 
+    /** 다른 사용자의 일정은 없는 것으로 취급한다. */
     private Schedule getOrThrow(Long id) {
+        Long userId = currentUserProvider.get().getId();
         return scheduleRepository.findById(id)
+                .filter(schedule -> ownerIdOf(schedule).equals(userId))
                 .orElseThrow(() -> new NotFoundException("일정을 찾을 수 없습니다. id=" + id));
+    }
+
+    private Long ownerIdOf(Schedule schedule) {
+        User owner = schedule.getUser();
+        return owner.getId();
+    }
+
+    /** 빈 문자열은 미분류(null)로 통일한다. */
+    private String normalizeCategory(String category) {
+        if (category == null || category.isBlank()) {
+            return null;
+        }
+        return category.strip();
     }
 
     private void validatePeriod(LocalDateTime startAt, LocalDateTime endAt) {

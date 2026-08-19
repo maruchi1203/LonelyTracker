@@ -1,9 +1,5 @@
 package com.lonelytracker.backend.schedule;
 
-import com.lonelytracker.backend.category.Category;
-import com.lonelytracker.backend.category.CategoryPath;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDateTime;
@@ -12,6 +8,11 @@ import java.time.LocalDateTime;
 final class ScheduleSpecs {
 
     private ScheduleSpecs() {
+    }
+
+    /** 소유자 조건. 항상 붙는다 — 남의 일정이 섞이면 안 된다. */
+    static Specification<Schedule> ownedBy(Long userId) {
+        return (root, query, cb) -> cb.equal(root.get("user").get("id"), userId);
     }
 
     static Specification<Schedule> startAtFrom(LocalDateTime from) {
@@ -30,25 +31,15 @@ final class ScheduleSpecs {
     }
 
     /**
-     * 해당 카테고리와 그 하위 카테고리를 모두 포함한다.
-     * {@code 능력} 으로 조회하면 {@code 능력}, {@code 능력\개발} 은 걸리고
-     * {@code 능력강화} 처럼 이름만 비슷한 것은 걸리지 않는다(구분자를 붙여 비교하므로).
+     * 분류 이름이 일치하는 일정만. 계층이 없어져 하위 포함 조회가 사라졌고,
+     * 이름을 문자열로 들고 있어 조인도 필요 없다.
      */
-    static Specification<Schedule> inCategory(String rawPath) {
+    static Specification<Schedule> hasCategory(String category) {
         return (root, query, cb) -> {
-            String path = CategoryPath.normalize(rawPath);
-            if (path == null) {
+            if (category == null || category.isBlank()) {
                 return null;
             }
-
-            // Schedule을 기준으로 Category를 INNER JOIN하고, 하위 목록을 
-            // INNER JOIN이면 미분류 일정이 자동으로 빠짐
-            Join<Schedule, Category> category = root.join("category", JoinType.INNER);
-            return cb.or(
-                    cb.equal(category.get("path"), path),
-                    cb.like(category.get("path"), CategoryPath.descendantPattern(path),
-                            CategoryPath.LIKE_ESCAPE)
-            );
+            return cb.equal(root.get("category"), category.strip());
         };
     }
 }

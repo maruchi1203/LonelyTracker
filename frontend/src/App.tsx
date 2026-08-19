@@ -92,7 +92,7 @@ export default function App() {
 
       <ScheduleForm
         onSubmit={handleCreate}
-        knownCategories={categories.map((c) => c.path)}
+        knownCategories={categories.map((c) => c.name)}
         disabled={loading}
       />
 

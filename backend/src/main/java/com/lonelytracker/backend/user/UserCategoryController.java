@@ -1,9 +1,9 @@
-package com.lonelytracker.backend.category;
+package com.lonelytracker.backend.user;
 
-import com.lonelytracker.backend.category.dto.CategoryAppearanceRequest;
-import com.lonelytracker.backend.category.dto.CategoryCreateRequest;
-import com.lonelytracker.backend.category.dto.CategoryRenameRequest;
-import com.lonelytracker.backend.category.dto.CategoryResponse;
+import com.lonelytracker.backend.user.dto.CategoryAppearanceRequest;
+import com.lonelytracker.backend.user.dto.CategoryCreateRequest;
+import com.lonelytracker.backend.user.dto.CategoryRenameRequest;
+import com.lonelytracker.backend.user.dto.CategoryResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,45 +19,49 @@ import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 import java.util.List;
 
+/**
+ * 현재 사용자가 고를 수 있는 카테고리 목록.
+ * 일정에는 이름이 문자열로 기록되므로, 여기서 무엇을 바꾸든 기존 일정은 영향받지 않는다.
+ */
 @RestController
 @RequestMapping("/api/categories")
 @RequiredArgsConstructor
-public class CategoryController {
+public class UserCategoryController {
 
-    private final CategoryService categoryService;
+    private final UserCategoryService userCategoryService;
 
-    // 전체 목록 호출
+    /** 표시 순서대로 반환한다. */
     @GetMapping
     public List<CategoryResponse> findAll() {
-        return categoryService.findAll();
+        return userCategoryService.findAll();
     }
 
-    // 전체 경로로 생성
+    /** 목록에 새 카테고리를 추가한다. 같은 이름이 이미 있으면 400. */
     @PostMapping
     public ResponseEntity<CategoryResponse> create(@Valid @RequestBody CategoryCreateRequest request) {
-        CategoryResponse createdCategory = categoryService.create(request.path(), request.color());
+        CategoryResponse created = userCategoryService.create(request.name(), request.color());
         return ResponseEntity
-                .created(URI.create("/api/categories/" + createdCategory.id()))
-                .body(createdCategory);
+                .created(URI.create("/api/categories/" + created.id()))
+                .body(created);
     }
 
-    /** 이름 변경. 후손들의 경로도 함께 갱신된다. */
+    /** 이름 변경. 이미 기록된 일정의 분류 문자열은 바뀌지 않는다. */
     @PatchMapping("/{id}/name")
     public CategoryResponse rename(@PathVariable Long id, @Valid @RequestBody CategoryRenameRequest request) {
-        return categoryService.rename(id, request.name());
+        return userCategoryService.rename(id, request.name());
     }
 
-    /** 색상·정렬순서·접힘·보관 변경. 넘긴 항목만 반영된다. */
+    /** 색상·정렬순서·보관 변경. 넘긴 항목만 반영된다. */
     @PatchMapping("/{id}/appearance")
     public CategoryResponse updateAppearance(@PathVariable Long id,
                                              @Valid @RequestBody CategoryAppearanceRequest request) {
-        return categoryService.updateAppearance(id, request);
+        return userCategoryService.updateAppearance(id, request);
     }
 
-    /** 삭제. 하위 카테고리도 함께 지우고, 딸린 일정은 부모 카테고리로 옮긴다. */
+    /** 목록에서 제거. 이 분류를 쓰던 일정은 그대로 남는다. */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        categoryService.deleteWithAllDescendants(id);
+        userCategoryService.delete(id);
         return ResponseEntity.noContent().build();
     }
 }
