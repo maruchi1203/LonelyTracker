@@ -1,4 +1,4 @@
-package com.lonelytracker.backend.common;
+package com.lonelytracker.backend.common.exception;
 
 public class NotFoundException extends RuntimeException {
     public NotFoundException(String message) {

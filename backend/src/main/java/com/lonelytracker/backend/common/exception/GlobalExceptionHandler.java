@@ -1,4 +1,4 @@
-package com.lonelytracker.backend.common;
+package com.lonelytracker.backend.common.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
