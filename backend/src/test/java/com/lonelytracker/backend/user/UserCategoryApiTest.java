@@ -209,7 +209,7 @@ class UserCategoryApiTest extends IntegrationTest {
     private List<String> namesOf(org.springframework.test.web.servlet.ResultActions actions) throws Exception {
         JsonNode array = mapper.readTree(actions.andReturn().getResponse().getContentAsString());
         List<String> names = new ArrayList<>();
-        array.forEach(node -> names.add(node.get("name").asText()));
+        array.forEach(node -> names.add(node.get("name").asString()));
         return names;
     }
 }

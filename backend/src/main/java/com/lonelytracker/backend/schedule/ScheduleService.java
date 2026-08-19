@@ -1,6 +1,6 @@
 package com.lonelytracker.backend.schedule;
 
-import com.lonelytracker.backend.common.NotFoundException;
+import com.lonelytracker.backend.common.exception.NotFoundException;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleUpdateRequest;

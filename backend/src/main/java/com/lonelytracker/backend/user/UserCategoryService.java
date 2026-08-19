@@ -1,5 +1,6 @@
 package com.lonelytracker.backend.user;
 
+import com.lonelytracker.backend.common.exception.CategoryNotFoundException;
 import com.lonelytracker.backend.user.dto.CategoryAppearanceRequest;
 import com.lonelytracker.backend.user.dto.CategoryResponse;
 import lombok.RequiredArgsConstructor;

@@ -1,5 +1,6 @@
 package com.lonelytracker.backend.user;
 
+import com.lonelytracker.backend.common.exception.UserNotFoundException;
 import com.lonelytracker.backend.common.AppProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

@@ -1,5 +1,6 @@
 package com.lonelytracker.backend.user;
 
+import com.lonelytracker.backend.common.exception.UserNotFoundException;
 import com.lonelytracker.backend.common.AppProperties;
 import com.lonelytracker.backend.user.dto.UserResponse;
 import lombok.RequiredArgsConstructor;
@@ -22,15 +23,18 @@ public class UserService {
     }
 
     /**
-     * 사용자를 만들고 추천 카테고리를 함께 넣는다.
-     * 둘이 한 트랜잭션이라, 카테고리 생성이 실패하면 사용자도 남지 않는다.
+     * 사용자 생성
+     * 1. 
      */
     @Transactional
     public UserResponse create(String username, String displayName) {
         String name = username == null ? "" : username.strip();
+
+        // username 빈칸 오류 처리
         if (name.isEmpty()) {
             throw new IllegalArgumentException("username이 비어 있습니다");
         }
+
         if (userRepository.existsByUsername(name)) {
             throw new IllegalArgumentException("이미 존재하는 사용자입니다: " + name);
         }
