@@ -37,10 +37,27 @@ dependencies {
 	testImplementation("org.springframework.boot:spring-boot-starter-validation-test")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testCompileOnly("org.projectlombok:lombok")
+	// 테스트는 실제 PostgreSQL 컨테이너에 붙는다. H2로는 Flyway의 generate_series,
+	// LIKE ... ESCAPE 같은 PostgreSQL 전용 문법을 검증할 수 없다.
+	// Testcontainers 2.x에서 아티팩트 이름이 바뀌었다(postgresql -> testcontainers-postgresql).
+	testImplementation("org.springframework.boot:spring-boot-testcontainers")
+	testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+	testImplementation("org.testcontainers:testcontainers-postgresql")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 	testAnnotationProcessor("org.projectlombok:lombok")
 }
 
+// 소스에 한글 주석·메시지가 있다. 지정하지 않으면 javac가 플랫폼 기본 인코딩을 쓰므로
+// 로케일이 다른 환경(CI 등)에서 문자열이 깨진다.
+tasks.withType<JavaCompile> {
+	options.encoding = "UTF-8"
+}
+
 tasks.withType<Test> {
 	useJUnitPlatform()
+	// 어떤 테스트가 돌았는지 콘솔에 보이게 한다.
+	// 테스트가 0개인데 BUILD SUCCESSFUL 이 뜨는 상황을 눈으로 잡기 위함.
+	testLogging {
+		events("passed", "failed", "skipped")
+	}
 }
