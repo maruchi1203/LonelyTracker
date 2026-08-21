@@ -1,19 +1,5 @@
-/*
- * Tailwind v4 는 설정 파일(tailwind.config.js) 없이 CSS 로 구성한다.
- * @import 가 preflight(기본 리셋)와 유틸리티를 가져오고, @theme 이 디자인 토큰을 정의한다.
- *
- * 스타일은 전부 컴포넌트의 className 에 있다. 이 파일에는 토큰만 둔다.
- */
 @import "tailwindcss";
 
-/*
- * @theme 의 변수는 두 가지 일을 한다.
- *   1) :root 에 실제 CSS 변수로 출력된다 → var(--color-brand-500)
- *   2) Tailwind 유틸리티를 만들어낸다 → bg-brand-500, text-brand-700, border-brand-200 ...
- *
- * 이름 앞의 --color- 는 "색상 계열"이라는 표시라 반드시 붙여야 한다.
- * 색을 바꾸려면 이 블록만 고치면 화면 전체가 따라온다.
- */
 @theme {
   --color-brand-50: #f0f9ff;
   --color-brand-100: #e0f2fe;
@@ -30,4 +16,18 @@
  */
 html {
   background-color: var(--color-slate-50);
+}
+
+/*
+ * 페이지 최소 폭. 이보다 좁아지면 줄어드는 대신 가로 스크롤이 생긴다.
+ *
+ * 960px 근거: 좌우 여백 40 + 사이드메뉴 208 + 간격 24 + 달력 7칸 626 ≈ 898px.
+ * 여기에 여유를 둔 값이다. 사이드메뉴 폭(w-52)이나 달력 칸 크기를 바꾸면
+ * 이 값도 함께 조정해야 한다.
+ *
+ * body 에 두는 이유: 안쪽 요소에 걸면 body 는 계속 줄어들어
+ * 가로로 스크롤했을 때 배경이 끊긴다.
+ */
+body {
+  min-width: 60rem;
 }

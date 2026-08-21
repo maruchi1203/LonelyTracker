@@ -4,13 +4,11 @@ export type ScheduleStatus = 'PLANNED' | 'DONE' | 'SKIPPED'
 
 /** 사용자가 고를 수 있는 카테고리 목록의 한 항목 (GET /api/categories) */
 export interface Category {
-  id: number
-  name: string
-  color?: string
-  displayOrder: number
-  archived: boolean
-  createdAt: string
-  updatedAt: string
+  id: number;
+  name: string;
+  color?: string;
+  displayOrder: number;
+  archived: boolean;
 }
 
 export interface Schedule {
