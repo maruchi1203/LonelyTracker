@@ -9,7 +9,6 @@ interface Props {
 }
 
 // 주간, 월간, 연간 (캘린더 형태와 목표를 이 3개로 나눌 예정)
-// 아직 쓰이지 않아 export 로 열어둔다. 지역 상수로 두면 noUnusedLocals 에 걸린다.
 export const CYCLE_UNITS = ["Week", "Month", "Year"] as const;
 export type CycleUnit = (typeof CYCLE_UNITS)[number];
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
@@ -31,7 +30,7 @@ function buildMonthDays(month: Date): Date[] {
   ).getDate();
 
   const prevMonthDates = firstDate.getDay(); // 1일 앞에 채울 지난달 날짜 수
-  const weeks = Math.ceil((prevMonthDates + lastDate) / 7); //
+  const weeks = Math.ceil((prevMonthDates + lastDate) / 7);
 
   const start = new Date(firstDate);
   start.setDate(firstDate.getDate() - prevMonthDates);

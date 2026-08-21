@@ -6,7 +6,8 @@ interface Props {
   onSelect: (name: string | null) => void;
 }
 
-/** 선택 여부에 따라 칩 모양이 바뀐다. 두 상태의 클래스를 한곳에 모아둔다. */
+// 선택 여부에 따라 카테고리 칩의 모양이 바뀐다
+// 두 상태의 클래스를 한곳에 모아둔다
 const CHIP_BASE =
   "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100";
 const CHIP_ON = "border-brand-500 bg-brand-500 text-white";
