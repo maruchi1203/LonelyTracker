@@ -19,6 +19,8 @@ public record ScheduleResponse(
         boolean allDay,
         ScheduleStatus status,
         String category,
+        /** 반복 시리즈에 속하면 그 id. 단일 일정이면 null. 화면에서 반복 표시에 쓴다 */
+        Long seriesId,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -32,6 +34,8 @@ public record ScheduleResponse(
                 schedule.isAllDay(),
                 schedule.getStatus(),
                 schedule.getCategory(),
+                // 지연 로딩 프록시라도 식별자는 쿼리 없이 읽힌다
+                schedule.getSeries() == null ? null : schedule.getSeries().getId(),
                 schedule.getCreatedAt(),
                 schedule.getUpdatedAt()
         );

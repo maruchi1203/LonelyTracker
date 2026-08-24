@@ -86,6 +86,22 @@ public class Schedule {
     @Column(length = FieldLengths.CATEGORY_NAME)
     private String category;
 
+    /**
+     * 반복 시리즈. 단일 일정이면 null 이다.
+     * 회차도 그냥 schedule 행이므로 달력·목록·소유권 필터가 그대로 동작한다.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "series_id")
+    private ScheduleSeries series;
+
+    /**
+     * 연기 체인. 이 회차가 어느 회차에서 미뤄져 왔는지 가리킨다.
+     * 시리즈가 없는 단일 일정을 여러 번 미뤘을 때 회차들을 잇는 유일한 수단이다.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "moved_from_id")
+    private Schedule movedFrom;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -106,6 +122,11 @@ public class Schedule {
         this.endAt = endAt;
         this.allDay = allDay;
         this.category = category;
+    }
+
+    /** 이 회차를 다른 날짜로 미뤘음을 표시한다. 새 회차 생성은 서비스가 맡는다. */
+    public void closeAsPostponed() {
+        this.status = ScheduleStatus.POSTPONED;
     }
 
     public void changeStatus(ScheduleStatus status) {
