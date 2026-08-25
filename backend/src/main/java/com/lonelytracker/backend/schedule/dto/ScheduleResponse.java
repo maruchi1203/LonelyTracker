@@ -3,15 +3,23 @@ package com.lonelytracker.backend.schedule.dto;
 import com.lonelytracker.backend.schedule.Schedule;
 import com.lonelytracker.backend.schedule.ScheduleStatus;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 엔티티를 그대로 반환하지 않는 이유:
- * open-in-view: false 환경에서 지연 로딩이 직렬화 중에 터지는 것을 막고,
- * 엔티티 필드가 늘어도 API 계약이 흔들리지 않게 하기 위함.
+ * 단일 일정과 전개된 반복 회차를 한 타입으로 내려준다.
+ * <p>
+ * 반복 회차는 행이 없으므로 {@code id} 가 null 이다.
+ * 대신 {@code seriesId} + {@code occurrenceDate} 가 식별자 역할을 한다.
+ *
+ * @param occurrenceDate 규칙이 만들어낸 원래 날짜. 미뤘어도 이 값은 안 바뀐다.
+ *                       startAt 과 다르면 그 회차는 옮겨진 것이다
+ * @param postponeCount  몇 번 미뤘는지. 코칭 지표
  */
 public record ScheduleResponse(
         Long id,
+        Long seriesId,
+        LocalDate occurrenceDate,
         String title,
         String description,
         LocalDateTime startAt,
@@ -19,14 +27,16 @@ public record ScheduleResponse(
         boolean allDay,
         ScheduleStatus status,
         String category,
-        /** 반복 시리즈에 속하면 그 id. 단일 일정이면 null. 화면에서 반복 표시에 쓴다 */
-        Long seriesId,
+        int postponeCount,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
+    /** 단일 일정. seriesId·occurrenceDate 는 없다. */
     public static ScheduleResponse from(Schedule schedule) {
         return new ScheduleResponse(
                 schedule.getId(),
+                null,
+                null,
                 schedule.getTitle(),
                 schedule.getDescription(),
                 schedule.getStartAt(),
@@ -34,8 +44,7 @@ public record ScheduleResponse(
                 schedule.isAllDay(),
                 schedule.getStatus(),
                 schedule.getCategory(),
-                // 지연 로딩 프록시라도 식별자는 쿼리 없이 읽힌다
-                schedule.getSeries() == null ? null : schedule.getSeries().getId(),
+                schedule.getPostponeCount(),
                 schedule.getCreatedAt(),
                 schedule.getUpdatedAt()
         );

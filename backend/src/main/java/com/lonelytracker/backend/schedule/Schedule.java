@@ -24,6 +24,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 @Entity
@@ -86,21 +87,17 @@ public class Schedule {
     @Column(length = FieldLengths.CATEGORY_NAME)
     private String category;
 
-    /**
-     * 반복 시리즈. 단일 일정이면 null 이다.
-     * 회차도 그냥 schedule 행이므로 달력·목록·소유권 필터가 그대로 동작한다.
-     */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "series_id")
-    private ScheduleSeries series;
+    /** 몇 번 미뤘는지. 코칭이 쓰는 지표다 */
+    @Column(name = "postpone_count", nullable = false)
+    @Builder.Default
+    private int postponeCount = 0;
 
     /**
-     * 연기 체인. 이 회차가 어느 회차에서 미뤄져 왔는지 가리킨다.
-     * 시리즈가 없는 단일 일정을 여러 번 미뤘을 때 회차들을 잇는 유일한 수단이다.
+     * 처음 계획했던 시각. 첫 연기 때만 채운다.
+     * null 이면 한 번도 안 미룬 것이므로 기본값을 넣거나 백필할 일이 없다.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "moved_from_id")
-    private Schedule movedFrom;
+    @Column(name = "original_start_at")
+    private LocalDateTime originalStartAt;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -124,9 +121,21 @@ public class Schedule {
         this.category = category;
     }
 
-    /** 이 회차를 다른 날짜로 미뤘음을 표시한다. 새 회차 생성은 서비스가 맡는다. */
-    public void closeAsPostponed() {
-        this.status = ScheduleStatus.POSTPONED;
+    /**
+     * 다른 시각으로 미룬다. 행을 옮기고 흔적을 남긴다.
+     * <p>
+     * originalStartAt 은 첫 연기 때만 채운다. 세 번 미뤄도 "처음 계획했던 날" 은 하나다.
+     */
+    public void postponeTo(LocalDateTime to) {
+        if (this.originalStartAt == null) {
+            this.originalStartAt = this.startAt;
+        }
+        LocalDateTime shifted = (this.endAt == null)
+                ? null
+                : to.plus(Duration.between(this.startAt, this.endAt));
+        this.startAt = to;
+        this.endAt = shifted;
+        this.postponeCount++;
     }
 
     public void changeStatus(ScheduleStatus status) {
