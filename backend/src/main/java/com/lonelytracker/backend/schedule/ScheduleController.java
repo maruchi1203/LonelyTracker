@@ -61,6 +61,12 @@ public class ScheduleController {
         return scheduleService.changeStatus(id, request.status());
     }
 
+    @PatchMapping("/{id}/postpone")
+    public ScheduleResponse postpone(@PathVariable Long id,
+                                     @Valid @RequestBody SchedulePostponeRequest request) {
+        return scheduleService.postpone(id, request.to());
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         scheduleService.delete(id);

@@ -132,6 +132,19 @@ public class ScheduleService {
         return ScheduleResponse.from(scheduleRepository.saveAndFlush(schedule));
     }
 
+    /**
+     * 단일 일정을 다른 시각으로 미룬다. 회차 연기와 같은 의미다.
+     * <p>
+     * 반복 회차는 override 가 onDate 를 들고 있어 원래 날짜가 보존되지만,
+     * 단일 일정은 행을 옮기므로 originalStartAt 이 그 역할을 한다.
+     */
+    @Transactional
+    public ScheduleResponse postpone(Long id, LocalDateTime to) {
+        Schedule schedule = getOrThrow(id);
+        schedule.postponeTo(to);
+        return ScheduleResponse.from(scheduleRepository.saveAndFlush(schedule));
+    }
+
     @Transactional
     public void delete(Long id) {
         scheduleRepository.delete(getOrThrow(id));

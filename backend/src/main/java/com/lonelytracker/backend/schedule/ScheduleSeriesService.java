@@ -15,6 +15,7 @@ import java.time.DayOfWeek;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
@@ -75,10 +76,14 @@ public class ScheduleSeriesService {
                 .orElseThrow(() -> new NotFoundException("반복 일정을 찾을 수 없습니다. id=" + seriesId));
     }
 
+    /**
+     * 전개 창을 당일로 한정한다. 하루를 넘기면 매일 반복에서 회차가 둘 잡혀
+     * 어느 것이 "첫 회차" 인지 정렬에 기대게 된다.
+     */
     private ScheduleResponse firstOccurrenceOf(ScheduleSeries series, LocalDate first) {
         return OccurrenceExpander.expand(
                 List.of(series), List.of(),
-                first.atStartOfDay(), first.plusDays(1).atStartOfDay()).get(0);
+                first.atStartOfDay(), first.atTime(LocalTime.MAX)).get(0);
     }
 
     private Integer toMinutes(LocalDateTime startAt, LocalDateTime endAt) {
