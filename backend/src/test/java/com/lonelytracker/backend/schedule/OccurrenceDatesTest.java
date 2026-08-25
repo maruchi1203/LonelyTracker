@@ -60,16 +60,27 @@ class OccurrenceDatesTest {
     }
 
     @Test
-    @DisplayName("종료일을 주지 않으면 1년치를 만든다")
-    void defaultsToOneYear() {
-        List<LocalDate> dates = OccurrenceDates.generate(
-                RecurrenceFreq.WEEKLY,
-                EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY),
-                MONDAY,
-                null);
+    @DisplayName("구간을 주지 않으면 거부한다")
+    void requiresExplicitRange() {
+        // 기본값을 두면 호출자가 범위를 안 정해도 통과해 버린다.
+        // 무기한 반복은 시리즈의 endsOn 이 null 인 것으로 표현하고,
+        // 조회 범위로 잘라서 이 함수에 넘긴다.
+        assertThatThrownBy(() -> OccurrenceDates.generate(
+                RecurrenceFreq.DAILY, EnumSet.noneOf(DayOfWeek.class), MONDAY, null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 
-        assertThat(dates).hasSizeBetween(150, 160);
-        assertThat(dates.get(dates.size() - 1)).isBeforeOrEqualTo(MONDAY.plusYears(1));
+    @Test
+    @DisplayName("1년을 넘는 구간도 그대로 펼친다")
+    void expandsBeyondOneYear() {
+        // 회차를 미리 만들지 않으므로 기간에 인위적 상한이 없다.
+        // 달력에 연간 보기를 붙여도 동작해야 한다.
+        List<LocalDate> dates = OccurrenceDates.generate(
+                RecurrenceFreq.DAILY, EnumSet.noneOf(DayOfWeek.class),
+                MONDAY, MONDAY.plusYears(2));
+
+        // 2026-08-24 ~ 2028-08-24 양끝 포함. 2028 이 윤년이라 732 다
+        assertThat(dates).hasSize(732);
     }
 
     @Test
@@ -82,13 +93,14 @@ class OccurrenceDatesTest {
     }
 
     @Test
-    @DisplayName("500건을 넘으면 잘라내지 않고 거부한다")
-    void rejectsWhenOverLimit() {
+    @DisplayName("터무니없이 넓은 구간은 잘라내지 않고 거부한다")
+    void rejectsAbsurdRange() {
+        // 조용히 잘라내면 호출자는 100년치를 받았다고 믿는데 실제로는 일부만 온다.
         assertThatThrownBy(() -> OccurrenceDates.generate(
                 RecurrenceFreq.DAILY, EnumSet.noneOf(DayOfWeek.class),
-                MONDAY, MONDAY.plusYears(2)))
+                MONDAY, MONDAY.plusYears(100)))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("500");
+                .hasMessageContaining(String.valueOf(OccurrenceDates.MAX_EXPANDED));
     }
 
     @Test
