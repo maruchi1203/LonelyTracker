@@ -20,6 +20,8 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -54,8 +56,21 @@ public class ScheduleOverride {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * FK 에 {@code ON DELETE CASCADE} 가 걸려 있다는 사실을 매핑에도 남긴다.
+     * <p>
+     * <b>런타임 동작은 바뀌지 않는다.</b> 이 어노테이션은 DDL 생성용이고 이 프로젝트는
+     * {@code ddl-auto: validate} 라 Hibernate 가 DDL 을 만들지 않는다. 게다가
+     * {@code cascade=REMOVE} 없이 단독으로 쓰면 연관 엔티티가 <b>영속성 컨텍스트에서
+     * 삭제 표시되지 않는다</b>.
+     * <p>
+     * 그래서 시리즈 전체 삭제는 {@code ScheduleOverrideRepository.deleteBySeriesId} 로
+     * 명시적으로 먼저 지운다. 그러지 않으면 flush 때
+     * {@code TransientPropertyValueException} 이 난다.
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "series_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private ScheduleSeries series;
 
     @Column(name = "on_date", nullable = false)
