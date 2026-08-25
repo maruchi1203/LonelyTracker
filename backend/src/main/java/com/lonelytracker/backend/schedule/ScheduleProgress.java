@@ -31,26 +31,31 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 손댄 회차 하나. 안 건드린 회차는 행이 없다.
+ * 회차별 수행 - <b>어떻게 됐나</b>.
+ * <p>
+ * 손댄 회차만 행이 생긴다. 행이 없다는 것은 "아직 아무것도 안 했다"(PLANNED)는 뜻이다.
  * <p>
  * {@code onDate} 는 규칙이 만들어낸 원래 날짜이고 <b>연기해도 바뀌지 않는다</b>.
  * 미루면 {@code startAt} 만 옮겨가므로, 한 행이 "계획했던 날" 과 "실제로 간 날" 을
  * 동시에 갖는다. 그래서 별도의 POSTPONED 상태나 연기 체인이 필요 없다.
+ * <p>
+ * 단일 일정도 "1회짜리 일정" 이므로 여기에 회차 하나를 갖는다.
  */
 @Entity
-@Table(name = "schedule_override",
+@Table(name = "schedule_progress",
         uniqueConstraints = @UniqueConstraint(
-                name = "uq_override_occurrence", columnNames = {"series_id", "on_date"}),
+                name = "uq_progress_occurrence", columnNames = {"schedule_id", "on_date"}),
         indexes = {
-                @Index(name = "idx_override_on_date", columnList = "on_date"),
-                @Index(name = "idx_override_start_at", columnList = "start_at")
+                @Index(name = "idx_progress_on_date", columnList = "on_date"),
+                @Index(name = "idx_progress_start_at", columnList = "start_at"),
+                @Index(name = "idx_progress_status", columnList = "status")
         })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-public class ScheduleOverride {
+public class ScheduleProgress {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -58,20 +63,13 @@ public class ScheduleOverride {
 
     /**
      * FK 에 {@code ON DELETE CASCADE} 가 걸려 있다는 사실을 매핑에도 남긴다.
-     * <p>
-     * <b>런타임 동작은 바뀌지 않는다.</b> 이 어노테이션은 DDL 생성용이고 이 프로젝트는
-     * {@code ddl-auto: validate} 라 Hibernate 가 DDL 을 만들지 않는다. 게다가
-     * {@code cascade=REMOVE} 없이 단독으로 쓰면 연관 엔티티가 <b>영속성 컨텍스트에서
-     * 삭제 표시되지 않는다</b>.
-     * <p>
-     * 그래서 시리즈 전체 삭제는 {@code ScheduleOverrideRepository.deleteBySeriesId} 로
-     * 명시적으로 먼저 지운다. 그러지 않으면 flush 때
-     * {@code TransientPropertyValueException} 이 난다.
+     * 다만 <b>런타임 동작은 바뀌지 않는다</b> — 이 어노테이션은 DDL 생성용이고
+     * 이 프로젝트는 {@code ddl-auto: validate} 다. 삭제는 서비스가 명시적으로 한다.
      */
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "series_id", nullable = false)
+    @JoinColumn(name = "schedule_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
-    private ScheduleSeries series;
+    private Schedule schedule;
 
     @Column(name = "on_date", nullable = false)
     private LocalDate onDate;
@@ -81,11 +79,12 @@ public class ScheduleOverride {
     @Builder.Default
     private ScheduleStatus status = ScheduleStatus.PLANNED;
 
+    /** 몇 번 미뤘는지. 코칭이 쓰는 지표다 */
     @Column(name = "postpone_count", nullable = false)
     @Builder.Default
     private int postponeCount = 0;
 
-    // --- null 이면 시리즈 값을 쓴다 ---
+    // --- null 이면 schedule 값을 쓴다 ---
 
     @Column(length = FieldLengths.TITLE)
     private String title;
@@ -117,15 +116,22 @@ public class ScheduleOverride {
     /**
      * 다른 시각으로 미룬다. onDate 는 건드리지 않는다.
      *
-     * @param length 원래 소요시간. null 이면 종료 시각 없음
+     * @param fallbackLength 이 회차에 개별 종료 시각이 없을 때 쓸 기본 길이.
+     *                       null 이면 종료 시각 없음
      */
-    public void postponeTo(LocalDateTime to, Duration length) {
+    public void postponeTo(LocalDateTime to, Duration fallbackLength) {
+        // 개별 수정으로 길이를 바꿔뒀다면 그 길이를 유지한다.
+        // 무조건 기본 길이로 덮으면 사용자가 지정한 값이 조용히 사라진다.
+        Duration length = (this.startAt != null && this.endAt != null)
+                ? Duration.between(this.startAt, this.endAt)
+                : fallbackLength;
+
         this.startAt = to;
         this.endAt = (length == null) ? null : to.plus(length);
         this.postponeCount++;
     }
 
-    /** 이 회차만 수정. null 을 주면 시리즈 값으로 되돌아간다. */
+    /** 이 회차만 수정. null 을 준 필드는 schedule 값으로 되돌아간다. */
     public void overrideFields(String title, String description, LocalDateTime startAt,
                                LocalDateTime endAt, String category) {
         this.title = title;

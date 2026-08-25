@@ -1,12 +1,10 @@
 package com.lonelytracker.backend.schedule;
 
 import com.lonelytracker.backend.common.FieldLengths;
-import jakarta.persistence.Column;
 import com.lonelytracker.backend.user.User;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.EnumType;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -24,13 +22,20 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 
+/**
+ * 일정의 정체 - <b>무엇인가</b>.
+ * <p>
+ * 단일 일정이든 반복 일정이든 여기 한 행이다. 반복 여부는
+ * {@link ScheduleRecur} 행의 존재로 표현하고, 수행 상태는
+ * {@link ScheduleProgress} 가 회차별로 갖는다.
+ * <p>
+ * 이 엔티티에는 <b>상태가 없다.</b> "무엇을 하기로 했나" 만 안다.
+ */
 @Entity
 @Table(name = "schedule", indexes = {
         @Index(name = "idx_schedule_start_at", columnList = "start_at"),
-        @Index(name = "idx_schedule_status", columnList = "status"),
         @Index(name = "idx_schedule_category", columnList = "category"),
         @Index(name = "idx_schedule_user_id", columnList = "user_id")
 })
@@ -46,32 +51,32 @@ public class Schedule {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 제목(일정명)
     @Column(nullable = false, length = FieldLengths.TITLE)
     private String title;
 
-    /**
-     * 마크다운 원문을 그대로 보관함
-     * 렌더링은 화면에서 담당
-     */
+    /** 마크다운 원문을 그대로 보관한다. 렌더링은 화면이 맡는다. */
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    /**
+     * 단일 일정이면 그 시각, 반복이면 <b>첫 회차의 시각</b>이다.
+     * 반복의 시작일과 시각을 이 하나로 표현한다.
+     */
     @Column(name = "start_at", nullable = false)
     private LocalDateTime startAt;
 
-    @Column(name = "end_at")
-    private LocalDateTime endAt;
+    /**
+     * 소요시간(분). 종료 시각을 절대값이 아니라 <b>길이</b>로 저장한다.
+     * <p>
+     * 반복 회차는 날짜가 매번 다르므로 절대 시각은 첫 회차에만 쓸모가 있다.
+     * 각 회차의 종료는 {@code 그 회차의 startAt + durationMinutes} 로 계산한다.
+     * null 이면 종료 시각이 없는 일정이다.
+     */
+    @Column(name = "duration_minutes")
+    private Integer durationMinutes;
 
     @Column(name = "all_day", nullable = false)
     private boolean allDay;
-
-    // ORDINAL(숫자)로 지정하면 enum 순서가 바뀌는 사태가 발생할 때
-    // "enum 값-enum 이름"이 불일치하는 상황이 될 수 있음
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    @Builder.Default
-    private ScheduleStatus status = ScheduleStatus.PLANNED;
 
     /**
      * 소유자. 인증이 붙기 전까지는 기본 사용자가 들어간다.
@@ -87,18 +92,6 @@ public class Schedule {
     @Column(length = FieldLengths.CATEGORY_NAME)
     private String category;
 
-    /** 몇 번 미뤘는지. 코칭이 쓰는 지표다 */
-    @Column(name = "postpone_count", nullable = false)
-    @Builder.Default
-    private int postponeCount = 0;
-
-    /**
-     * 처음 계획했던 시각. 첫 연기 때만 채운다.
-     * null 이면 한 번도 안 미룬 것이므로 기본값을 넣거나 백필할 일이 없다.
-     */
-    @Column(name = "original_start_at")
-    private LocalDateTime originalStartAt;
-
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -112,33 +105,12 @@ public class Schedule {
      * 영속 상태의 엔티티라면 트랜잭션 종료 시 변경 감지(dirty checking)로 자동 UPDATE된다.
      */
     public void update(String title, String description, LocalDateTime startAt,
-                       LocalDateTime endAt, boolean allDay, String category) {
+                       Integer durationMinutes, boolean allDay, String category) {
         this.title = title;
         this.description = description;
         this.startAt = startAt;
-        this.endAt = endAt;
+        this.durationMinutes = durationMinutes;
         this.allDay = allDay;
         this.category = category;
-    }
-
-    /**
-     * 다른 시각으로 미룬다. 행을 옮기고 흔적을 남긴다.
-     * <p>
-     * originalStartAt 은 첫 연기 때만 채운다. 세 번 미뤄도 "처음 계획했던 날" 은 하나다.
-     */
-    public void postponeTo(LocalDateTime to) {
-        if (this.originalStartAt == null) {
-            this.originalStartAt = this.startAt;
-        }
-        LocalDateTime shifted = (this.endAt == null)
-                ? null
-                : to.plus(Duration.between(this.startAt, this.endAt));
-        this.startAt = to;
-        this.endAt = shifted;
-        this.postponeCount++;
-    }
-
-    public void changeStatus(ScheduleStatus status) {
-        this.status = status;
     }
 }

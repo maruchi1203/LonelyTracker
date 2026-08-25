@@ -1,18 +1,26 @@
 package com.lonelytracker.backend.schedule.dto;
 
 import com.lonelytracker.backend.common.FieldLengths;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 
+/**
+ * 일정 수정 = <b>앞으로 전부 수정</b>.
+ * <p>
+ * 회차 기록(schedule_progress)이 붙어 있는 회차는 영향받지 않는다.
+ * 이미 손댄 회차이므로 그쪽 값이 이긴다.
+ *
+ * @param recurrence 주면 반복 규칙을 바꾸거나 새로 붙이고, 안 주면 <b>반복을 없앤다</b>
+ */
 public record ScheduleUpdateRequest(
         @NotBlank(message = "title은 필수입니다")
         @Size(max = FieldLengths.TITLE, message = "title은 200자를 넘을 수 없습니다")
         String title,
 
-        // 마크다운 원문. 문서처럼 길어질 수 있어 넉넉하게 잡는다
         @Size(max = FieldLengths.DESCRIPTION, message = "description은 20000자를 넘을 수 없습니다")
         String description,
 
@@ -21,11 +29,12 @@ public record ScheduleUpdateRequest(
 
         LocalDateTime endAt,
 
-        // 원시 boolean이면 JSON에서 생략됐을 때 Jackson이 실패한다. 선택 필드라 래퍼 타입을 쓴다
         Boolean allDay,
 
-        // 사용자의 카테고리 목록에 없는 이름도 허용한다. 목록은 후보일 뿐이다
         @Size(max = FieldLengths.CATEGORY_NAME, message = "category는 50자를 넘을 수 없습니다")
-        String category
+        String category,
+
+        @Valid
+        RecurrenceRequest recurrence
 ) {
 }

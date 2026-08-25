@@ -14,9 +14,12 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 시리즈 규칙을 회차로 펼치고 override 를 덮어쓴다. DB 를 타지 않는 순수 계산이다.
+ * 일정을 회차로 펼치고 수행 기록을 덮어쓴다. DB 를 타지 않는 순수 계산이다.
  * <p>
- * override 가 없는 회차는 PLANNED 로 본다. 행이 없다는 것이
+ * 반복 규칙이 없으면 <b>1회짜리 일정</b>으로 취급해 회차 하나를 낸다.
+ * 그래서 단일 일정과 반복 회차가 같은 모양으로 나온다.
+ * <p>
+ * 기록이 없는 회차는 PLANNED 로 본다. 행이 없다는 것이
  * "아직 아무것도 안 했다" 는 뜻이므로 자연스럽다.
  */
 public final class OccurrenceExpander {
@@ -24,28 +27,21 @@ public final class OccurrenceExpander {
     private OccurrenceExpander() {
     }
 
-    public static List<ScheduleResponse> expand(List<ScheduleSeries> series,
-                                                List<ScheduleOverride> overrides,
-                                                LocalDateTime from, LocalDateTime to) {
-        Map<String, ScheduleOverride> byKey = new HashMap<>();
-        for (ScheduleOverride o : overrides) {
-            byKey.put(key(o.getSeries().getId(), o.getOnDate()), o);
+    public static List<ScheduleResponse> expand(List<Schedule> schedules,
+            Map<Long, ScheduleRecur> recurByScheduleId,
+            List<ScheduleProgress> progresses,
+            LocalDateTime from, LocalDateTime to) {
+
+        Map<String, ScheduleProgress> byKey = new HashMap<>();
+        for (ScheduleProgress p : progresses) {
+            byKey.put(key(p.getSchedule().getId(), p.getOnDate()), p);
         }
 
         List<ScheduleResponse> result = new ArrayList<>();
         Set<String> emitted = new HashSet<>();
 
-        for (ScheduleSeries s : series) {
-            LocalDate windowStart = maxOf(s.getStartsOn(), from.toLocalDate());
-            LocalDate windowEnd = (s.getEndsOn() == null)
-                    ? to.toLocalDate()
-                    : minOf(s.getEndsOn(), to.toLocalDate());
-            if (windowEnd.isBefore(windowStart)) {
-                continue;
-            }
-
-            for (LocalDate date : OccurrenceDates.generate(
-                    s.getFreq(), s.getByWeekday(), windowStart, windowEnd)) {
+        for (Schedule s : schedules) {
+            for (LocalDate date : occurrenceDatesOf(s, recurByScheduleId.get(s.getId()), from, to)) {
                 String k = key(s.getId(), date);
                 emitted.add(k);
                 result.add(merge(s, date, byKey.get(k)));
@@ -54,13 +50,13 @@ public final class OccurrenceExpander {
 
         // 범위 밖 날짜에서 미뤄져 들어온 회차. 위 루프는 onDate 기준이라 이걸 못 잡는다.
         // 8/31 을 9/2 로 미루면 9월 조회에서 여기로 잡힌다.
-        for (ScheduleOverride o : overrides) {
-            String k = key(o.getSeries().getId(), o.getOnDate());
-            if (emitted.contains(k) || o.getStartAt() == null) {
+        for (ScheduleProgress p : progresses) {
+            String k = key(p.getSchedule().getId(), p.getOnDate());
+            if (emitted.contains(k) || p.getStartAt() == null) {
                 continue;
             }
-            if (!o.getStartAt().isBefore(from) && !o.getStartAt().isAfter(to)) {
-                result.add(merge(o.getSeries(), o.getOnDate(), o));
+            if (!p.getStartAt().isBefore(from) && !p.getStartAt().isAfter(to)) {
+                result.add(merge(p.getSchedule(), p.getOnDate(), p));
             }
         }
 
@@ -68,14 +64,35 @@ public final class OccurrenceExpander {
         return result;
     }
 
-    /** 시리즈 템플릿에 override 를 덮어쓴다. override 가 null 이면 템플릿 그대로. */
-    private static ScheduleResponse merge(ScheduleSeries s, LocalDate onDate, ScheduleOverride o) {
-        LocalDateTime defaultStart = LocalDateTime.of(onDate, s.getStartTime());
-        LocalDateTime startAt = (o != null && o.getStartAt() != null) ? o.getStartAt() : defaultStart;
+    /** 규칙이 없으면 회차는 하나뿐이다 — 그 일정 자신의 날짜. */
+    private static List<LocalDate> occurrenceDatesOf(Schedule s, ScheduleRecur recur,
+            LocalDateTime from, LocalDateTime to) {
+        LocalDate firstDate = s.getStartAt().toLocalDate();
+
+        if (recur == null) {
+            boolean inWindow = !firstDate.isBefore(from.toLocalDate())
+                    && !firstDate.isAfter(to.toLocalDate());
+            return inWindow ? List.of(firstDate) : List.of();
+        }
+
+        LocalDate windowStart = maxOf(firstDate, from.toLocalDate());
+        LocalDate windowEnd = (recur.getEndsOn() == null)
+                ? to.toLocalDate()
+                : minOf(recur.getEndsOn(), to.toLocalDate());
+        if (windowEnd.isBefore(windowStart)) {
+            return List.of();
+        }
+        return OccurrenceDates.generate(recur.getFreq(), recur.getByWeekday(), windowStart, windowEnd);
+    }
+
+    /** 일정 값에 회차 기록을 덮어쓴다. 기록이 null 이면 일정 값 그대로. */
+    private static ScheduleResponse merge(Schedule s, LocalDate onDate, ScheduleProgress p) {
+        LocalDateTime defaultStart = LocalDateTime.of(onDate, s.getStartAt().toLocalTime());
+        LocalDateTime startAt = (p != null && p.getStartAt() != null) ? p.getStartAt() : defaultStart;
 
         LocalDateTime endAt;
-        if (o != null && o.getEndAt() != null) {
-            endAt = o.getEndAt();
+        if (p != null && p.getEndAt() != null) {
+            endAt = p.getEndAt();
         } else if (s.getDurationMinutes() != null) {
             endAt = startAt.plus(Duration.ofMinutes(s.getDurationMinutes()));
         } else {
@@ -83,28 +100,26 @@ public final class OccurrenceExpander {
         }
 
         return new ScheduleResponse(
-                null,
                 s.getId(),
                 onDate,
-                pick(o == null ? null : o.getTitle(), s.getTitle()),
-                pick(o == null ? null : o.getDescription(), s.getDescription()),
+                pick(p == null ? null : p.getTitle(), s.getTitle()),
+                pick(p == null ? null : p.getDescription(), s.getDescription()),
                 startAt,
                 endAt,
                 s.isAllDay(),
-                (o == null) ? ScheduleStatus.PLANNED : o.getStatus(),
-                pick(o == null ? null : o.getCategory(), s.getCategory()),
-                (o == null) ? 0 : o.getPostponeCount(),
+                (p == null) ? ScheduleStatus.PLANNED : p.getStatus(),
+                pick(p == null ? null : p.getCategory(), s.getCategory()),
+                (p == null) ? 0 : p.getPostponeCount(),
                 s.getCreatedAt(),
-                (o == null) ? s.getUpdatedAt() : o.getUpdatedAt()
-        );
+                (p == null) ? s.getUpdatedAt() : p.getUpdatedAt());
     }
 
     private static String pick(String override, String fallback) {
         return (override != null) ? override : fallback;
     }
 
-    private static String key(Long seriesId, LocalDate onDate) {
-        return seriesId + ":" + onDate;
+    private static String key(Long scheduleId, LocalDate onDate) {
+        return scheduleId + ":" + onDate;
     }
 
     private static LocalDate maxOf(LocalDate a, LocalDate b) {
