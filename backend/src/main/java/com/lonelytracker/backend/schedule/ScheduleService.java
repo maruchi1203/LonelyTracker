@@ -4,6 +4,7 @@ import com.lonelytracker.backend.common.exception.NotFoundException;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleUpdateRequest;
+import com.lonelytracker.backend.schedule.spec.ScheduleSpecs;
 import com.lonelytracker.backend.user.CurrentUserProvider;
 import com.lonelytracker.backend.user.User;
 import lombok.RequiredArgsConstructor;
