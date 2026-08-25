@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -20,20 +22,67 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class ScheduleService {
 
+    /**
+     * 조건이 없을 때 회차를 펼칠 기본 범위.
+     * 회차를 미리 만들지 않으므로 "어디까지 펼칠지" 를 반드시 정해야 한다.
+     * 단일 일정은 이 범위와 무관하게 전부 나온다.
+     */
+    private static final int DEFAULT_PAST_MONTHS = 1;
+    private static final int DEFAULT_FUTURE_MONTHS = 3;
+
     private final ScheduleRepository scheduleRepository;
+    private final ScheduleSeriesRepository seriesRepository;
+    private final ScheduleOverrideRepository overrideRepository;
     private final CurrentUserProvider currentUserProvider;
 
     public List<ScheduleResponse> search(LocalDateTime from, LocalDateTime to,
                                          ScheduleStatus status, String category) {
+        Long userId = currentUserProvider.get().getId();
+
         Specification<Schedule> spec = Specification
-                .allOf(ScheduleSpecs.ownedBy(currentUserProvider.get().getId()))
+                .allOf(ScheduleSpecs.ownedBy(userId))
                 .and(ScheduleSpecs.startAtFrom(from))
                 .and(ScheduleSpecs.startAtTo(to))
                 .and(ScheduleSpecs.hasStatus(status))
                 .and(ScheduleSpecs.hasCategory(category));
 
-        return scheduleRepository.findAll(spec, Sort.by(Sort.Direction.ASC, "startAt")).stream()
-                .map(ScheduleResponse::from)
+        List<ScheduleResponse> result = new ArrayList<>(
+                scheduleRepository.findAll(spec, Sort.by(Sort.Direction.ASC, "startAt")).stream()
+                        .map(ScheduleResponse::from)
+                        .toList());
+
+        result.addAll(expandSeries(userId, from, to, status, category));
+        result.sort(Comparator.comparing(ScheduleResponse::startAt));
+        return result;
+    }
+
+    /**
+     * 반복 규칙을 회차로 펼친다.
+     * <p>
+     * status·category 필터는 전개 후에 건다. 회차의 상태는 override 에 있고
+     * 분류는 시리즈와 override 중 어느 쪽이 이길지 병합해 봐야 알기 때문이다.
+     */
+    private List<ScheduleResponse> expandSeries(Long userId, LocalDateTime from, LocalDateTime to,
+                                                ScheduleStatus status, String category) {
+        LocalDateTime windowFrom = (from != null)
+                ? from : LocalDateTime.now().minusMonths(DEFAULT_PAST_MONTHS);
+        LocalDateTime windowTo = (to != null)
+                ? to : LocalDateTime.now().plusMonths(DEFAULT_FUTURE_MONTHS);
+
+        List<ScheduleSeries> series = seriesRepository.findActiveIn(
+                userId, windowFrom.toLocalDate(), windowTo.toLocalDate());
+        if (series.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> ids = series.stream().map(ScheduleSeries::getId).toList();
+        List<ScheduleOverride> overrides = overrideRepository.findInRange(
+                ids, windowFrom.toLocalDate(), windowTo.toLocalDate(), windowFrom, windowTo);
+
+        return OccurrenceExpander.expand(series, overrides, windowFrom, windowTo).stream()
+                .filter(r -> status == null || r.status() == status)
+                .filter(r -> category == null || category.isBlank()
+                        || category.strip().equals(r.category()))
                 .toList();
     }
 
