@@ -5,6 +5,7 @@ import com.lonelytracker.backend.schedule.dto.RecurrenceRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleSeriesCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleSeriesResponse;
+import com.lonelytracker.backend.schedule.dto.ScheduleSeriesUpdateRequest;
 import com.lonelytracker.backend.user.CurrentUserProvider;
 import com.lonelytracker.backend.user.User;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class ScheduleSeriesService {
     private static final int FIRST_OCCURRENCE_LOOKAHEAD_MONTHS = 2;
 
     private final ScheduleSeriesRepository seriesRepository;
+    private final ScheduleOverrideRepository overrideRepository;
     private final CurrentUserProvider currentUserProvider;
 
     @Transactional
@@ -66,6 +68,65 @@ public class ScheduleSeriesService {
                 .build());
 
         return new ScheduleSeriesResponse(series.getId(), firstOccurrenceOf(series, firstDates.get(0)));
+    }
+
+    /**
+     * 앞으로 전부 수정. 시리즈 1행만 바꾼다.
+     * <p>
+     * 회차를 미리 만드는 방식이었다면 요일이 바뀔 때 "미래 회차를 지우고 재생성" 이
+     * 필요했다. 전개가 조회 시점이므로 규칙만 바꾸면 다음 조회부터 즉시 반영된다.
+     */
+    @Transactional
+    public ScheduleSeriesResponse update(Long seriesId, ScheduleSeriesUpdateRequest request) {
+        ScheduleSeries series = getOwnedOrThrow(seriesId);
+        RecurrenceRequest rule = request.recurrence();
+        Set<DayOfWeek> weekdays = toEnumSet(rule.byWeekday());
+
+        // 바뀐 규칙이 회차를 하나도 못 만들면 저장하지 않는다
+        List<LocalDate> dates = OccurrenceDates.generate(
+                rule.freq(), weekdays, series.getStartsOn(),
+                (rule.endsOn() != null)
+                        ? rule.endsOn()
+                        : series.getStartsOn().plusMonths(FIRST_OCCURRENCE_LOOKAHEAD_MONTHS));
+        if (dates.isEmpty()) {
+            throw new IllegalArgumentException("이 규칙으로는 일정이 하나도 생기지 않습니다");
+        }
+
+        series.updateRule(rule.freq(), weekdays, rule.endsOn());
+        series.updateTemplate(
+                request.title(),
+                request.description(),
+                request.startTime(),
+                request.durationMinutes(),
+                Boolean.TRUE.equals(request.allDay()),
+                normalizeCategory(request.category()));
+
+        seriesRepository.saveAndFlush(series);
+
+        return new ScheduleSeriesResponse(series.getId(), firstOccurrenceOf(series, dates.get(0)));
+    }
+
+    /**
+     * 그만두기 또는 전체 삭제.
+     * <p>
+     * 그만두기는 행을 지우지 않고 {@code endsOn} 을 오늘로 당긴다. 지난 기록을
+     * 보존하면서 이후 회차만 끊는 방법이고, UPDATE 한 줄로 끝난다.
+     */
+    @Transactional
+    public void delete(Long seriesId, SeriesDeleteScope scope) {
+        ScheduleSeries series = getOwnedOrThrow(seriesId);
+
+        if (scope == SeriesDeleteScope.ALL) {
+            // DB 에 ON DELETE CASCADE 가 걸려 있지만 Hibernate 는 그것을 모른다.
+            // 영속성 컨텍스트에 override 가 남은 채 시리즈를 지우면 flush 때 예외가 난다.
+            overrideRepository.deleteBySeriesId(seriesId);
+            seriesRepository.delete(series);
+            return;
+        }
+
+        // 오늘 회차는 남긴다. 오늘 안에 아직 할 수 있기 때문이다.
+        series.stopOn(LocalDate.now());
+        seriesRepository.saveAndFlush(series);
     }
 
     /** 남의 시리즈는 없는 것으로 취급한다. 404 로 존재 자체를 숨긴다. */

@@ -2,6 +2,7 @@ package com.lonelytracker.backend.schedule;
 
 import com.lonelytracker.backend.common.exception.NotFoundException;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
+import com.lonelytracker.backend.schedule.dto.ScheduleUpdateRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +42,27 @@ public class ScheduleOccurrenceService {
                 ? null : Duration.ofMinutes(series.getDurationMinutes());
 
         override.postponeTo(to, length);
+        return toResponse(overrideRepository.saveAndFlush(override));
+    }
+
+    /**
+     * 이 회차만 수정.
+     * <p>
+     * null 을 준 필드는 시리즈 값으로 되돌아간다. 덮어쓰기 테이블이므로
+     * "값이 없다" 가 곧 "템플릿을 따른다" 는 뜻이다.
+     */
+    @Transactional
+    public ScheduleResponse updateOne(Long seriesId, LocalDate onDate,
+                                      ScheduleUpdateRequest request) {
+        if (request.startAt() != null && request.endAt() != null
+                && request.endAt().isBefore(request.startAt())) {
+            throw new IllegalArgumentException("endAt은 startAt보다 이를 수 없습니다");
+        }
+
+        ScheduleOverride override = getOrCreate(seriesId, onDate);
+        override.overrideFields(
+                request.title(), request.description(),
+                request.startAt(), request.endAt(), request.category());
         return toResponse(overrideRepository.saveAndFlush(override));
     }
 
