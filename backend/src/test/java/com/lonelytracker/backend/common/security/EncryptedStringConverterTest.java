@@ -1,6 +1,7 @@
 package com.lonelytracker.backend.common.security;
 
 import com.lonelytracker.backend.common.AppProperties;
+import com.lonelytracker.backend.common.exception.EncryptionNotConfiguredException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -84,7 +85,7 @@ class EncryptedStringConverterTest {
         // 앱은 뜨되 암호화가 필요한 기능만 막힌다.
         // 일정 CRUD 는 키 없이도 되므로 기동을 막을 이유가 없다
         assertThatThrownBy(() -> converterWith("").convertToDatabaseColumn(SECRET))
-                .isInstanceOf(IllegalStateException.class)
+                .isInstanceOf(EncryptionNotConfiguredException.class)
                 .hasMessageContaining("암호화 키");
     }
 

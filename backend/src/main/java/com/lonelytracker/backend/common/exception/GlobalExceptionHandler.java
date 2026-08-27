@@ -63,6 +63,13 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), request);
     }
 
+    /** 서버 설정이 빠졌다 -> 503. 무엇이 빠졌는지 메시지로 알려준다 */
+    @ExceptionHandler(EncryptionNotConfiguredException.class)
+    public ResponseEntity<ErrorResponse> handleEncryptionNotConfigured(
+            EncryptionNotConfiguredException e, WebRequest request) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), request);
+    }
+
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, WebRequest request) {
         ErrorResponse body = new ErrorResponse(
                 LocalDateTime.now(),

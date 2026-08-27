@@ -1,6 +1,7 @@
 package com.lonelytracker.backend.common.security;
 
 import com.lonelytracker.backend.common.AppProperties;
+import com.lonelytracker.backend.common.exception.EncryptionNotConfiguredException;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 import org.springframework.stereotype.Component;
@@ -90,8 +91,9 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
 
     private void requireKey() {
         if (key == null) {
-            throw new IllegalStateException(
-                    "암호화 키가 설정되지 않았습니다. LONELYTRACKER_ENCRYPTION_KEY 를 지정하세요");
+            throw new EncryptionNotConfiguredException(
+                    "서버에 암호화 키가 설정되지 않아 저장할 수 없습니다. "
+                            + "LONELYTRACKER_ENCRYPTION_KEY 를 지정하고 다시 시작하세요");
         }
     }
 
