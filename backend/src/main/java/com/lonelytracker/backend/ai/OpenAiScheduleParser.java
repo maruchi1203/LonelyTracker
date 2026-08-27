@@ -205,12 +205,22 @@ public class OpenAiScheduleParser implements ScheduleParser {
 
     // --- 응답 해석 --------------------------------------------------------
 
+    /** 진단용. 원문을 통째로 노출하지 않되 무엇이 왔는지는 보이게 한다. */
+    private static final int HINT_LENGTH = 300;
+
     private ParsedSchedule toParsed(String json) {
         JsonNode node;
         try {
             node = mapper.readTree(json);
         } catch (RuntimeException e) {
             throw new AiParseException("AI 가 만든 JSON 을 읽지 못했습니다", e);
+        }
+
+        // 제목조차 없으면 쓸 수 있는 일정이 아니다. 무엇이 왔는지 남기지 않으면
+        // "일정으로 읽을 수 없다" 만 보이고 어디가 어긋났는지 알 길이 없다.
+        if (textOrNull(node, "title") == null) {
+            throw new AiParseException(
+                    "AI 가 제목을 채우지 못했습니다. 응답: " + hint(json));
         }
 
         return new ParsedSchedule(
@@ -253,6 +263,11 @@ public class OpenAiScheduleParser implements ScheduleParser {
             }
         });
         return questions;
+    }
+
+    private String hint(String json) {
+        String flat = json.replaceAll("\s+", " ");
+        return (flat.length() <= HINT_LENGTH) ? flat : flat.substring(0, HINT_LENGTH) + "...";
     }
 
     private String textOrNull(JsonNode node, String field) {
