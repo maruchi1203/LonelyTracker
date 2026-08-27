@@ -1,6 +1,7 @@
 package com.lonelytracker.backend.common.security;
 
 import com.lonelytracker.backend.common.AppProperties;
+import com.lonelytracker.backend.common.exception.DecryptionFailedException;
 import com.lonelytracker.backend.common.exception.EncryptionNotConfiguredException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -59,7 +60,7 @@ class EncryptedStringConverterTest {
         String tampered = stored.substring(0, stored.length() - 4) + "AAAA";
 
         assertThatThrownBy(() -> converter.convertToEntityAttribute(tampered))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(DecryptionFailedException.class);
     }
 
     @Test
@@ -68,7 +69,7 @@ class EncryptedStringConverterTest {
         String stored = converter.convertToDatabaseColumn(SECRET);
 
         assertThatThrownBy(() -> converterWith("다른-키").convertToEntityAttribute(stored))
-                .isInstanceOf(IllegalStateException.class);
+                .isInstanceOf(DecryptionFailedException.class);
     }
 
     @Test

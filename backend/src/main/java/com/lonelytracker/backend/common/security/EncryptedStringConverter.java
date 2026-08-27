@@ -1,6 +1,7 @@
 package com.lonelytracker.backend.common.security;
 
 import com.lonelytracker.backend.common.AppProperties;
+import com.lonelytracker.backend.common.exception.DecryptionFailedException;
 import com.lonelytracker.backend.common.exception.EncryptionNotConfiguredException;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
@@ -85,7 +86,9 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
             cipher.init(Cipher.DECRYPT_MODE, key, new GCMParameterSpec(TAG_BITS, iv));
             return new String(cipher.doFinal(cipherText), StandardCharsets.UTF_8);
         } catch (Exception e) {
-            throw new IllegalStateException("저장된 값을 복호화하지 못했습니다. 암호화 키가 바뀌었을 수 있습니다");
+            throw new DecryptionFailedException(
+                    "저장된 값을 복호화하지 못했습니다. 암호화 키가 바뀌었을 수 있습니다. "
+                            + "API 키를 다시 등록해 주세요");
         }
     }
 
