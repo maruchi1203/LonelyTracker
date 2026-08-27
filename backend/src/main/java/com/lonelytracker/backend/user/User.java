@@ -1,7 +1,9 @@
 package com.lonelytracker.backend.user;
 
 import com.lonelytracker.backend.common.FieldLengths;
+import com.lonelytracker.backend.common.security.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
@@ -54,6 +56,28 @@ public class User {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    /**
+     * 이 사용자의 OpenAI API 키. <b>DB 에는 암호화되어 저장된다.</b>
+     * <p>
+     * 서버 설정이 아니라 사용자별로 갖는 이유는, 서버가 모두의 사용료를 대신 낼
+     * 이유가 없고 사용량도 쓰는 사람에게 귀속되어야 하기 때문이다.
+     * <p>
+     * <b>어떤 응답에도 실리면 안 된다.</b> UserResponse 가 필드를 명시적으로
+     * 나열하므로 여기 필드를 더해도 새어나가지 않는다.
+     */
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "openai_api_key", length = 500)
+    private String openAiApiKey;
+
+    public boolean hasOpenAiApiKey() {
+        return openAiApiKey != null && !openAiApiKey.isBlank();
+    }
+
+    /** null 이나 빈 값을 주면 등록을 해제한다. */
+    public void changeOpenAiApiKey(String apiKey) {
+        this.openAiApiKey = (apiKey == null || apiKey.isBlank()) ? null : apiKey.strip();
+    }
 
     public void changeDisplayName(String displayName) {
         this.displayName = displayName;

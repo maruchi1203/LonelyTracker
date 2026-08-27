@@ -1,5 +1,6 @@
 package com.lonelytracker.backend.schedule;
 
+import com.lonelytracker.backend.ai.ParseCommand;
 import com.lonelytracker.backend.ai.ParseQuestion;
 import com.lonelytracker.backend.ai.ParsedRecurrence;
 import com.lonelytracker.backend.ai.ParsedSchedule;
@@ -54,8 +55,18 @@ class ScheduleParseApiTest extends IntegrationTest {
     FakeParser parser;
 
     @BeforeEach
-    void resetParser() {
+    void resetParser() throws Exception {
         parser.reset();
+        registerKey("sk-test-abcdefgh");
+    }
+
+    /** 파싱은 사용자 키가 있어야 동작한다. 서버 설정이 아니다. */
+    private void registerKey(String apiKey) throws Exception {
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/api/users/me/openai-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"apiKey\":\"" + apiKey + "\"}"))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -185,15 +196,37 @@ class ScheduleParseApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("AI를 쓸 수 없으면 503을 반환한다")
-    void returnsServiceUnavailable() throws Exception {
-        parser.willThrow(new AiUnavailableException("AI 기능이 설정되지 않았습니다"));
+    @DisplayName("사용자의 API 키가 파서에 전달된다")
+    void passesUserApiKeyToParser() throws Exception {
+        parser.willReturn(draft("운동", "2026-09-08T15:00:00", null, null));
 
-        // 사용자 잘못이 아니므로 4xx 가 아니다
+        mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"운동\"}")).andExpect(status().isOk());
+
+        // 서버 설정이 아니라 이 사용자의 키다
+        assertThat(parser.lastApiKey).isEqualTo("sk-test-abcdefgh");
+    }
+
+    @Test
+    @DisplayName("키를 등록하지 않은 사용자는 503을 받는다")
+    void returnsServiceUnavailableWithoutKey() throws Exception {
+        registerKey("");   // 등록 해제
+
+        // 사용자 잘못이 아니므로 4xx 가 아니다. 나머지 기능은 그대로 쓴다
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"text\":\"내일 3시 회의\"}"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    @DisplayName("AI 호출이 실패하면 503을 반환한다")
+    void returnsServiceUnavailableOnFailure() throws Exception {
+        parser.willThrow(new AiUnavailableException("AI 응답을 받지 못했습니다"));
+
+        mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"내일 3시 회의\"}"))
+                .andExpect(status().isServiceUnavailable());
     }
 
     @Test
@@ -239,11 +272,13 @@ class ScheduleParseApiTest extends IntegrationTest {
         private Function<String, ParsedSchedule> behavior;
         LocalDateTime lastNow;
         List<String> lastCategories;
+        String lastApiKey;
 
         void reset() {
             behavior = null;
             lastNow = null;
             lastCategories = null;
+            lastApiKey = null;
         }
 
         void willReturn(ParsedSchedule result) {
@@ -257,10 +292,11 @@ class ScheduleParseApiTest extends IntegrationTest {
         }
 
         @Override
-        public ParsedSchedule parse(String text, LocalDateTime now, List<String> categories) {
-            this.lastNow = now;
-            this.lastCategories = categories;
-            return behavior.apply(text);
+        public ParsedSchedule parse(ParseCommand command) {
+            this.lastNow = command.now();
+            this.lastCategories = command.categories();
+            this.lastApiKey = command.apiKey();
+            return behavior.apply(command.text());
         }
     }
 

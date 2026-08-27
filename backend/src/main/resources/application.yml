@@ -12,10 +12,14 @@ lonelytracker:
       - 능력
       - 취미
 
-  # LLM 연동. apiKey 가 비어 있으면 앱은 뜨되 파싱 기능만 막힌다.
-  # AI 없이도 일정 CRUD 는 되므로 기동을 막을 이유가 없다.
+  # LLM 연동. API 키는 여기 없고 사용자별로 갖는다.
+  # 여기 남는 것은 사용자와 무관한 인프라 설정뿐이다.
+  # 사용자 API 키를 DB 에 암호화해 저장할 때 쓰는 마스터 키.
+  # 이건 서버의 것이라 서버 설정에 둔다.
+  security:
+    encryption-key: ${LONELYTRACKER_ENCRYPTION_KEY:}
+
   ai:
-    api-key: ${OPENAI_API_KEY:}
     base-url: https://api.openai.com/v1
     # 한 줄짜리 한국어를 JSON 으로 바꾸는 작업이라 상위 모델을 쓸 이유가 없다.
     model: gpt-5.6-luna

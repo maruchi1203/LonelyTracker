@@ -1,5 +1,7 @@
 package com.lonelytracker.backend.user;
 
+import com.lonelytracker.backend.user.dto.OpenAiKeyRequest;
+import com.lonelytracker.backend.user.dto.OpenAiKeyStatus;
 import com.lonelytracker.backend.user.dto.UserCreateRequest;
 import com.lonelytracker.backend.user.dto.UserResponse;
 import jakarta.validation.Valid;
@@ -8,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,6 +32,25 @@ public class UserController {
     }
 
     /** 사용자 단건 조회. 없으면 404. */
+    /**
+     * 키 등록 여부. <b>키 자체는 돌려주지 않는다.</b>
+     */
+    @GetMapping("/me/openai-key")
+    public OpenAiKeyStatus openAiKeyStatus() {
+        return userService.openAiKeyStatus();
+    }
+
+    /**
+     * OpenAI API 키 등록·해제.
+     * <p>
+     * 서버 설정이 아니라 사용자별로 갖는다 - 서버가 모두의 사용료를 대신 낼 이유가 없다.
+     * DB 에는 암호화되어 저장된다.
+     */
+    @PutMapping("/me/openai-key")
+    public OpenAiKeyStatus changeOpenAiKey(@Valid @RequestBody OpenAiKeyRequest request) {
+        return userService.changeOpenAiKey(request.apiKey());
+    }
+
     @GetMapping("/{id}")
     public UserResponse findById(@PathVariable Long id) {
         return userService.findById(id);

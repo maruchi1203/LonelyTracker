@@ -53,13 +53,9 @@ public class OpenAiScheduleParser implements ScheduleParser {
     }
 
     @Override
-    public ParsedSchedule parse(String text, LocalDateTime now, List<String> categories) {
-        if (!config.configured()) {
-            throw new AiUnavailableException("AI 기능이 설정되지 않았습니다. 직접 입력해 주세요");
-        }
-
-        String body = requestBody(text, now, categories);
-        String json = extractOutputText(callWithRetry(body));
+    public ParsedSchedule parse(ParseCommand command) {
+        String body = requestBody(command);
+        String json = extractOutputText(callWithRetry(body, command.apiKey()));
         return toParsed(json);
     }
 
@@ -69,14 +65,14 @@ public class OpenAiScheduleParser implements ScheduleParser {
      * 재시도는 <b>일시적 실패에만</b> 한다.
      * 4xx 는 우리 요청이 잘못된 것이라 몇 번을 보내도 같은 결과다.
      */
-    private String callWithRetry(String body) {
+    private String callWithRetry(String body, String apiKey) {
         RuntimeException last = null;
 
         for (int attempt = 0; attempt <= config.maxRetries(); attempt++) {
             try {
                 return client.post()
                         .uri("/responses")
-                        .header("Authorization", "Bearer " + config.apiKey())
+                        .header("Authorization", "Bearer " + apiKey)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(body)
                         .retrieve()
@@ -126,12 +122,13 @@ public class OpenAiScheduleParser implements ScheduleParser {
 
     // --- 요청 조립 --------------------------------------------------------
 
-    private String requestBody(String text, LocalDateTime now, List<String> categories) {
+    private String requestBody(ParseCommand command) {
         Map<String, Object> payload = Map.of(
                 "model", config.model(),
                 "input", List.of(
-                        Map.of("role", "system", "content", systemPrompt(now, categories)),
-                        Map.of("role", "user", "content", text)),
+                        Map.of("role", "system", "content",
+                                systemPrompt(command.now(), command.categories())),
+                        Map.of("role", "user", "content", command.text())),
                 "text", Map.of("format", Map.of(
                         "type", "json_schema",
                         "name", "parsed_schedule",

@@ -1,9 +1,12 @@
 package com.lonelytracker.backend.schedule;
 
+import com.lonelytracker.backend.ai.ParseCommand;
 import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.ai.ScheduleParser;
 import com.lonelytracker.backend.common.exception.AiParseException;
+import com.lonelytracker.backend.common.exception.AiUnavailableException;
 import com.lonelytracker.backend.user.CurrentUserProvider;
+import com.lonelytracker.backend.user.User;
 import com.lonelytracker.backend.user.UserCategoryService;
 import com.lonelytracker.backend.user.dto.CategoryResponse;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +39,15 @@ public class ScheduleParseService {
 
     public ParsedSchedule parse(String text) {
         // ① 짧은 트랜잭션. 여기서 닫힌다
+        User user = currentUserProvider.get();
+        if (!user.hasOpenAiApiKey()) {
+            // 서버 설정이 아니라 이 사용자가 키를 등록하지 않은 것이다.
+            // 사용자 잘못이 아니므로 4xx 가 아니고, 나머지 기능은 그대로 쓴다.
+            throw new AiUnavailableException(
+                    "OpenAI API 키를 먼저 등록해 주세요. 등록 전에는 직접 입력해 주세요");
+        }
+        String apiKey = user.getOpenAiApiKey();
+
         List<String> categories = userCategoryService.findAll().stream()
                 .filter(c -> !c.archived())
                 .map(CategoryResponse::name)
@@ -43,7 +55,7 @@ public class ScheduleParseService {
 
         // ② 트랜잭션 밖에서 호출
         ParsedSchedule parsed = scheduleParser.parse(
-                text, LocalDateTime.now(), categories);
+                new ParseCommand(text, LocalDateTime.now(), categories, apiKey));
 
         // ③ LLM 응답을 사용자 입력과 같은 등급으로 검증한다
         return validate(parsed, categories);

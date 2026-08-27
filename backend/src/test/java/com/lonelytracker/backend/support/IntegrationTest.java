@@ -42,5 +42,9 @@ public abstract class IntegrationTest {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
         registry.add("spring.datasource.username", POSTGRES::getUsername);
         registry.add("spring.datasource.password", POSTGRES::getPassword);
+
+        // 사용자 API 키를 암호화해 저장하려면 마스터 키가 필요하다.
+        // 운영에서는 환경변수로 주입한다.
+        registry.add("lonelytracker.security.encryption-key", () -> "test-master-key-for-integration");
     }
 }

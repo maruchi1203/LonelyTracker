@@ -2,6 +2,7 @@ package com.lonelytracker.backend.user;
 
 import com.lonelytracker.backend.common.exception.UserNotFoundException;
 import com.lonelytracker.backend.common.AppProperties;
+import com.lonelytracker.backend.user.dto.OpenAiKeyStatus;
 import com.lonelytracker.backend.user.dto.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserCategoryRepository userCategoryRepository;
     private final AppProperties appProperties;
+    private final CurrentUserProvider currentUserProvider;
 
     public UserResponse findById(Long id) {
         return UserResponse.from(userRepository.findById(id)
@@ -26,6 +28,20 @@ public class UserService {
      * 사용자 생성
      * 1. 
      */
+    /** 키 등록 여부만 돌려준다. 원본은 어떤 경로로도 나가지 않는다. */
+    public OpenAiKeyStatus openAiKeyStatus() {
+        return OpenAiKeyStatus.of(currentUserProvider.get().getOpenAiApiKey());
+    }
+
+    /** null 이나 빈 값을 주면 등록을 해제한다. */
+    @Transactional
+    public OpenAiKeyStatus changeOpenAiKey(String apiKey) {
+        User user = currentUserProvider.get();
+        user.changeOpenAiApiKey(apiKey);
+        userRepository.saveAndFlush(user);
+        return OpenAiKeyStatus.of(user.getOpenAiApiKey());
+    }
+
     @Transactional
     public UserResponse create(String username, String displayName) {
         String name = username == null ? "" : username.strip();
