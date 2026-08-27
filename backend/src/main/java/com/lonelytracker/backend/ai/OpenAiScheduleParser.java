@@ -104,20 +104,38 @@ public class OpenAiScheduleParser implements ScheduleParser {
     /**
      * Responses API 는 봉투 안에 결과를 <b>문자열로</b> 담는다.
      * 그래서 두 번 파싱한다 — 봉투 한 번, 그 안의 문자열 한 번.
+     * <p>
+     * <b>인덱스로 찍으면 안 된다.</b> {@code output} 배열의 첫 항목은 대개
+     * {@code type: "reasoning"} 이고 실제 답은 그 뒤의 {@code type: "message"} 에 있다.
+     * 모델이나 옵션에 따라 앞에 붙는 항목 수가 달라지므로 <b>타입으로 찾는다</b>.
      */
     private String extractOutputText(String envelope) {
+        JsonNode root;
         try {
-            JsonNode root = mapper.readTree(envelope);
-            JsonNode text = root.path("output").path(0).path("content").path(0).path("text");
-            if (text.isMissingNode() || text.isNull()) {
-                throw new AiParseException("AI 응답에서 결과를 찾지 못했습니다");
-            }
-            return text.asString();
-        } catch (AiParseException e) {
-            throw e;
+            root = mapper.readTree(envelope);
         } catch (RuntimeException e) {
             throw new AiParseException("AI 응답을 읽지 못했습니다", e);
         }
+
+        for (JsonNode item : root.path("output")) {
+            if (!"message".equals(item.path("type").asString(""))) {
+                continue;
+            }
+            for (JsonNode part : item.path("content")) {
+                if ("output_text".equals(part.path("type").asString(""))) {
+                    String text = part.path("text").asString("");
+                    if (!text.isBlank()) {
+                        return text;
+                    }
+                }
+            }
+        }
+
+        // 무엇이 왔는지 알 수 없으면 진단이 불가능하다. 온 항목의 타입만 알려준다.
+        List<String> types = new ArrayList<>();
+        root.path("output").forEach(item -> types.add(item.path("type").asString("?")));
+        throw new AiParseException(
+                "AI 응답에서 결과를 찾지 못했습니다. output 항목: " + types);
     }
 
     // --- 요청 조립 --------------------------------------------------------
