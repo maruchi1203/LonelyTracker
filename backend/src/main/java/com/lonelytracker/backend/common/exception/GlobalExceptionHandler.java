@@ -1,11 +1,14 @@
 package com.lonelytracker.backend.common.exception;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.ErrorResponseException;
 import org.springframework.web.context.request.WebRequest;
 
 import java.time.LocalDateTime;
@@ -14,6 +17,8 @@ import java.util.stream.Collectors;
 /** 컨트롤러 전역에서 던져진 예외를 일관된 JSON 형태로 변환한다. */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     public record ErrorResponse(
             LocalDateTime timestamp,
@@ -68,6 +73,47 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleEncryptionNotConfigured(
             EncryptionNotConfiguredException e, WebRequest request) {
         return build(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), request);
+    }
+
+    /** 마스터 키가 바뀌었거나 값이 조작됐다 -> 503. 다시 등록하라고 알려준다 */
+    @ExceptionHandler(DecryptionFailedException.class)
+    public ResponseEntity<ErrorResponse> handleDecryptionFailed(
+            DecryptionFailedException e, WebRequest request) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), request);
+    }
+
+    /**
+     * Spring 이 이미 상태 코드를 정해 던진 예외 — 없는 경로(404), 허용 안 된 메서드(405) 등.
+     * <p>
+     * 아래 폴백보다 <b>먼저 잡아야 한다.</b> 폴백이 이것까지 삼키면
+     * 404 여야 할 응답이 500 이 된다.
+     */
+    @ExceptionHandler(ErrorResponseException.class)
+    public ResponseEntity<ErrorResponse> handleSpringStatus(
+            ErrorResponseException e, WebRequest request) {
+        return build(HttpStatus.valueOf(e.getStatusCode().value()),
+                e.getBody().getDetail(), request);
+    }
+
+    /**
+     * 여기서 잡지 못한 예외. 없으면 Spring 기본 오류 페이지가 나가는데,
+     * <b>message 가 없어서 무엇이 터졌는지 알 수 없다.</b>
+     * <p>
+     * 스택트레이스는 서버 로그에만 남기고 응답에는 예외 이름까지만 싣는다.
+     * 응답에 트레이스를 실으면 내부 구조가 밖으로 샌다.
+     */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleUnexpected(Exception e, WebRequest request) {
+        // NoResourceFoundException 처럼 ErrorResponseException 은 아니지만
+        // ErrorResponse 를 구현해 스스로 상태를 아는 예외가 있다. 그 상태를 존중한다.
+        if (e instanceof org.springframework.web.ErrorResponse errorResponse) {
+            return build(HttpStatus.valueOf(errorResponse.getStatusCode().value()),
+                    errorResponse.getBody().getDetail(), request);
+        }
+
+        log.error("처리되지 않은 예외: {}", request.getDescription(false), e);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR,
+                "예기치 못한 오류가 발생했습니다 (" + e.getClass().getSimpleName() + ")", request);
     }
 
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, WebRequest request) {

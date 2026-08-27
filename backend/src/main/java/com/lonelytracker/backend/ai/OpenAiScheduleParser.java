@@ -42,7 +42,6 @@ public class OpenAiScheduleParser implements ScheduleParser {
         this.config = properties.ai();
         this.mapper = mapper;
 
-        // 기본값이 무한 대기다. 걸지 않으면 API 가 멈췄을 때 우리 스레드가 계속 묶인다.
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory();
         factory.setReadTimeout(config.readTimeout());
 
@@ -54,8 +53,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
 
     @Override
     public ParsedSchedule parse(ParseCommand command) {
-        String body = requestBody(command);
-        String json = extractOutputText(callWithRetry(body, command.apiKey()));
+        String json = extractOutputText(callWithRetry(requestBody(command), command.apiKey()));
         return toParsed(json);
     }
 
@@ -65,8 +63,10 @@ public class OpenAiScheduleParser implements ScheduleParser {
      * 재시도는 <b>일시적 실패에만</b> 한다.
      * 4xx 는 우리 요청이 잘못된 것이라 몇 번을 보내도 같은 결과다.
      */
-    private String callWithRetry(String body, String apiKey) {
-        RuntimeException last = null;
+    private String callWithRetry(Map<String, Object> body, String apiKey) {
+        // 던질 예외를 미리 담아두면 초기화 여부를 컴파일러가 증명하지 못해
+        // null 이나 억지 캐스트를 넣게 된다. 원인만 들고 있다가 나갈 때 새로 만든다.
+        RestClientException lastFailure = null;
 
         for (int attempt = 0; attempt <= config.maxRetries(); attempt++) {
             try {
@@ -82,13 +82,14 @@ public class OpenAiScheduleParser implements ScheduleParser {
                         })
                         .body(String.class);
             } catch (AiParseException e) {
-                throw e;   // 4xx 는 재시도하지 않는다
+                throw e; // 4xx 는 재시도하지 않는다
             } catch (RestClientException e) {
-                last = new AiUnavailableException("AI 응답을 받지 못했습니다", e);
+                lastFailure = e;
                 sleepBackoff(attempt);
             }
         }
-        throw last;
+
+        throw new AiUnavailableException("AI 응답을 받지 못했습니다", lastFailure);
     }
 
     /** 지수 백오프. 1초 → 2초 → 4초. 모두가 즉시 재시도하면 상황이 더 나빠진다. */
@@ -140,8 +141,16 @@ public class OpenAiScheduleParser implements ScheduleParser {
 
     // --- 요청 조립 --------------------------------------------------------
 
-    private String requestBody(ParseCommand command) {
-        Map<String, Object> payload = Map.of(
+    /**
+     * <b>문자열이 아니라 Map 을 돌려준다.</b> 직렬화를 Jackson 컨버터에 맡기기 위해서다.
+     * <p>
+     * 직접 문자열로 만들어 {@code .body(String)} 으로 넘기면 인코딩이
+     * {@code Content-Type} 의 charset 에 좌우된다. {@code application/json} 에는
+     * charset 이 없어 한글이 깨질 수 있다. Map 을 넘기면 Jackson 컨버터가
+     * <b>UTF-8 로 직렬화</b>하므로 그 위험이 사라진다.
+     */
+    private Map<String, Object> requestBody(ParseCommand command) {
+        return Map.of(
                 "model", config.model(),
                 "input", List.of(
                         Map.of("role", "system", "content",
@@ -152,7 +161,6 @@ public class OpenAiScheduleParser implements ScheduleParser {
                         "name", "parsed_schedule",
                         "strict", true,
                         "schema", ParsedScheduleSchema.get())));
-        return mapper.writeValueAsString(payload);
     }
 
     /**
