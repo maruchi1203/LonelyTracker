@@ -51,6 +51,18 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.NOT_FOUND, e.getMessage(), request);
     }
 
+    /** AI 가 쓸 만한 결과를 못 냈다 -> 400. 재시도해도 같으므로 직접 입력을 권한다 */
+    @ExceptionHandler(AiParseException.class)
+    public ResponseEntity<ErrorResponse> handleAiParse(AiParseException e, WebRequest request) {
+        return build(HttpStatus.BAD_REQUEST, e.getMessage(), request);
+    }
+
+    /** AI 를 지금 쓸 수 없다 -> 503. 사용자 잘못이 아니다 */
+    @ExceptionHandler(AiUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleAiUnavailable(AiUnavailableException e, WebRequest request) {
+        return build(HttpStatus.SERVICE_UNAVAILABLE, e.getMessage(), request);
+    }
+
     private ResponseEntity<ErrorResponse> build(HttpStatus status, String message, WebRequest request) {
         ErrorResponse body = new ErrorResponse(
                 LocalDateTime.now(),

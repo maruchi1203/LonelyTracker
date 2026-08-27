@@ -2,7 +2,9 @@ package com.lonelytracker.backend.schedule;
 
 import com.lonelytracker.backend.schedule.dto.OccurrenceUpdateRequest;
 import com.lonelytracker.backend.schedule.dto.SchedulePostponeRequest;
+import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
+import com.lonelytracker.backend.schedule.dto.ScheduleParseRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleStatusRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleUpdateRequest;
@@ -39,6 +41,7 @@ public class ScheduleController {
 
     private final ScheduleService scheduleService;
     private final ScheduleOccurrenceService scheduleOccurrenceService;
+    private final ScheduleParseService scheduleParseService;
 
     /** 기간 안의 회차를 전개해서 돌려준다. 조건이 없으면 기본 범위를 쓴다. */
     @GetMapping
@@ -53,6 +56,17 @@ public class ScheduleController {
     @GetMapping("/{id}")
     public ScheduleResponse findById(@PathVariable Long id) {
         return scheduleService.findById(id);
+    }
+
+    /**
+     * 자연어를 일정 초안으로 바꾼다. <b>저장하지 않는다.</b>
+     * <p>
+     * 사용자가 화면에서 확인·수정한 뒤 POST /api/schedules 로 저장한다.
+     * 바로 저장하면 AI 가 틀렸을 때 되돌리기가 번거롭다.
+     */
+    @PostMapping("/parse")
+    public ParsedSchedule parse(@Valid @RequestBody ScheduleParseRequest request) {
+        return scheduleParseService.parse(request.text());
     }
 
     /** recurrence 를 주면 반복, 안 주면 1회성이다. */
