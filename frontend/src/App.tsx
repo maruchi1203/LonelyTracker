@@ -1,33 +1,28 @@
 import { useCallback, useEffect, useState } from "react";
 import { fetchCategories } from "./api/categories";
 import {
-  changeStatus,
+  changeOccurrenceStatus,
   createSchedule,
   deleteSchedule,
   fetchSchedules,
+  postponeOccurrence,
 } from "./api/schedules";
 import AppShell from "./components/layouts/AppShell";
 import ScheduleCalendar from "./components/layouts/Calendar/ScheduleCalendar";
 import ScheduleInputForm from "./components/ScheduleInputForm";
 import ScheduleList from "./components/ScheduleList";
+import { replaceOccurrence } from "./domain/occurrence";
 import type {
-  Category,
-  Schedule,
+  CategoryResponse,
+  DeleteScope,
   ScheduleCreateRequest,
+  ScheduleResponse,
 } from "./types/schedule";
-
-/** 두 시각이 같은 날인지 (시·분은 무시) */
-function isSameDay(a: Date, b: Date): boolean {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
+import { isSameDay } from "./utils/datetime";
 
 export default function App() {
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [occurrences, setOccurrences] = useState<ScheduleResponse[]>([]);
+  const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -49,13 +44,13 @@ export default function App() {
   /**
    * 서버 조회는 분류까지만 좁힌다.
    * 날짜로도 좁히면 달력이 그 하루치만 받게 되어 나머지 칸이 비어 보인다.
-   * 선택한 날짜는 아래 visibleSchedules 에서 화면단으로 거른다.
+   * 선택한 날짜는 아래 visibleOccurrences 에서 화면단으로 거른다.
    */
   const load = useCallback(async (category: string | null) => {
     setLoading(true);
     setError(null);
     try {
-      setSchedules(await fetchSchedules(category ? { category } : undefined));
+      setOccurrences(await fetchSchedules(category ? { category } : undefined));
     } catch (e) {
       fail(e, "목록을 불러오지 못했습니다");
     } finally {
@@ -86,38 +81,54 @@ export default function App() {
     }
   };
 
-  const handleToggleStatus = async (schedule: Schedule) => {
+  const handleToggleStatus = async (occurrence: ScheduleResponse) => {
     setError(null);
     try {
-      const updated = await changeStatus(
-        schedule.id,
-        schedule.status === "DONE" ? "PLANNED" : "DONE",
+      const updated = await changeOccurrenceStatus(
+        occurrence.id,
+        occurrence.occurrenceDate,
+        occurrence.status === "DONE" ? "PLANNED" : "DONE",
       );
-      setSchedules((prev) =>
-        prev.map((s) => (s.id === updated.id ? updated : s)),
-      );
+      setOccurrences((prev) => replaceOccurrence(prev, updated));
     } catch (e) {
       fail(e, "상태를 변경하지 못했습니다");
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handlePostpone = async (occurrence: ScheduleResponse, to: string) => {
     setError(null);
     try {
-      await deleteSchedule(id);
-      setSchedules((prev) => prev.filter((s) => s.id !== id));
-      await loadCategories();
+      const updated = await postponeOccurrence(
+        occurrence.id,
+        occurrence.occurrenceDate,
+        to,
+      );
+      setOccurrences((prev) => replaceOccurrence(prev, updated));
+    } catch (e) {
+      fail(e, "일정을 미루지 못했습니다");
+    }
+  };
+
+  /** FUTURE 는 지난 회차를 남기므로 화면에서 거르지 말고 다시 받아야 한다 */
+  const handleDelete = async (
+    occurrence: ScheduleResponse,
+    scope: DeleteScope,
+  ) => {
+    setError(null);
+    try {
+      await deleteSchedule(occurrence.id, scope);
+      await Promise.all([load(selectedCategory), loadCategories()]);
     } catch (e) {
       fail(e, "일정을 삭제하지 못했습니다");
     }
   };
 
   // 달력은 전체를 받고, 목록만 선택한 날짜로 좁힌다
-  const visibleSchedules = selectedDate
-    ? schedules.filter((s) => isSameDay(new Date(s.startAt), selectedDate))
-    : schedules;
+  const visibleOccurrences = selectedDate
+    ? occurrences.filter((o) => isSameDay(new Date(o.startAt), selectedDate))
+    : occurrences;
 
-  const doneCount = visibleSchedules.filter((s) => s.status === "DONE").length;
+  const doneCount = visibleOccurrences.filter((o) => o.status === "DONE").length;
 
   return (
     <AppShell
@@ -127,7 +138,7 @@ export default function App() {
     >
       <div className="flex flex-col gap-6">
         <ScheduleCalendar
-          schedules={schedules}
+          occurrences={occurrences}
           // 같은 날짜를 다시 누르면 선택을 푼다
           onSelectDate={(date) =>
             setSelectedDate((prev) =>
@@ -145,7 +156,7 @@ export default function App() {
                   : "전체 일정"}
               </h2>
               <p className="text-sm text-slate-500">
-                {visibleSchedules.length}건 · 완료 {doneCount}건
+                {visibleOccurrences.length}건 · 완료 {doneCount}건
               </p>
             </div>
 
@@ -186,8 +197,9 @@ export default function App() {
             </p>
           ) : (
             <ScheduleList
-              schedules={visibleSchedules}
+              occurrences={visibleOccurrences}
               onToggleStatus={handleToggleStatus}
+              onPostpone={handlePostpone}
               onDelete={handleDelete}
             />
           )}

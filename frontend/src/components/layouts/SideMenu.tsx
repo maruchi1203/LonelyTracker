@@ -1,7 +1,7 @@
-import type { Category } from "../../types/schedule";
+import type { CategoryResponse } from "../../types/schedule";
 
 interface Props {
-  categories: Category[];
+  categories: CategoryResponse[];
   selected: string | null;
   onSelect: (name: string | null) => void;
 }
