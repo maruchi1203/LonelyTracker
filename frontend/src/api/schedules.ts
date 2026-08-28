@@ -14,7 +14,10 @@ const BASE = '/api/schedules'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
-export async function fetchSchedules(params?: ScheduleQuery): Promise<ScheduleResponse[]> {
+export async function fetchSchedules(
+  params?: ScheduleQuery,
+  signal?: AbortSignal,
+): Promise<ScheduleResponse[]> {
   const query = new URLSearchParams()
   if (params?.from) query.set('from', params.from)
   if (params?.to) query.set('to', params.to)
@@ -23,7 +26,7 @@ export async function fetchSchedules(params?: ScheduleQuery): Promise<ScheduleRe
   if (params?.category) query.set('category', params.category)
 
   const suffix = query.toString() ? `?${query}` : ''
-  return handle<ScheduleResponse[]>(await fetch(`${BASE}${suffix}`))
+  return handle<ScheduleResponse[]>(await fetch(`${BASE}${suffix}`, { signal }))
 }
 
 export async function createSchedule(

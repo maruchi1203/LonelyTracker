@@ -1,13 +1,17 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { groupByStartDate } from "../../../domain/occurrence";
 import type { ScheduleResponse } from "../../../types/schedule";
 import { toLocalDate } from "../../../utils/datetime";
+import { buildMonthDays } from "../../../utils/monthGrid";
 import ScheduleCalendarCell from "./ScheduleCalendarCell";
 
 interface Props {
+  month: Date;
+  onMonthChange: (month: Date) => void;
+  selectedDate: Date | null;
+  onSelectDate: (date: Date) => void;
   occurrences: ScheduleResponse[];
-  /** 날짜를 선택 시 하단에 해당 날짜의 리스트 생성*/
-  onSelectDate?: (date: Date) => void;
+  loading?: boolean;
 }
 
 // 주간, 월간, 연간 (캘린더 형태와 목표를 이 3개로 나눌 예정)
@@ -15,46 +19,23 @@ export const CYCLE_UNITS = ["Week", "Month", "Year"] as const;
 export type CycleUnit = (typeof CYCLE_UNITS)[number];
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
-/** 한 달 그리드에 놓일 날짜들. 앞뒤 달의 날짜로 첫 주와 마지막 주를 채운다 */
-function buildMonthDays(month: Date): Date[] {
-  const firstDate = new Date(month.getFullYear(), month.getMonth(), 1);
-  const lastDate = new Date(
-    month.getFullYear(),
-    month.getMonth() + 1,
-    0,
-  ).getDate();
-
-  const prevMonthDates = firstDate.getDay(); // 1일 앞에 채울 지난달 날짜 수
-  const weeks = Math.ceil((prevMonthDates + lastDate) / 7);
-
-  const start = new Date(firstDate);
-  start.setDate(firstDate.getDate() - prevMonthDates);
-
-  return Array.from({ length: weeks * 7 }, (_, i) => {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    return d;
-  });
-}
-
 // 월간 달력 (주간, 연간 추가 예정)
-export default function ScheduleCalendar({ occurrences, onSelectDate }: Props) {
-  const [month, setMonth] = useState(() => new Date());
-  const [selected, setSelected] = useState<Date | null>(null);
-
+export default function ScheduleCalendar({
+  month,
+  onMonthChange,
+  selectedDate,
+  onSelectDate,
+  occurrences,
+  loading,
+}: Props) {
   const days = useMemo(() => buildMonthDays(month), [month]);
   const byDate = useMemo(() => groupByStartDate(occurrences), [occurrences]);
 
   const shiftMonth = (delta: number) =>
-    setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1));
-
-  const handleSelect = (date: Date) => {
-    setSelected(date);
-    onSelectDate?.(date);
-  };
+    onMonthChange(new Date(month.getFullYear(), month.getMonth() + delta, 1));
 
   const todayKey = toLocalDate(new Date());
-  const selectedKey = selected ? toLocalDate(selected) : null;
+  const selectedKey = selectedDate ? toLocalDate(selectedDate) : null;
 
   return (
     <section className="flex flex-col gap-3">
@@ -69,7 +50,10 @@ export default function ScheduleCalendar({ occurrences, onSelectDate }: Props) {
           </NavButton>
           <button
             type="button"
-            onClick={() => setMonth(new Date())}
+            onClick={() => {
+              const now = new Date();
+              onMonthChange(new Date(now.getFullYear(), now.getMonth(), 1));
+            }}
             className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-600 transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
           >
             오늘
@@ -80,7 +64,13 @@ export default function ScheduleCalendar({ occurrences, onSelectDate }: Props) {
         </div>
       </header>
 
-      <div className="grid grid-cols-7 gap-1">
+      {/* 로딩 중에도 그리드를 그대로 둔다. 사라지면 이동 화살표가 튄다 */}
+      <div
+        className={`grid grid-cols-7 gap-1 transition-opacity ${
+          loading ? "opacity-50" : ""
+        }`}
+        aria-busy={loading}
+      >
         {WEEKDAYS.map((label, i) => (
           <div
             key={label}
@@ -106,7 +96,7 @@ export default function ScheduleCalendar({ occurrences, onSelectDate }: Props) {
               inCurrentMonth={date.getMonth() === month.getMonth()}
               isToday={key === todayKey}
               isSelected={key === selectedKey}
-              onSelect={handleSelect}
+              onSelect={onSelectDate}
             />
           );
         })}
