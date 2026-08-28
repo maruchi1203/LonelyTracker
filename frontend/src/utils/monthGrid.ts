@@ -44,7 +44,14 @@ export function toMonthParam(month: Date): string {
 
 /** "YYYY-MM" 을 그 달 1일로. 형식이 어긋나면 이번 달을 준다 */
 export function fromMonthParam(value: string | null): Date {
+  const now = new Date()
+  const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
   const match = value?.match(/^(\d{4})-(\d{2})$/)
-  if (!match) return new Date(new Date().getFullYear(), new Date().getMonth(), 1)
-  return new Date(Number(match[1]), Number(match[2]) - 1, 1)
+  if (!match) return thisMonth
+
+  const month = Number(match[2])
+  if (month < 1 || month > 12) return thisMonth
+
+  return new Date(Number(match[1]), month - 1, 1)
 }
