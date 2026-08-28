@@ -5,7 +5,7 @@ import com.lonelytracker.backend.common.exception.AiParseException;
 import com.lonelytracker.backend.common.exception.AiUnavailableException;
 import com.lonelytracker.backend.schedule.RecurrenceFreq;
 
-import org.springframework.http.HttpStatusCode;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -60,7 +60,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
 
     /**
      * 재시도는 일시적 실패에만 한다.
-     * 4xx 는 우리 요청이 잘못된 것이라 몇 번을 보내도 같은 결과다.
+     * 4xx 는 우리 요청이 잘못된 것이라 몇 번을 보내도 같은 결과다 — 단, 429 는 예외다.
      */
     private String callWithRetry(Map<String, Object> body, String apiKey) {
         RestClientException lastFailure = null;
@@ -73,10 +73,15 @@ public class OpenAiScheduleParser implements ScheduleParser {
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(body)
                         .retrieve()
-                        .onStatus(HttpStatusCode::is4xxClientError, (req, res) -> {
-                            throw new AiParseException(
-                                    "AI 요청이 거부되었습니다 (" + res.getStatusCode().value() + ")");
-                        })
+                        // 429 는 여기서 뺀다. "지금은 너무 많으니 잠깐 뒤에" 라는 뜻이라
+                        // 재시도가 맞다. onStatus 에 안 걸리면 retrieve() 기본 동작이
+                        // RestClientException 을 던져 아래 catch 가 받는다.
+                        .onStatus(status -> status.is4xxClientError()
+                                        && status.value() != HttpStatus.TOO_MANY_REQUESTS.value(),
+                                (req, res) -> {
+                                    throw new AiParseException(
+                                            "AI 요청이 거부되었습니다 (" + res.getStatusCode().value() + ")");
+                                })
                         .body(String.class);
             } catch (AiParseException e) {
                 throw e; // 4xx 는 재시도하지 않는다
