@@ -7,10 +7,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 구조화 출력(Structured Outputs)에 넘길 JSON 스키마
- * {@code strict: true} 에는 조건이 붙는다 — <b>모든 속성이 required 에 들어가야 하고
- * additionalProperties 가 false 여야 한다.</b> 그런데 startAt·category 처럼
- * 없을 수 있는 값이 있다. "필수인데 없을 수 있다" 는 타입을 nullable 로 선언해 표현
+ * 구조화 출력(Structured Outputs)에 넘길 JSON 스키마.
+ * {@code strict: true} 는 모든 속성이 required 이고 additionalProperties 가 false 일 것을 요구한다.
+ * 없을 수 있는 값은 타입을 nullable 로 선언해 표현한다.
  */
 final class ParsedScheduleSchema {
 
@@ -44,7 +43,7 @@ final class ParsedScheduleSchema {
                         "endsOn", nullableString("YYYY-MM-DD. 끝을 안 정했으면 null")),
                 List.of("freq", "byWeekday", "endsOn")));
 
-        // 반복이 아니면 통째로 null 이다. 중첩 객체도 nullable 로 선언해야 한다.
+        // 반복이 아니면 통째로 null 이다
         schema.put("type", List.of("object", "null"));
         return schema;
     }
@@ -56,7 +55,6 @@ final class ParsedScheduleSchema {
                 "description", "채우지 못한 칸. 아는 ID 만 고른다",
                 "items", Map.of(
                         "type", "string",
-                        // enum 으로 걸면 모델이 질문을 지어낼 수 없다
                         "enum", Arrays.stream(ParseQuestion.values()).map(Enum::name).toList()));
     }
 

@@ -22,18 +22,14 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 /**
- * 재시도 규칙. <b>가짜 HTTP 서버</b>에 붙여 실제 상태 코드로 검증한다.
- * <p>
- * 가짜 파서로는 이 층을 못 본다. 이번 프로젝트에서 실제 HTTP 경로에 테스트가 없어
- * {@code output[0]} 인덱스 버그와 요청 본문 인코딩 버그를 실행해보고서야 발견했다.
- * <p>
+ * 재시도 규칙을 가짜 HTTP 서버에 붙여 실제 상태 코드로 검증한다.
  * Spring 컨텍스트를 띄우지 않으므로 Docker 없이 돈다.
  */
 class OpenAiRetryTest {
 
     private static final String ENDPOINT = "http://ai.test/responses";
 
-    /** 봉투 모양은 OpenAiResponseShapeTest 가 따로 검증한다. 여기서는 최소 형태만 쓴다. */
+    /** 성공 응답의 최소 형태. 봉투 모양은 OpenAiResponseShapeTest 가 본다. */
     private static final String OK_BODY = """
             { "output": [ { "type": "message", "content": [
                 { "type": "output_text",
@@ -48,7 +44,6 @@ class OpenAiRetryTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         OpenAiScheduleParser parser = parserWith(builder, 1);
 
-        // "지금은 너무 많으니 잠깐 뒤에" 라는 뜻이라 다시 보내는 것이 맞다
         server.expect(requestTo(ENDPOINT))
                 .andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
         server.expect(requestTo(ENDPOINT))
@@ -67,14 +62,12 @@ class OpenAiRetryTest {
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         OpenAiScheduleParser parser = parserWith(builder, 2);
 
-        // 우리 요청이 잘못된 것이라 몇 번을 보내도 같은 결과다
         server.expect(requestTo(ENDPOINT)).andRespond(withStatus(HttpStatus.BAD_REQUEST));
 
         assertThatThrownBy(() -> parser.parse(command()))
                 .isInstanceOf(AiParseException.class)
                 .hasMessageContaining("400");
 
-        // 기대한 요청이 하나뿐인데 두 번 왔다면 verify 가 잡는다
         server.verify();
     }
 
@@ -145,17 +138,13 @@ class OpenAiRetryTest {
 
     // --- 헬퍼 -------------------------------------------------------------
 
-    /**
-     * 백오프가 실제로 잠들기 때문에 재시도 횟수를 작게 잡는다.
-     * 대기 시간을 설정 항목으로 빼지 않는 이유는, 테스트 편의로 운영 설정을 늘리지 않기 위해서다.
-     */
+    /** 주어진 재시도 횟수로 파서를 만든다. 백오프가 실제로 잠들므로 횟수를 작게 잡는다. */
     private OpenAiScheduleParser parserWith(RestClient.Builder builder, int maxRetries) {
         AppProperties properties = new AppProperties(
                 new AppProperties.UserDefaults("default", List.of()),
                 new AppProperties.AiSetting("http://ai.test", "test-model",
                         Duration.ofSeconds(5), Duration.ofSeconds(30), maxRetries),
                 new AppProperties.Security("test-key"));
-        // 가짜 서버를 붙인 뒤에 build 해야 목이 심어둔 request factory 가 살아남는다
         return new OpenAiScheduleParser(properties, mapper,
                 builder.baseUrl("http://ai.test").build());
     }
