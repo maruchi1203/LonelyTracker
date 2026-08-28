@@ -14,8 +14,9 @@ interface Props {
 }
 
 // 두 상태의 클래스를 한곳에 모아둔다
+// shrink-0 이 없으면 한 줄에 몰렸을 때 칩이 찌그러진다
 const CHIP_BASE =
-  "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100";
+  "shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100";
 const CHIP_ON = "border-brand-500 bg-brand-500 text-white";
 const CHIP_OFF =
   "border-slate-200 bg-white text-slate-500 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700";
@@ -48,7 +49,8 @@ export default function CategoryChips({
         이 달에 많이 쓴 분류
       </p>
 
-      <div className="flex flex-wrap items-center gap-1.5">
+      {/* 넘쳐도 줄바꿈하지 않고 가로로 흐른다. py-1 은 포커스 링이 잘리지 않게 둔 자리다 */}
+      <div className="flex items-center gap-1.5 overflow-x-auto py-1">
         <button
           type="button"
           onClick={() => onSelect(null)}
