@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
@@ -14,5 +14,11 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  test: {
+    // 대부분이 순수 함수 테스트다. jsdom 이 필요한 파일만 맨 위에서 따로 선언한다
+    environment: 'node',
+    include: ['src/**/*.test.{ts,tsx}'],
+    setupFiles: ['src/test/setup.ts'],
   },
 })
