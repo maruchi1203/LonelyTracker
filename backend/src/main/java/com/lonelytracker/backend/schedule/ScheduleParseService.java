@@ -1,6 +1,6 @@
 package com.lonelytracker.backend.schedule;
 
-import com.lonelytracker.backend.ai.ParseCommand;
+import com.lonelytracker.backend.ai.CommandForAI;
 import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.ai.ScheduleParser;
 import com.lonelytracker.backend.common.exception.AiParseException;
@@ -21,10 +21,12 @@ import java.util.List;
  * 이 클래스에 {@code @Transactional} 이 <b>없는 것이 설계다.</b>
  * LLM 응답은 수 초가 걸리는데, 트랜잭션 안에서 부르면 그동안 DB 커넥션을 붙잡는다.
  * 커넥션 풀이 보통 10개라 동시에 열 명이 요청하면 앱 전체가 멈춘다.
+ * 
  * <pre>
  * [트랜잭션] 카테고리 읽기 [닫힘]  →  LLM 호출 수 초  →  검증  →  응답
  *              ~5ms                    커넥션 안 잡음
  * </pre>
+ * 
  * 카테고리를 읽을 때는 트랜잭션이 열리지만 <b>LLM 호출 전에 닫힌다</b>.
  * {@code propagation = NOT_SUPPORTED} 로 뚫을 수도 있으나 그 한 줄의 의미를
  * 놓치기 쉬워, 클래스를 나눠 구조로 보장한다.
@@ -55,7 +57,7 @@ public class ScheduleParseService {
 
         // ② 트랜잭션 밖에서 호출
         ParsedSchedule parsed = scheduleParser.parse(
-                new ParseCommand(text, LocalDateTime.now(), categories, apiKey));
+                new CommandForAI(text, LocalDateTime.now(), categories, apiKey));
 
         // ③ LLM 응답을 사용자 입력과 같은 등급으로 검증한다
         return validate(parsed, categories);
@@ -79,7 +81,8 @@ public class ScheduleParseService {
 
         // 목록에 없는 분류를 지어냈으면 버린다. 목록 안에서만 고르라고 시켰다
         String category = (parsed.category() != null && !categories.contains(parsed.category()))
-                ? null : parsed.category();
+                ? null
+                : parsed.category();
 
         return new ParsedSchedule(
                 parsed.title().strip(),

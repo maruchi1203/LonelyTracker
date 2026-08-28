@@ -7,13 +7,10 @@ import java.time.LocalDate;
 import java.util.Set;
 
 /**
- * 파싱된 반복 규칙. null 이면 1회성 일정이다.
- * <p>
- * {@code RecurrenceRequest} 와 같은 모양이라 화면이 그대로 되쏠 수 있다.
+ * AI에게 받은 텍스트 기반해 반복 일정으로 파싱용
  */
-public record ParsedRecurrence(
+public record ParsedRecurringSchedule(
         RecurrenceFreq freq,
         Set<DayOfWeek> byWeekday,
-        LocalDate endsOn
-) {
+        LocalDate endsOn) {
 }

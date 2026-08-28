@@ -1,8 +1,8 @@
 package com.lonelytracker.backend.schedule;
 
-import com.lonelytracker.backend.ai.ParseCommand;
+import com.lonelytracker.backend.ai.CommandForAI;
 import com.lonelytracker.backend.ai.ParseQuestion;
-import com.lonelytracker.backend.ai.ParsedRecurrence;
+import com.lonelytracker.backend.ai.ParsedRecurringSchedule;
 import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.ai.ScheduleParser;
 import com.lonelytracker.backend.common.exception.AiParseException;
@@ -63,9 +63,9 @@ class ScheduleParseApiTest extends IntegrationTest {
     /** 파싱은 사용자 키가 있어야 동작한다. 서버 설정이 아니다. */
     private void registerKey(String apiKey) throws Exception {
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                        .put("/api/users/me/openai-key")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"apiKey\":\"" + apiKey + "\"}"))
+                .put("/api/users/me/openai-key")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"apiKey\":\"" + apiKey + "\"}"))
                 .andExpect(status().isOk());
     }
 
@@ -77,7 +77,7 @@ class ScheduleParseApiTest extends IntegrationTest {
         parser.willReturn(draft("헬스장 운동", "2026-09-08T15:00:00", "헬스장", "육체"));
 
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"text\":\"내일 3시 헬스장에서 운동\"}"))
+                .content("{\"text\":\"내일 3시 헬스장에서 운동\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("헬스장 운동"))
                 .andExpect(jsonPath("$.startAt").value("2026-09-08T15:00:00"))
@@ -86,9 +86,9 @@ class ScheduleParseApiTest extends IntegrationTest {
 
         // 저장되지 않았다 - 목록이 비어 있어야 한다
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                        .get("/api/schedules")
-                        .param("from", "2026-09-01T00:00:00")
-                        .param("to", "2026-09-30T23:59:59"))
+                .get("/api/schedules")
+                .param("from", "2026-09-01T00:00:00")
+                .param("to", "2026-09-30T23:59:59"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0]").doesNotExist());
     }
@@ -129,7 +129,7 @@ class ScheduleParseApiTest extends IntegrationTest {
         parser.willReturn(draft("운동", "2026-09-08T15:00:00", null, "존재하지않는분류"));
 
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"text\":\"운동\"}"))
+                .content("{\"text\":\"운동\"}"))
                 .andExpect(status().isOk())
                 // non_null 직렬화라 버려진 값은 필드째 빠진다
                 .andExpect(jsonPath("$.category").doesNotExist());
@@ -140,12 +140,12 @@ class ScheduleParseApiTest extends IntegrationTest {
     void returnsRecurrence() throws Exception {
         parser.willReturn(new ParsedSchedule(
                 "운동", LocalDateTime.parse("2026-09-07T07:00:00"), null, false, "육체", "헬스장",
-                new ParsedRecurrence(RecurrenceFreq.WEEKLY,
+                new ParsedRecurringSchedule(RecurrenceFreq.WEEKLY,
                         EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY), null),
                 List.of()));
 
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"text\":\"매주 월수금 아침 7시 헬스장에서 운동\"}"))
+                .content("{\"text\":\"매주 월수금 아침 7시 헬스장에서 운동\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.recurrence.freq").value("WEEKLY"))
                 .andExpect(jsonPath("$.recurrence.byWeekday.length()").value(3));
@@ -159,7 +159,7 @@ class ScheduleParseApiTest extends IntegrationTest {
                 List.of(ParseQuestion.DATE, ParseQuestion.START_TIME, ParseQuestion.PLACE)));
 
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"text\":\"회의\"}"))
+                .content("{\"text\":\"회의\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("회의"))
                 // 모르는 값은 지어내지 않고 null 로 둔다
@@ -176,7 +176,7 @@ class ScheduleParseApiTest extends IntegrationTest {
                 null, null, null, List.of()));
 
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"text\":\"ㅁㄴㅇㄹ\"}"))
+                .content("{\"text\":\"ㅁㄴㅇㄹ\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").exists());
     }
@@ -191,7 +191,7 @@ class ScheduleParseApiTest extends IntegrationTest {
                 false, null, null, null, List.of()));
 
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"text\":\"거꾸로\"}"))
+                .content("{\"text\":\"거꾸로\"}"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -210,11 +210,11 @@ class ScheduleParseApiTest extends IntegrationTest {
     @Test
     @DisplayName("키를 등록하지 않은 사용자는 503을 받는다")
     void returnsServiceUnavailableWithoutKey() throws Exception {
-        registerKey("");   // 등록 해제
+        registerKey(""); // 등록 해제
 
         // 사용자 잘못이 아니므로 4xx 가 아니다. 나머지 기능은 그대로 쓴다
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"text\":\"내일 3시 회의\"}"))
+                .content("{\"text\":\"내일 3시 회의\"}"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.message").exists());
     }
@@ -225,7 +225,7 @@ class ScheduleParseApiTest extends IntegrationTest {
         parser.willThrow(new AiUnavailableException("AI 응답을 받지 못했습니다"));
 
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"text\":\"내일 3시 회의\"}"))
+                .content("{\"text\":\"내일 3시 회의\"}"))
                 .andExpect(status().isServiceUnavailable());
     }
 
@@ -235,7 +235,7 @@ class ScheduleParseApiTest extends IntegrationTest {
         parser.willThrow(new AiParseException("AI 가 만든 JSON 을 읽지 못했습니다"));
 
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"text\":\"내일 3시 회의\"}"))
+                .content("{\"text\":\"내일 3시 회의\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.trace").doesNotExist());
     }
@@ -244,7 +244,7 @@ class ScheduleParseApiTest extends IntegrationTest {
     @DisplayName("text가 비면 400을 반환한다")
     void rejectsBlankText() throws Exception {
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"text\":\"  \"}"))
+                .content("{\"text\":\"  \"}"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -255,7 +255,7 @@ class ScheduleParseApiTest extends IntegrationTest {
         String tooLong = "가".repeat(501);
 
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"text\":\"" + tooLong + "\"}"))
+                .content("{\"text\":\"" + tooLong + "\"}"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -292,7 +292,7 @@ class ScheduleParseApiTest extends IntegrationTest {
         }
 
         @Override
-        public ParsedSchedule parse(ParseCommand command) {
+        public ParsedSchedule parse(CommandForAI command) {
             this.lastNow = command.now();
             this.lastCategories = command.categories();
             this.lastApiKey = command.apiKey();

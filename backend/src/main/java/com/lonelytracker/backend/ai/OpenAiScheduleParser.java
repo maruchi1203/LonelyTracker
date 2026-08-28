@@ -34,10 +34,11 @@ public class OpenAiScheduleParser implements ScheduleParser {
     /** 재시도 간격의 시작값. 즉시 재시도하면 과부하 상황을 악화시킨다 */
     private static final long BACKOFF_MILLIS = 1_000L;
 
-    private final AppProperties.Ai config;
+    private final AppProperties.AiSetting config;
     private final ObjectMapper mapper;
     private final RestClient client;
 
+    //
     public OpenAiScheduleParser(AppProperties properties, ObjectMapper mapper) {
         this.config = properties.ai();
         this.mapper = mapper;
@@ -52,20 +53,19 @@ public class OpenAiScheduleParser implements ScheduleParser {
     }
 
     @Override
-    public ParsedSchedule parse(ParseCommand command) {
-        String json = extractOutputText(callWithRetry(requestBody(command), command.apiKey()));
+    public ParsedSchedule parse(CommandForAI command) {
+        String responseBody = callWithRetry(requestBody(command), command.apiKey());
+        String json = extractOutputText(responseBody);
         return toParsed(json);
     }
 
     // --- HTTP ------------------------------------------------------------
 
     /**
-     * 재시도는 <b>일시적 실패에만</b> 한다.
-     * 4xx 는 우리 요청이 잘못된 것이라 몇 번을 보내도 같은 결과다.
+     * 재시도는 일시적 실패에만
+     * 4xx(429[요청이 너무 많음] 제외)에는 시도하지 않음
      */
     private String callWithRetry(Map<String, Object> body, String apiKey) {
-        // 던질 예외를 미리 담아두면 초기화 여부를 컴파일러가 증명하지 못해
-        // null 이나 억지 캐스트를 넣게 된다. 원인만 들고 있다가 나갈 때 새로 만든다.
         RestClientException lastFailure = null;
 
         for (int attempt = 0; attempt <= config.maxRetries(); attempt++) {
@@ -149,7 +149,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
      * charset 이 없어 한글이 깨질 수 있다. Map 을 넘기면 Jackson 컨버터가
      * <b>UTF-8 로 직렬화</b>하므로 그 위험이 사라진다.
      */
-    private Map<String, Object> requestBody(ParseCommand command) {
+    private Map<String, Object> requestBody(CommandForAI command) {
         return Map.of(
                 "model", config.model(),
                 "input", List.of(
@@ -160,7 +160,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
                         "type", "json_schema",
                         "name", "parsed_schedule",
                         "strict", true,
-                        "schema", ParsedScheduleSchema.get())));
+                        "schema", ParsedScheduleSchema.getSchedule())));
     }
 
     /**
@@ -242,7 +242,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
                 questionsOf(node.path("questions")));
     }
 
-    private ParsedRecurrence recurrenceOf(JsonNode node) {
+    private ParsedRecurringSchedule recurrenceOf(JsonNode node) {
         if (node.isMissingNode() || node.isNull()) {
             return null;
         }
@@ -250,7 +250,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
         node.path("byWeekday").forEach(n -> weekdays.add(DayOfWeek.valueOf(n.asString())));
 
         String endsOn = textOrNull(node, "endsOn");
-        return new ParsedRecurrence(
+        return new ParsedRecurringSchedule(
                 com.lonelytracker.backend.schedule.RecurrenceFreq.valueOf(
                         node.path("freq").asString()),
                 weekdays,
