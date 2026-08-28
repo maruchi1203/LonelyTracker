@@ -1,11 +1,20 @@
-import type { Schedule, ScheduleCreateRequest, ScheduleQuery, ScheduleStatus } from '../types/schedule'
+import type {
+  DeleteScope,
+  OccurrenceUpdateRequest,
+  ScheduleCreateRequest,
+  ScheduleQuery,
+  ScheduleResponse,
+  ScheduleStatus,
+} from '../types/schedule'
 import { handle } from './http'
 
 // vite.config.ts의 프록시가 /api 를 localhost:8080으로 넘긴다.
 // 그래서 호스트를 하드코딩하지 않는다 — 배포 시 그대로 동작한다.
 const BASE = '/api/schedules'
 
-export async function fetchSchedules(params?: ScheduleQuery): Promise<Schedule[]> {
+const JSON_HEADERS = { 'Content-Type': 'application/json' }
+
+export async function fetchSchedules(params?: ScheduleQuery): Promise<ScheduleResponse[]> {
   const query = new URLSearchParams()
   if (params?.from) query.set('from', params.from)
   if (params?.to) query.set('to', params.to)
@@ -14,27 +23,63 @@ export async function fetchSchedules(params?: ScheduleQuery): Promise<Schedule[]
   if (params?.category) query.set('category', params.category)
 
   const suffix = query.toString() ? `?${query}` : ''
-  return handle<Schedule[]>(await fetch(`${BASE}${suffix}`))
+  return handle<ScheduleResponse[]>(await fetch(`${BASE}${suffix}`))
 }
 
-export async function createSchedule(body: ScheduleCreateRequest): Promise<Schedule> {
+export async function createSchedule(
+  body: ScheduleCreateRequest,
+): Promise<ScheduleResponse> {
   const res = await fetch(BASE, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON_HEADERS,
     body: JSON.stringify(body),
   })
-  return handle<Schedule>(res)
+  return handle<ScheduleResponse>(res)
 }
 
-export async function changeStatus(id: number, status: ScheduleStatus): Promise<Schedule> {
-  const res = await fetch(`${BASE}/${id}/status`, {
+/** 회차 하나의 상태를 바꾼다 */
+export async function changeOccurrenceStatus(
+  id: number,
+  onDate: string,
+  status: ScheduleStatus,
+): Promise<ScheduleResponse> {
+  const res = await fetch(`${BASE}/${id}/occurrences/${onDate}/status`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON_HEADERS,
     body: JSON.stringify({ status }),
   })
-  return handle<Schedule>(res)
+  return handle<ScheduleResponse>(res)
 }
 
-export async function deleteSchedule(id: number): Promise<void> {
-  return handle<void>(await fetch(`${BASE}/${id}`, { method: 'DELETE' }))
+/** 회차 하나를 다른 시각으로 미룬다. onDate 는 그대로 남는다 */
+export async function postponeOccurrence(
+  id: number,
+  onDate: string,
+  to: string,
+): Promise<ScheduleResponse> {
+  const res = await fetch(`${BASE}/${id}/occurrences/${onDate}/postpone`, {
+    method: 'PATCH',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ to }),
+  })
+  return handle<ScheduleResponse>(res)
+}
+
+/** 회차 하나만 고친다. 생략한 칸은 일정의 값으로 되돌아간다 */
+export async function updateOccurrence(
+  id: number,
+  onDate: string,
+  body: OccurrenceUpdateRequest,
+): Promise<ScheduleResponse> {
+  const res = await fetch(`${BASE}/${id}/occurrences/${onDate}`, {
+    method: 'PUT',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  })
+  return handle<ScheduleResponse>(res)
+}
+
+/** FUTURE 는 지난 기록을 남기고 앞으로만 지운다. 호출하는 쪽이 범위를 밝히게 한다 */
+export async function deleteSchedule(id: number, scope: DeleteScope): Promise<void> {
+  return handle<void>(await fetch(`${BASE}/${id}?scope=${scope}`, { method: 'DELETE' }))
 }

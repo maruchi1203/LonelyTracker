@@ -1,9 +1,9 @@
-import type { Category } from "../../types/schedule";
+import type { CategoryResponse } from "../../types/schedule";
 import Header from "./Header";
 import SideMenu from "./SideMenu";
 
 interface Props {
-  categories: Category[];
+  categories: CategoryResponse[];
   selectedCategory: string | null;
   onSelectCategory: (name: string | null) => void;
   /** 본문에 무엇을 넣을지는 화면을 쓰는 쪽이 정한다 */

@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
-import type { Schedule } from "../../../types/schedule";
+import { groupByStartDate } from "../../../domain/occurrence";
+import type { ScheduleResponse } from "../../../types/schedule";
+import { toLocalDate } from "../../../utils/datetime";
 import ScheduleCalendarCell from "./ScheduleCalendarCell";
 
 interface Props {
-  schedules: Schedule[];
+  occurrences: ScheduleResponse[];
   /** 날짜를 선택 시 하단에 해당 날짜의 리스트 생성*/
   onSelectDate?: (date: Date) => void;
 }
@@ -13,14 +15,7 @@ export const CYCLE_UNITS = ["Week", "Month", "Year"] as const;
 export type CycleUnit = (typeof CYCLE_UNITS)[number];
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
-// 일정과 칸 맞추는 일자 Key
-function dateKey(date: Date): string {
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  return `${date.getFullYear()}-${m}-${d}`;
-}
-
-//
+/** 한 달 그리드에 놓일 날짜들. 앞뒤 달의 날짜로 첫 주와 마지막 주를 채운다 */
 function buildMonthDays(month: Date): Date[] {
   const firstDate = new Date(month.getFullYear(), month.getMonth(), 1);
   const lastDate = new Date(
@@ -43,22 +38,12 @@ function buildMonthDays(month: Date): Date[] {
 }
 
 // 월간 달력 (주간, 연간 추가 예정)
-export default function ScheduleCalendar({ schedules, onSelectDate }: Props) {
+export default function ScheduleCalendar({ occurrences, onSelectDate }: Props) {
   const [month, setMonth] = useState(() => new Date());
   const [selected, setSelected] = useState<Date | null>(null);
 
   const days = useMemo(() => buildMonthDays(month), [month]);
-
-  const byDate = useMemo(() => {
-    const map = new Map<string, Schedule[]>();
-    for (const schedule of schedules) {
-      const key = dateKey(new Date(schedule.startAt));
-      const bucket = map.get(key);
-      if (bucket) bucket.push(schedule);
-      else map.set(key, [schedule]);
-    }
-    return map;
-  }, [schedules]);
+  const byDate = useMemo(() => groupByStartDate(occurrences), [occurrences]);
 
   const shiftMonth = (delta: number) =>
     setMonth((m) => new Date(m.getFullYear(), m.getMonth() + delta, 1));
@@ -68,8 +53,8 @@ export default function ScheduleCalendar({ schedules, onSelectDate }: Props) {
     onSelectDate?.(date);
   };
 
-  const todayKey = dateKey(new Date());
-  const selectedKey = selected ? dateKey(selected) : null;
+  const todayKey = toLocalDate(new Date());
+  const selectedKey = selected ? toLocalDate(selected) : null;
 
   return (
     <section className="flex flex-col gap-3">
@@ -112,12 +97,12 @@ export default function ScheduleCalendar({ schedules, onSelectDate }: Props) {
         ))}
 
         {days.map((date) => {
-          const key = dateKey(date);
+          const key = toLocalDate(date);
           return (
             <ScheduleCalendarCell
               key={key}
               date={date}
-              schedules={byDate.get(key) ?? []}
+              occurrences={byDate.get(key) ?? []}
               inCurrentMonth={date.getMonth() === month.getMonth()}
               isToday={key === todayKey}
               isSelected={key === selectedKey}

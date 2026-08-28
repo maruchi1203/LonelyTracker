@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ScheduleCreateRequest } from "../types/schedule";
+import { toLocalInputValue } from "../utils/datetime";
 
 interface Props {
   /** 저장에 성공했는지 돌려준다. 실패하면 입력값을 지우지 않는다 */
@@ -14,15 +15,6 @@ interface Props {
 const INPUT =
   "w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-slate-800 placeholder:text-slate-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-3 focus:ring-brand-100";
 const LABEL = "text-xs font-semibold tracking-wide text-slate-500";
-
-/** datetime-local 이 요구하는 "YYYY-MM-DDTHH:mm" 형식 */
-function toInputValue(date: Date): string {
-  const p = (n: number) => String(n).padStart(2, "0");
-  return (
-    `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}` +
-    `T${p(date.getHours())}:${p(date.getMinutes())}`
-  );
-}
 
 /**
  * 기본 시작 시각. 지금 이후의 가장 가까운 정각으로 잡는다.
@@ -39,7 +31,7 @@ function nextHour(baseDate?: Date | null): string {
   if (baseDate) {
     at.setFullYear(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
   }
-  return toInputValue(at);
+  return toLocalInputValue(at);
 }
 
 export default function ScheduleInputForm({
@@ -144,7 +136,7 @@ export default function ScheduleInputForm({
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             placeholder="예: 능력"
-            maxLength={100}
+            maxLength={50}
           />
           <datalist id="category-options">
             {knownCategories.map((c) => (
