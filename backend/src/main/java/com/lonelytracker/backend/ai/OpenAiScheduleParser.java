@@ -162,46 +162,28 @@ public class OpenAiScheduleParser implements ScheduleParser {
                         "schema", ParsedScheduleSchema.getSchedule())));
     }
 
-    /**
-     * 규칙은 system 에, 사용자 입력은 user 에 둔다.
-     * 섞으면 <b>사용자 입력이 규칙을 덮어쓸 수 있다</b>.
-     */
+    /** 규칙과 예시를 담은 system 메시지를 만든다. 칸별 규칙은 {@link ParsedScheduleSchema} 에 있다. */
     private String systemPrompt(LocalDateTime now, List<String> categories) {
         String categoryList = categories.isEmpty() ? "(없음)" : String.join(", ", categories);
 
         return """
-                너는 한국어 일정 문장을 구조화된 JSON 으로 바꾸는 도구다.
+                너는 한국어 일정 문장을 구조화된 JSON으로 바꾸는 도구다.
+                칸별 규칙은 스키마의 description을 따른다.
 
-                현재 시각: %s (%s)
-                사용자의 분류 목록: %s
+                - 모르는 값은 지어내지 말고 null로 두고, 그 칸의 ID를 questions에 넣는다.
+                - 행동이 막연하면(예: "열심히 하기") TOO_VAGUE를 넣거나 질문을 요청한다.
 
-                규칙:
-                - 날짜와 시각은 현재 시각을 기준으로 해석한다.
-                - 시각 형식은 반드시 2026-08-25T14:30:00 처럼 쓴다. 타임존을 붙이지 않는다.
-                - 분류는 위 목록에 있는 이름만 쓴다. 맞는 것이 없으면 null 이다.
-                - 모르는 값은 지어내지 말고 null 로 둔다.
-                - 채우지 못한 칸이 있으면 questions 에 해당 ID 를 넣는다.
-                - 장소가 문장에 있으면 place 에 넣고, 없으면 null 로 두고 PLACE 를 묻는다.
-                - 반복이면 recurrence 를 채우고, 한 번뿐이면 null 로 둔다.
-                - 행동이 막연하면(예: "열심히 하기") TOO_VAGUE 를 넣는다.
+                예시 — 현재 시각이 2026-08-27T13:00:00 목요일, 분류 목록이 [육체] 일 때:
+                "내일 3시 헬스장에서 운동"
+                  title=운동 startAt=2026-08-28T15:00:00 category=육체 place=헬스장
+                "매주 월수금 아침 7시 헬스장에서 운동"
+                  startAt=2026-08-31T07:00:00
+                  recurrence={"freq":"WEEKLY","byWeekday":["MONDAY","WEDNESDAY","FRIDAY"],"endsOn":null}
+                "회의"
+                  title=회의 startAt=null questions=["DATE","START_TIME","PLACE"]
 
-                아래는 현재 시각이 2026-08-27T13:00:00 (목요일) 이고
-                분류 목록이 [육체, 정신] 일 때의 예시다.
-
-                입력: 내일 3시 헬스장에서 운동
-                {"title":"운동","startAt":"2026-08-28T15:00:00","endAt":null,"allDay":false,
-                 "category":"육체","place":"헬스장","recurrence":null,"questions":[]}
-
-                입력: 매주 월수금 아침 7시 헬스장에서 운동
-                {"title":"운동","startAt":"2026-08-31T07:00:00","endAt":null,"allDay":false,
-                 "category":"육체","place":"헬스장",
-                 "recurrence":{"freq":"WEEKLY","byWeekday":["MONDAY","WEDNESDAY","FRIDAY"],"endsOn":null},
-                 "questions":[]}
-
-                입력: 회의
-                {"title":"회의","startAt":null,"endAt":null,"allDay":false,
-                 "category":null,"place":null,"recurrence":null,
-                 "questions":["DATE","START_TIME","PLACE"]}
+                현재 시각: %s (%s) — 상대 날짜는 이 시각 기준으로 푼다.
+                분류 목록: %s
                 """
                 .formatted(now, koreanDayOfWeek(now.getDayOfWeek()), categoryList);
     }
