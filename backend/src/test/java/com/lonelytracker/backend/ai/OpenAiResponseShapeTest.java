@@ -14,14 +14,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * Responses API 응답 봉투에서 결과를 꺼내는 부분.
- * <p>
- * 실제 호출 없이 <b>봉투 모양만</b> 검증한다. 처음 붙였을 때
- * {@code output[0].content[0].text} 로 인덱스를 찍었다가 실패했다 —
- * 배열의 첫 항목이 {@code type: "reasoning"} 이고 실제 답은 그 뒤에 있었다.
- * 이런 건 가짜 파서로는 못 잡고 여기서만 잡힌다.
- */
+/** 실제 호출 없이 Responses API 응답 봉투에서 결과를 꺼내는 부분만 검증한다. */
 class OpenAiResponseShapeTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -79,7 +72,6 @@ class OpenAiResponseShapeTest {
         String envelope = """
                 { "output": [ { "type": "reasoning", "content": [] } ] }""";
 
-        // 무엇이 왔는지 모르면 진단이 불가능하다
         assertThatThrownBy(() -> extract(envelope))
                 .isInstanceOf(AiParseException.class)
                 .hasMessageContaining("reasoning");
@@ -92,10 +84,6 @@ class OpenAiResponseShapeTest {
                 .isInstanceOf(AiParseException.class);
     }
 
-    /**
-     * 같은 패키지라 package-private 메서드를 그대로 부른다.
-     * 리플렉션을 쓰면 메서드 이름이 바뀌었을 때 컴파일이 아니라 실행 중에 깨진다.
-     */
     private JsonNode extract(String envelope) {
         return parser.extractOutput(envelope);
     }

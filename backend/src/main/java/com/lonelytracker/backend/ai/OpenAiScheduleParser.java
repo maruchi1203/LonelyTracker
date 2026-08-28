@@ -25,25 +25,19 @@ import java.util.Set;
 
 /**
  * OpenAI Responses API 로 자연어를 일정 초안으로 바꾼다.
- * <p>
- * <b>HTTP 를 아는 유일한 클래스다.</b> Spring AI 같은 추상화를 쓰지 않는 이유는,
- * 타임아웃·재시도·검증을 어떻게 설계했는지가 이 프로젝트에서 보여줄 판단이기 때문이다.
+ * 이 프로젝트에서 HTTP 를 직접 다루는 유일한 클래스다.
  */
 @Component
 public class OpenAiScheduleParser implements ScheduleParser {
 
-    /** 재시도 간격의 시작값. 즉시 재시도하면 과부하 상황을 악화시킨다 */
+    /** 재시도 간격의 시작값 */
     private static final long BACKOFF_MILLIS = 1_000L;
 
     private final AppProperties.AiSetting setting; // AI용 기본 세팅
     private final ObjectMapper mapper; // JSON 직렬/역직렬용 객체
     private final RestClient client;
 
-    /**
-     * @param client 배선은 {@link OpenAiClientConfig} 가 한다. 밖에서 받는 덕에
-     *               테스트에서 가짜 서버를 끼울 수 있다 — 재시도 규칙은 실제
-     *               상태 코드를 받아봐야 검증된다.
-     */
+    /** @param client 배선은 {@link OpenAiClientConfig} 가 맡는다 */
     public OpenAiScheduleParser(AppProperties properties, ObjectMapper mapper, RestClient client) {
         this.setting = properties.ai();
         this.mapper = mapper;
@@ -58,10 +52,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
 
     // --- HTTP ------------------------------------------------------------
 
-    /**
-     * 재시도는 일시적 실패에만 한다.
-     * 4xx 는 우리 요청이 잘못된 것이라 몇 번을 보내도 같은 결과다 — 단, 429 는 예외다.
-     */
+    /** 요청을 보내고 응답 본문을 돌려준다. 일시적 실패(5xx·429)면 백오프 후 재시도한다. */
     private String callWithRetry(Map<String, Object> body, String apiKey) {
         RestClientException lastFailure = null;
 
@@ -73,11 +64,9 @@ public class OpenAiScheduleParser implements ScheduleParser {
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(body)
                         .retrieve()
-                        // 429 는 여기서 뺀다. "지금은 너무 많으니 잠깐 뒤에" 라는 뜻이라
-                        // 재시도가 맞다. onStatus 에 안 걸리면 retrieve() 기본 동작이
-                        // RestClientException 을 던져 아래 catch 가 받는다.
+                        // 429 는 일시적 실패라 아래 catch 로 흘려보낸다
                         .onStatus(status -> status.is4xxClientError()
-                                        && status.value() != HttpStatus.TOO_MANY_REQUESTS.value(),
+                                && status.value() != HttpStatus.TOO_MANY_REQUESTS.value(),
                                 (req, res) -> {
                                     throw new AiParseException(
                                             "AI 요청이 거부되었습니다 (" + res.getStatusCode().value() + ")");
@@ -124,8 +113,6 @@ public class OpenAiScheduleParser implements ScheduleParser {
                 if ("output_text".equals(part.path("type").asString(""))) {
                     String text = part.path("text").asString("");
                     if (!text.isBlank()) {
-                        // 봉투 안에는 결과가 "문자열" 로 들어 있다.
-                        // 여기서 한 번만 풀어 다음 층에 트리로 넘긴다.
                         return readOutputJson(text);
                     }
                 }
@@ -138,7 +125,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
                 "AI 응답에서 결과를 찾지 못했습니다. output 항목: " + types);
     }
 
-    /** 봉투 안의 결과 문자열을 트리로 만든다. 실패하면 봉투 문제와 구분되는 메시지를 낸다. */
+    /** 봉투 안의 결과 문자열을 JSON 트리로 만든다 */
     private JsonNode readOutputJson(String text) {
         try {
             return mapper.readTree(text);
@@ -202,7 +189,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
 
     // --- 응답 해석 --------------------------------------------------------
 
-    /** 진단용. 원문을 통째로 노출하지 않되 무엇이 왔는지는 보이게 한다. */
+    /** 오류 메시지에 실을 응답 원문의 최대 길이 */
     private static final int HINT_LENGTH = 300;
 
     private ParsedSchedule toParsed(JsonNode node) {
