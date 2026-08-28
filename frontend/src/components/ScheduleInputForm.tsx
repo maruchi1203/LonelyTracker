@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { ScheduleCreateRequest } from "../types/schedule";
-import { toLocalInputValue } from "../utils/datetime";
+import { nextHour } from "../utils/datetime";
 
 interface Props {
   /** 저장에 성공했는지 돌려준다. 실패하면 입력값을 지우지 않는다 */
@@ -8,6 +8,8 @@ interface Props {
   knownCategories: string[];
   /** 달력에서 날짜를 고른 상태면 시작 시각을 그 날짜로 채워준다 */
   defaultDate?: Date | null;
+  /** AI가 문장을 못 읽었을 때 친 문장을 제목으로 넘겨받는다 */
+  initialTitle?: string;
   disabled?: boolean;
 }
 
@@ -16,31 +18,14 @@ const INPUT =
   "w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-slate-800 placeholder:text-slate-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-3 focus:ring-brand-100";
 const LABEL = "text-xs font-semibold tracking-wide text-slate-500";
 
-/**
- * 기본 시작 시각. 지금 이후의 가장 가까운 정각으로 잡는다.
- * (13:46 이면 14:00, 정각이면 그 다음 시간)
- *
- * 날짜를 골라둔 상태면 그 날짜에 같은 "시각"을 얹는다. 지난 날짜여도
- * 시간을 직접 고르는 수고를 덜기 위함이다.
- */
-function nextHour(baseDate?: Date | null): string {
-  const now = new Date();
-  const at = new Date(now);
-  at.setHours(now.getHours() + 1, 0, 0, 0);
-
-  if (baseDate) {
-    at.setFullYear(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
-  }
-  return toLocalInputValue(at);
-}
-
 export default function ScheduleInputForm({
   onSubmit,
   knownCategories,
   defaultDate,
+  initialTitle,
   disabled,
 }: Props) {
-  const [title, setTitle] = useState("");
+  const [title, setTitle] = useState(initialTitle ?? "");
   const [startAt, setStartAt] = useState(() => nextHour(defaultDate));
   const [endAt, setEndAt] = useState("");
   const [category, setCategory] = useState("");

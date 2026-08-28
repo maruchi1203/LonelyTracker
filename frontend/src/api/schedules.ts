@@ -1,3 +1,4 @@
+import type { ParsedSchedule } from '../types/parse'
 import type {
   DeleteScope,
   OccurrenceUpdateRequest,
@@ -80,6 +81,20 @@ export async function updateOccurrence(
     body: JSON.stringify(body),
   })
   return handle<ScheduleResponse>(res)
+}
+
+/** 문장을 일정 초안으로 바꾼다. 저장하지는 않는다 */
+export async function parseSchedule(
+  text: string,
+  signal?: AbortSignal,
+): Promise<ParsedSchedule> {
+  const res = await fetch(`${BASE}/parse`, {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ text }),
+    signal,
+  })
+  return handle<ParsedSchedule>(res)
 }
 
 /** FUTURE 는 지난 기록을 남기고 앞으로만 지운다. 호출하는 쪽이 범위를 밝히게 한다 */

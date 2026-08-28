@@ -8,7 +8,7 @@ import {
 } from "../api/schedules";
 import CalendarToolbar from "../components/calendar/CalendarToolbar";
 import ScheduleCalendar from "../components/layouts/Calendar/ScheduleCalendar";
-import ScheduleInputForm from "../components/ScheduleInputForm";
+import QuickAddBar from "../components/quickadd/QuickAddBar";
 import ScheduleList from "../components/ScheduleList";
 import { applyFilters, countByCategory } from "../domain/filter";
 import { useCalendarViewState } from "../hooks/useCalendarViewState";
@@ -37,7 +37,6 @@ export default function CalendarPage() {
     useMonthOccurrences(month);
 
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
-  const [formOpen, setFormOpen] = useState(false);
 
   const fail = (e: unknown, fallback: string) =>
     setError(e instanceof Error ? e.message : fallback);
@@ -59,8 +58,17 @@ export default function CalendarPage() {
     setError(null);
     try {
       await createSchedule(body);
+
+      // 저장한 일정이 보고 있는 달 밖이면 그 달로 옮긴다. 저장했는데 아무것도 안 보이면 안 된다
+      const created = new Date(body.startAt);
+      if (
+        created.getFullYear() !== month.getFullYear() ||
+        created.getMonth() !== month.getMonth()
+      ) {
+        setMonth(new Date(created.getFullYear(), created.getMonth(), 1));
+      }
+
       await Promise.all([reload(), loadCategories()]);
-      setFormOpen(false);
       return true;
     } catch (e) {
       fail(e, "일정을 추가하지 못했습니다");
@@ -129,6 +137,13 @@ export default function CalendarPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <QuickAddBar
+        // 날짜를 골라둔 상태면 그 날짜로 시작값을 채워준다
+        defaultDate={selectedDate}
+        knownCategories={categories.map((c) => c.name)}
+        onCreate={handleCreate}
+      />
+
       <CalendarToolbar
         query={query}
         onQueryChange={setQuery}
@@ -150,42 +165,16 @@ export default function CalendarPage() {
       />
 
       <section className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-baseline gap-2">
-            <h2 className="text-lg font-semibold text-slate-800">
-              {selectedDate
-                ? `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일`
-                : "이 달 전체"}
-            </h2>
-            <p className="text-sm text-slate-500">
-              {visibleOccurrences.length}건 · 완료 {doneCount}건
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setFormOpen((open) => !open)}
-            aria-expanded={formOpen}
-            aria-label={formOpen ? "일정 추가 닫기" : "일정 추가 열기"}
-            className={`flex size-8 shrink-0 items-center justify-center rounded-full text-xl leading-none transition-all focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100 ${
-              formOpen
-                ? "rotate-45 bg-slate-200 text-slate-600"
-                : "bg-brand-500 text-white hover:bg-brand-600"
-            }`}
-          >
-            +
-          </button>
+        <div className="flex items-baseline gap-2">
+          <h2 className="text-lg font-semibold text-slate-800">
+            {selectedDate
+              ? `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일`
+              : "이 달 전체"}
+          </h2>
+          <p className="text-sm text-slate-500">
+            {visibleOccurrences.length}건 · 완료 {doneCount}건
+          </p>
         </div>
-
-        {formOpen && (
-          <ScheduleInputForm
-            onSubmit={handleCreate}
-            knownCategories={categories.map((c) => c.name)}
-            // 날짜를 골라둔 상태면 그 날짜로 시작값을 채워준다
-            defaultDate={selectedDate}
-            disabled={loading}
-          />
-        )}
 
         {error && (
           <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-600">

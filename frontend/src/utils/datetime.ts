@@ -31,3 +31,18 @@ export function isSameDay(a: Date, b: Date): boolean {
 export function formatTime(date: Date): string {
   return `${p(date.getHours())}:${p(date.getMinutes())}`
 }
+
+/**
+ * 기본 시작 시각. 지금 이후의 가장 가까운 정각으로 잡는다.
+ * 날짜를 골라둔 상태면 그 날짜에 같은 시각을 얹는다.
+ */
+export function nextHour(baseDate?: Date | null): string {
+  const now = new Date()
+  const at = new Date(now)
+  at.setHours(now.getHours() + 1, 0, 0, 0)
+
+  if (baseDate) {
+    at.setFullYear(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate())
+  }
+  return toLocalInputValue(at)
+}
