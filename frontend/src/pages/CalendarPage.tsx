@@ -8,7 +8,7 @@ import {
 } from "../api/schedules";
 import CalendarToolbar from "../components/calendar/CalendarToolbar";
 import ScheduleCalendar from "../components/layouts/Calendar/ScheduleCalendar";
-import QuickAddBar from "../components/quickadd/QuickAddBar";
+import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
 import ScheduleList from "../components/ScheduleList";
 import { applyFilters, countByCategory } from "../domain/filter";
 import { useCalendarViewState } from "../hooks/useCalendarViewState";
@@ -137,7 +137,7 @@ export default function CalendarPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <QuickAddBar
+      <QuickAddLauncher
         // 날짜를 골라둔 상태면 그 날짜로 시작값을 채워준다
         defaultDate={selectedDate}
         knownCategories={categories.map((c) => c.name)}

@@ -15,6 +15,9 @@ interface Props {
   defaultDate: Date | null;
   knownCategories: string[];
   onCreate: (body: ScheduleCreateRequest) => Promise<boolean>;
+  /** 저장에 성공했을 때. 띄워둔 패널을 닫는 데 쓴다 */
+  onDone?: () => void;
+  autoFocus?: boolean;
 }
 
 type State =
@@ -35,6 +38,8 @@ export default function QuickAddBar({
   defaultDate,
   knownCategories,
   onCreate,
+  onDone,
+  autoFocus,
 }: Props) {
   const [text, setText] = useState(
     () => sessionStorage.getItem(DRAFT_TEXT_KEY) ?? "",
@@ -117,9 +122,16 @@ export default function QuickAddBar({
     if (created) {
       setText("");
       setState({ mode: "idle" });
+      onDone?.();
     } else {
       setState({ mode: "draft", draft, questions });
     }
+  };
+
+  const createManually = async (body: ScheduleCreateRequest) => {
+    const created = await onCreate(body);
+    if (created) onDone?.();
+    return created;
   };
 
   const patch = (changes: Partial<Draft>) =>
@@ -141,6 +153,7 @@ export default function QuickAddBar({
           maxLength={500}
           // disabled 로 두면 포커스를 잃고 접근성 트리에서도 빠진다
           readOnly={parsing}
+          autoFocus={autoFocus}
           aria-label="자연어로 일정 입력"
         />
 
@@ -221,7 +234,7 @@ export default function QuickAddBar({
 
       {manual && (
         <ScheduleInputForm
-          onSubmit={onCreate}
+          onSubmit={createManually}
           knownCategories={knownCategories}
           defaultDate={defaultDate}
           // 문장을 못 읽었을 때 친 내용을 버리지 않는다
