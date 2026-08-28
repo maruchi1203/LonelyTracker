@@ -3,10 +3,11 @@ package com.lonelytracker.backend.ai;
 import com.lonelytracker.backend.common.AppProperties;
 import com.lonelytracker.backend.common.exception.AiParseException;
 import org.junit.jupiter.api.DisplayName;
+import org.springframework.web.client.RestClient;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.List;
 
@@ -24,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class OpenAiResponseShapeTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
-    private final OpenAiScheduleParser parser = new OpenAiScheduleParser(properties(), mapper);
+    private final OpenAiScheduleParser parser = new OpenAiScheduleParser(properties(), mapper, RestClient.create());
 
     @Test
     @DisplayName("reasoning 항목이 앞에 있어도 message 를 찾아낸다")
@@ -38,7 +39,7 @@ class OpenAiResponseShapeTest {
                   ]
                 }""";
 
-        assertThat(extract(envelope)).isEqualTo("{\"title\":\"운동\"}");
+        assertThat(extract(envelope).path("title").asString()).isEqualTo("운동");
     }
 
     @Test
@@ -48,11 +49,11 @@ class OpenAiResponseShapeTest {
                 {
                   "output": [
                     { "type": "message", "role": "assistant",
-                      "content": [ { "type": "output_text", "text": "결과" } ] }
+                      "content": [ { "type": "output_text", "text": "{\\"value\\":\\"결과\\"}" } ] }
                   ]
                 }""";
 
-        assertThat(extract(envelope)).isEqualTo("결과");
+        assertThat(extract(envelope).path("value").asString()).isEqualTo("결과");
     }
 
     @Test
@@ -64,12 +65,12 @@ class OpenAiResponseShapeTest {
                     { "type": "message", "role": "assistant",
                       "content": [
                         { "type": "refusal", "refusal": "못 하겠음" },
-                        { "type": "output_text", "text": "진짜 결과" }
+                        { "type": "output_text", "text": "{\\"value\\":\\"진짜 결과\\"}" }
                       ] }
                   ]
                 }""";
 
-        assertThat(extract(envelope)).isEqualTo("진짜 결과");
+        assertThat(extract(envelope).path("value").asString()).isEqualTo("진짜 결과");
     }
 
     @Test
@@ -91,19 +92,12 @@ class OpenAiResponseShapeTest {
                 .isInstanceOf(AiParseException.class);
     }
 
-    /** private 메서드라 리플렉션으로 부른다. 봉투 해석만 떼어 보려는 목적이다. */
-    private String extract(String envelope) {
-        try {
-            Method method = OpenAiScheduleParser.class
-                    .getDeclaredMethod("extractOutputText", String.class);
-            method.setAccessible(true);
-            return (String) method.invoke(parser, envelope);
-        } catch (ReflectiveOperationException e) {
-            if (e.getCause() instanceof RuntimeException runtime) {
-                throw runtime;
-            }
-            throw new IllegalStateException(e);
-        }
+    /**
+     * 같은 패키지라 package-private 메서드를 그대로 부른다.
+     * 리플렉션을 쓰면 메서드 이름이 바뀌었을 때 컴파일이 아니라 실행 중에 깨진다.
+     */
+    private JsonNode extract(String envelope) {
+        return parser.extractOutput(envelope);
     }
 
     private AppProperties properties() {
