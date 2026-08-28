@@ -185,15 +185,23 @@ public class OpenAiScheduleParser implements ScheduleParser {
                 - 반복이면 recurrence 를 채우고, 한 번뿐이면 null 로 둔다.
                 - 행동이 막연하면(예: "열심히 하기") TOO_VAGUE 를 넣는다.
 
-                예시:
-                입력: "내일 3시 헬스장에서 운동"
-                출력: title=운동, startAt=(내일 15:00), place=헬스장, recurrence=null
+                아래는 현재 시각이 2026-08-27T13:00:00 (목요일) 이고
+                분류 목록이 [육체, 정신] 일 때의 예시다.
 
-                입력: "매주 월수금 아침 7시 헬스장"
-                출력: recurrence.freq=WEEKLY, byWeekday=[MONDAY,WEDNESDAY,FRIDAY], startAt=(다음 월요일 07:00)
+                입력: 내일 3시 헬스장에서 운동
+                {"title":"운동","startAt":"2026-08-28T15:00:00","endAt":null,"allDay":false,
+                 "category":"육체","place":"헬스장","recurrence":null,"questions":[]}
 
-                입력: "회의"
-                출력: title=회의, startAt=null, questions=[DATE, START_TIME, PLACE]
+                입력: 매주 월수금 아침 7시 헬스장에서 운동
+                {"title":"운동","startAt":"2026-08-31T07:00:00","endAt":null,"allDay":false,
+                 "category":"육체","place":"헬스장",
+                 "recurrence":{"freq":"WEEKLY","byWeekday":["MONDAY","WEDNESDAY","FRIDAY"],"endsOn":null},
+                 "questions":[]}
+
+                입력: 회의
+                {"title":"회의","startAt":null,"endAt":null,"allDay":false,
+                 "category":null,"place":null,"recurrence":null,
+                 "questions":["DATE","START_TIME","PLACE"]}
                 """
                 .formatted(now, koreanDayOfWeek(now.getDayOfWeek()), categoryList);
     }
