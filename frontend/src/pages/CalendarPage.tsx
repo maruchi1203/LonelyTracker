@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchCategories } from "../api/categories";
 import {
   changeOccurrenceStatus,
@@ -6,10 +6,11 @@ import {
   deleteSchedule,
   postponeOccurrence,
 } from "../api/schedules";
-import CategoryChips from "../components/calendar/CategoryChips";
+import CalendarToolbar from "../components/calendar/CalendarToolbar";
 import ScheduleCalendar from "../components/layouts/Calendar/ScheduleCalendar";
 import ScheduleInputForm from "../components/ScheduleInputForm";
 import ScheduleList from "../components/ScheduleList";
+import { applyFilters, countByCategory } from "../domain/filter";
 import { useCalendarViewState } from "../hooks/useCalendarViewState";
 import { useMonthOccurrences } from "../hooks/useMonthOccurrences";
 import type {
@@ -21,12 +22,21 @@ import type {
 import { isSameDay } from "../utils/datetime";
 
 export default function CalendarPage() {
-  const { month, selectedDate, setMonth, toggleDate } = useCalendarViewState();
+  const {
+    month,
+    selectedDate,
+    category,
+    query,
+    setMonth,
+    toggleDate,
+    setCategory,
+    setQuery,
+    clearFilters,
+  } = useCalendarViewState();
   const { occurrences, loading, error, reload, patchOne, setError } =
     useMonthOccurrences(month);
 
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
 
   const fail = (e: unknown, fallback: string) =>
@@ -100,23 +110,34 @@ export default function CalendarPage() {
     }
   };
 
-  const inCategory = selectedCategory
-    ? occurrences.filter((o) => o.category === selectedCategory)
-    : occurrences;
+  // 칩 개수는 필터를 걸기 전의 창 전체로 센다
+  const usage = useMemo(() => countByCategory(occurrences), [occurrences]);
 
-  // 달력은 분류까지 반영하고, 목록만 선택한 날짜로 더 좁힌다
+  // 분류·검색은 달력까지 반영하고, 날짜 선택은 목록에만 적용한다
+  const filtered = useMemo(
+    () => applyFilters(occurrences, { category, query }),
+    [occurrences, category, query],
+  );
+
   const visibleOccurrences = selectedDate
-    ? inCategory.filter((o) => isSameDay(new Date(o.startAt), selectedDate))
-    : inCategory;
+    ? filtered.filter((o) => isSameDay(new Date(o.startAt), selectedDate))
+    : filtered;
 
   const doneCount = visibleOccurrences.filter((o) => o.status === "DONE").length;
+  const filtering = Boolean(category) || query.trim().length > 0;
+  const monthLabel = `${month.getFullYear()}년 ${month.getMonth() + 1}월`;
 
   return (
     <div className="flex flex-col gap-6">
-      <CategoryChips
+      <CalendarToolbar
+        query={query}
+        onQueryChange={setQuery}
         categories={categories}
-        selected={selectedCategory}
-        onSelect={setSelectedCategory}
+        usage={usage}
+        total={occurrences.length}
+        monthLabel={monthLabel}
+        selectedCategory={category}
+        onSelectCategory={setCategory}
       />
 
       <ScheduleCalendar
@@ -124,7 +145,7 @@ export default function CalendarPage() {
         onMonthChange={setMonth}
         selectedDate={selectedDate}
         onSelectDate={toggleDate}
-        occurrences={inCategory}
+        occurrences={filtered}
         loading={loading}
       />
 
@@ -177,6 +198,8 @@ export default function CalendarPage() {
           onToggleStatus={handleToggleStatus}
           onPostpone={handlePostpone}
           onDelete={handleDelete}
+          emptyReason={filtering ? "filtered-out" : "no-data"}
+          onClearFilters={clearFilters}
         />
       </section>
     </div>
