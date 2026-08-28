@@ -3,9 +3,10 @@ package com.lonelytracker.backend.ai;
 import com.lonelytracker.backend.common.AppProperties;
 import com.lonelytracker.backend.common.exception.AiParseException;
 import com.lonelytracker.backend.common.exception.AiUnavailableException;
+import com.lonelytracker.backend.schedule.RecurrenceFreq;
+
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -34,41 +35,37 @@ public class OpenAiScheduleParser implements ScheduleParser {
     /** 재시도 간격의 시작값. 즉시 재시도하면 과부하 상황을 악화시킨다 */
     private static final long BACKOFF_MILLIS = 1_000L;
 
-    private final AppProperties.AiSetting config;
-    private final ObjectMapper mapper;
+    private final AppProperties.AiSetting setting; // AI용 기본 세팅
+    private final ObjectMapper mapper; // JSON 직렬/역직렬용 객체
     private final RestClient client;
 
-    //
-    public OpenAiScheduleParser(AppProperties properties, ObjectMapper mapper) {
-        this.config = properties.ai();
+    /**
+     * @param client 배선은 {@link OpenAiClientConfig} 가 한다. 밖에서 받는 덕에
+     *               테스트에서 가짜 서버를 끼울 수 있다 — 재시도 규칙은 실제
+     *               상태 코드를 받아봐야 검증된다.
+     */
+    public OpenAiScheduleParser(AppProperties properties, ObjectMapper mapper, RestClient client) {
+        this.setting = properties.ai();
         this.mapper = mapper;
-
-        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory();
-        factory.setReadTimeout(config.readTimeout());
-
-        this.client = RestClient.builder()
-                .requestFactory(factory)
-                .baseUrl(config.baseUrl())
-                .build();
+        this.client = client;
     }
 
     @Override
     public ParsedSchedule parse(CommandForAI command) {
         String responseBody = callWithRetry(requestBody(command), command.apiKey());
-        String json = extractOutputText(responseBody);
-        return toParsed(json);
+        return toParsed(extractOutput(responseBody));
     }
 
     // --- HTTP ------------------------------------------------------------
 
     /**
-     * 재시도는 일시적 실패에만
-     * 4xx(429[요청이 너무 많음] 제외)에는 시도하지 않음
+     * 재시도는 일시적 실패에만 한다.
+     * 4xx 는 우리 요청이 잘못된 것이라 몇 번을 보내도 같은 결과다.
      */
     private String callWithRetry(Map<String, Object> body, String apiKey) {
         RestClientException lastFailure = null;
 
-        for (int attempt = 0; attempt <= config.maxRetries(); attempt++) {
+        for (int attempt = 0; attempt <= setting.maxRetries(); attempt++) {
             try {
                 return client.post()
                         .uri("/responses")
@@ -92,7 +89,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
         throw new AiUnavailableException("AI 응답을 받지 못했습니다", lastFailure);
     }
 
-    /** 지수 백오프. 1초 → 2초 → 4초. 모두가 즉시 재시도하면 상황이 더 나빠진다. */
+    /** 호출 연기 시간 1초 → 2초 → 4초 → ... **/
     private void sleepBackoff(int attempt) {
         try {
             Thread.sleep(BACKOFF_MILLIS << attempt);
@@ -103,15 +100,11 @@ public class OpenAiScheduleParser implements ScheduleParser {
     }
 
     /**
-     * Responses API 는 봉투 안에 결과를 <b>문자열로</b> 담는다.
-     * 그래서 두 번 파싱한다 — 봉투 한 번, 그 안의 문자열 한 번.
-     * <p>
-     * <b>인덱스로 찍으면 안 된다.</b> {@code output} 배열의 첫 항목은 대개
-     * {@code type: "reasoning"} 이고 실제 답은 그 뒤의 {@code type: "message"} 에 있다.
-     * 모델이나 옵션에 따라 앞에 붙는 항목 수가 달라지므로 <b>타입으로 찾는다</b>.
+     * 1. API 응답 전체 텍스트 → JSON 변환 필요한 부분만 추출 →
      */
-    private String extractOutputText(String envelope) {
+    JsonNode extractOutput(String envelope) {
         JsonNode root;
+
         try {
             root = mapper.readTree(envelope);
         } catch (RuntimeException e) {
@@ -126,32 +119,33 @@ public class OpenAiScheduleParser implements ScheduleParser {
                 if ("output_text".equals(part.path("type").asString(""))) {
                     String text = part.path("text").asString("");
                     if (!text.isBlank()) {
-                        return text;
+                        // 봉투 안에는 결과가 "문자열" 로 들어 있다.
+                        // 여기서 한 번만 풀어 다음 층에 트리로 넘긴다.
+                        return readOutputJson(text);
                     }
                 }
             }
         }
 
-        // 무엇이 왔는지 알 수 없으면 진단이 불가능하다. 온 항목의 타입만 알려준다.
         List<String> types = new ArrayList<>();
         root.path("output").forEach(item -> types.add(item.path("type").asString("?")));
         throw new AiParseException(
                 "AI 응답에서 결과를 찾지 못했습니다. output 항목: " + types);
     }
 
-    // --- 요청 조립 --------------------------------------------------------
+    /** 봉투 안의 결과 문자열을 트리로 만든다. 실패하면 봉투 문제와 구분되는 메시지를 낸다. */
+    private JsonNode readOutputJson(String text) {
+        try {
+            return mapper.readTree(text);
+        } catch (RuntimeException e) {
+            throw new AiParseException("AI 가 만든 JSON 을 읽지 못했습니다", e);
+        }
+    }
 
-    /**
-     * <b>문자열이 아니라 Map 을 돌려준다.</b> 직렬화를 Jackson 컨버터에 맡기기 위해서다.
-     * <p>
-     * 직접 문자열로 만들어 {@code .body(String)} 으로 넘기면 인코딩이
-     * {@code Content-Type} 의 charset 에 좌우된다. {@code application/json} 에는
-     * charset 이 없어 한글이 깨질 수 있다. Map 을 넘기면 Jackson 컨버터가
-     * <b>UTF-8 로 직렬화</b>하므로 그 위험이 사라진다.
-     */
+    // --- 요청 조립 --------------------------------------------------------
     private Map<String, Object> requestBody(CommandForAI command) {
         return Map.of(
-                "model", config.model(),
+                "model", setting.model(),
                 "input", List.of(
                         Map.of("role", "system", "content",
                                 systemPrompt(command.now(), command.categories())),
@@ -216,19 +210,10 @@ public class OpenAiScheduleParser implements ScheduleParser {
     /** 진단용. 원문을 통째로 노출하지 않되 무엇이 왔는지는 보이게 한다. */
     private static final int HINT_LENGTH = 300;
 
-    private ParsedSchedule toParsed(String json) {
-        JsonNode node;
-        try {
-            node = mapper.readTree(json);
-        } catch (RuntimeException e) {
-            throw new AiParseException("AI 가 만든 JSON 을 읽지 못했습니다", e);
-        }
-
-        // 제목조차 없으면 쓸 수 있는 일정이 아니다. 무엇이 왔는지 남기지 않으면
-        // "일정으로 읽을 수 없다" 만 보이고 어디가 어긋났는지 알 길이 없다.
-        if (textOrNull(node, "title") == null) {
-            throw new AiParseException(
-                    "AI 가 제목을 채우지 못했습니다. 응답: " + hint(json));
+    private ParsedSchedule toParsed(JsonNode node) {
+        // 제목과 시작일을 못 채우면 최소한의 일정을 형성할 수 없음
+        if (textOrNull(node, "title") == null || dateTimeOrNull(node, "startAt") == null) {
+            throw new AiParseException("AI가 제목을 채우지 못했습니다. 응답: " + hint(node.toString()));
         }
 
         return new ParsedSchedule(
@@ -238,31 +223,39 @@ public class OpenAiScheduleParser implements ScheduleParser {
                 node.path("allDay").asBoolean(false),
                 textOrNull(node, "category"),
                 textOrNull(node, "place"),
-                recurrenceOf(node.path("recurrence")),
+                recurringOf(node.path("recurrence")),
                 questionsOf(node.path("questions")));
     }
 
-    private ParsedRecurringSchedule recurrenceOf(JsonNode node) {
+    // 반복 일정 파싱
+    private ParsedRecurringSchedule recurringOf(JsonNode node) {
+        // Node가 없을 경우
         if (node.isMissingNode() || node.isNull()) {
             return null;
         }
+
+        // 반복 요일
         Set<DayOfWeek> weekdays = EnumSet.noneOf(DayOfWeek.class);
         node.path("byWeekday").forEach(n -> weekdays.add(DayOfWeek.valueOf(n.asString())));
 
+        // 종료일
         String endsOn = textOrNull(node, "endsOn");
-        return new ParsedRecurringSchedule(
-                com.lonelytracker.backend.schedule.RecurrenceFreq.valueOf(
-                        node.path("freq").asString()),
+
+        // 파싱된 스케쥴
+        ParsedRecurringSchedule schedule = new ParsedRecurringSchedule(
+                RecurrenceFreq.valueOf(node.path("freq").asString()),
                 weekdays,
                 (endsOn == null) ? null : LocalDate.parse(endsOn));
+
+        return schedule;
     }
 
     /**
-     * 모르는 ID 는 조용히 버린다. 스키마의 enum 이 막아주지만,
-     * 모델이 규칙을 어겼을 때 그 하나 때문에 전체가 실패하면 안 된다.
+     * 질문 ID를 반환받아 Parsing
      */
     private List<ParseQuestion> questionsOf(JsonNode node) {
         List<ParseQuestion> questions = new ArrayList<>();
+
         node.forEach(n -> {
             try {
                 questions.add(ParseQuestion.valueOf(n.asString()));
@@ -270,6 +263,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
                 // 알 수 없는 질문 ID
             }
         });
+
         return questions;
     }
 
