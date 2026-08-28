@@ -12,6 +12,9 @@ interface Props {
   onToggleStatus: (occurrence: ScheduleResponse) => void;
   onPostpone: (occurrence: ScheduleResponse, to: string) => void;
   onDelete: (occurrence: ScheduleResponse, scope: DeleteScope) => void;
+  /** 비어 있는 이유. 일정이 없는 것과 필터에 걸린 것은 다르다 */
+  emptyReason?: "no-data" | "filtered-out";
+  onClearFilters?: () => void;
 }
 
 const STATUS_LABEL: Record<ScheduleStatus, string> = {
@@ -36,12 +39,29 @@ export default function ScheduleList({
   onToggleStatus,
   onPostpone,
   onDelete,
+  emptyReason = "no-data",
+  onClearFilters,
 }: Props) {
   if (occurrences.length === 0) {
     return (
-      <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-12 text-center text-sm text-slate-400">
-        등록된 일정이 없습니다. 위에서 첫 일정을 추가해 보세요.
-      </p>
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-12 text-center text-sm text-slate-400">
+        {emptyReason === "filtered-out" ? (
+          <>
+            <p>이 조건에 맞는 일정이 없습니다.</p>
+            {onClearFilters && (
+              <button
+                type="button"
+                onClick={onClearFilters}
+                className="rounded-md border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+              >
+                필터 지우기
+              </button>
+            )}
+          </>
+        ) : (
+          <p>등록된 일정이 없습니다. 위에서 첫 일정을 추가해 보세요.</p>
+        )}
+      </div>
     );
   }
 

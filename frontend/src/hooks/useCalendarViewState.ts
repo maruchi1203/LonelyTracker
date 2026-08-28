@@ -55,5 +55,46 @@ export function useCalendarViewState() {
     [update, selectedDate],
   )
 
-  return { month, selectedDate, setMonth, toggleDate }
+  const category = params.get('cat')
+  const query = params.get('q') ?? ''
+
+  const setCategory = useCallback(
+    (name: string | null) => {
+      update((p) => {
+        if (name) p.set('cat', name)
+        else p.delete('cat')
+      })
+    },
+    [update],
+  )
+
+  /** 한 글자마다 방문 기록을 쌓지 않도록 현재 항목을 갈아끼운다 */
+  const setQuery = useCallback(
+    (value: string) => {
+      update((p) => {
+        if (value) p.set('q', value)
+        else p.delete('q')
+      }, true)
+    },
+    [update],
+  )
+
+  const clearFilters = useCallback(() => {
+    update((p) => {
+      p.delete('cat')
+      p.delete('q')
+    })
+  }, [update])
+
+  return {
+    month,
+    selectedDate,
+    category,
+    query,
+    setMonth,
+    toggleDate,
+    setCategory,
+    setQuery,
+    clearFilters,
+  }
 }
