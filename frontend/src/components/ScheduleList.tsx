@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { occurrenceKey } from "../domain/occurrence";
 import type {
   DeleteScope,
@@ -23,8 +23,8 @@ const STATUS_LABEL: Record<ScheduleStatus, string> = {
   SKIPPED: "건너뜀",
 };
 
-const ACTION =
-  "shrink-0 rounded-md border border-transparent px-2.5 py-1.5 text-xs text-slate-400 transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100";
+const MENU_ITEM =
+  "w-full rounded-md px-3 py-1.5 text-left text-xs whitespace-nowrap transition-colors";
 
 function formatRange(occurrence: ScheduleResponse): string {
   const start = new Date(occurrence.startAt);
@@ -59,7 +59,7 @@ export default function ScheduleList({
             )}
           </>
         ) : (
-          <p>등록된 일정이 없습니다. 위에서 첫 일정을 추가해 보세요.</p>
+          <p>등록된 일정이 없습니다. 오른쪽 아래 + 로 추가해 보세요.</p>
         )}
       </div>
     );
@@ -80,7 +80,10 @@ export default function ScheduleList({
   );
 }
 
-type ItemProps = Omit<Props, "occurrences"> & { occurrence: ScheduleResponse };
+type ItemProps = Pick<
+  Props,
+  "onToggleStatus" | "onPostpone" | "onDelete"
+> & { occurrence: ScheduleResponse };
 
 function ScheduleListItem({
   occurrence,
@@ -88,19 +91,43 @@ function ScheduleListItem({
   onPostpone,
   onDelete,
 }: ItemProps) {
-  const [pane, setPane] = useState<"none" | "postpone" | "delete">("none");
+  const [pane, setPane] = useState<"none" | "menu" | "postpone">("none");
   const [moveTo, setMoveTo] = useState(() =>
     toLocalInputValue(new Date(occurrence.startAt)),
   );
+  const row = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    if (pane !== "menu") return;
+
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent && e.key !== "Escape") return;
+      if (e.type === "pointerdown" && row.current?.contains(e.target as Node)) {
+        return;
+      }
+      setPane("none");
+    };
+
+    document.addEventListener("keydown", close);
+    document.addEventListener("pointerdown", close);
+    return () => {
+      document.removeEventListener("keydown", close);
+      document.removeEventListener("pointerdown", close);
+    };
+  }, [pane]);
 
   const done = occurrence.status === "DONE";
-  const toggle = (next: "postpone" | "delete") =>
-    setPane((p) => (p === next ? "none" : next));
 
   return (
     <li
+      ref={row}
+      // 우클릭도 같은 메뉴를 연다. 자리는 항상 같아야 다음에 어디를 볼지 안다
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setPane("menu");
+      }}
       // 왼쪽 띠 색으로 완료 여부를 구분한다
-      className={`flex flex-col gap-2 rounded-xl border border-l-3 border-slate-200 px-4 py-3.5 transition-all hover:border-slate-300 hover:shadow-md ${
+      className={`relative flex flex-col gap-2 rounded-xl border border-l-3 border-slate-200 px-4 py-3.5 transition-all hover:border-slate-300 hover:shadow-md ${
         done
           ? "border-l-slate-300 bg-slate-50"
           : "border-l-brand-300 bg-white hover:border-l-brand-500"
@@ -157,26 +184,62 @@ function ScheduleListItem({
 
         <button
           type="button"
-          className={`${ACTION} hover:border-amber-200 hover:bg-amber-50 hover:text-amber-700`}
-          aria-expanded={pane === "postpone"}
-          onClick={() => toggle("postpone")}
+          aria-label={`${occurrence.title} 작업 메뉴`}
+          aria-expanded={pane === "menu"}
+          onClick={() => setPane((p) => (p === "menu" ? "none" : "menu"))}
+          className="shrink-0 rounded-md border border-transparent px-2.5 py-1.5 text-slate-400 transition-colors hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100"
         >
-          연기
-        </button>
-
-        <button
-          type="button"
-          className={`${ACTION} hover:border-red-200 hover:bg-red-50 hover:text-red-600`}
-          aria-expanded={pane === "delete"}
-          onClick={() => toggle("delete")}
-        >
-          삭제
+          ⋯
         </button>
       </div>
 
+      {pane === "menu" && (
+        <div
+          role="menu"
+          className="absolute top-12 right-3 z-20 flex w-52 flex-col gap-0.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            className={`${MENU_ITEM} text-slate-700 hover:bg-amber-50 hover:text-amber-700`}
+            onClick={() => setPane("postpone")}
+          >
+            연기
+          </button>
+
+          {/* 범위를 버튼 하나로 넘겨짚지 않는다 */}
+          <button
+            type="button"
+            role="menuitem"
+            className={`${MENU_ITEM} text-slate-700 hover:bg-red-50 hover:text-red-600`}
+            onClick={() => {
+              setPane("none");
+              onDelete(occurrence, "FUTURE");
+            }}
+          >
+            앞으로 그만두기 (기록 유지)
+          </button>
+
+          <button
+            type="button"
+            role="menuitem"
+            className={`${MENU_ITEM} text-red-600 hover:bg-red-50`}
+            onClick={() => {
+              setPane("none");
+              onDelete(occurrence, "ALL");
+            }}
+          >
+            전체 삭제
+          </button>
+        </div>
+      )}
+
       {pane === "postpone" && (
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 text-xs">
-          <label className="text-slate-500" htmlFor={`to-${occurrenceKey(occurrence)}`}>
+          <label
+            className="text-slate-500"
+            htmlFor={`to-${occurrenceKey(occurrence)}`}
+          >
             언제로 미룰까요?
           </label>
           <input
@@ -196,26 +259,12 @@ function ScheduleListItem({
           >
             미루기
           </button>
-        </div>
-      )}
-
-      {pane === "delete" && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 text-xs">
-          {/* 범위를 버튼 하나로 넘겨짚지 않는다 */}
-          <span className="text-slate-500">어디까지 지울까요?</span>
           <button
             type="button"
-            className="rounded-md border border-slate-200 px-3 py-1 text-slate-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-            onClick={() => onDelete(occurrence, "FUTURE")}
+            className="rounded-md border border-slate-200 px-3 py-1 text-slate-500 hover:bg-slate-50"
+            onClick={() => setPane("none")}
           >
-            앞으로 그만두기 (기록 유지)
-          </button>
-          <button
-            type="button"
-            className="rounded-md bg-red-500 px-3 py-1 font-semibold text-white hover:bg-red-600"
-            onClick={() => onDelete(occurrence, "ALL")}
-          >
-            전체 삭제
+            취소
           </button>
         </div>
       )}
