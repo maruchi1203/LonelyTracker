@@ -4,14 +4,14 @@ import {
   changeOccurrenceStatus,
   createSchedule,
   deleteSchedule,
-  fetchSchedules,
   postponeOccurrence,
 } from "../api/schedules";
 import CategoryChips from "../components/calendar/CategoryChips";
 import ScheduleCalendar from "../components/layouts/Calendar/ScheduleCalendar";
 import ScheduleInputForm from "../components/ScheduleInputForm";
 import ScheduleList from "../components/ScheduleList";
-import { replaceOccurrence } from "../domain/occurrence";
+import { useCalendarViewState } from "../hooks/useCalendarViewState";
+import { useMonthOccurrences } from "../hooks/useMonthOccurrences";
 import type {
   CategoryResponse,
   DeleteScope,
@@ -21,13 +21,13 @@ import type {
 import { isSameDay } from "../utils/datetime";
 
 export default function CalendarPage() {
-  const [occurrences, setOccurrences] = useState<ScheduleResponse[]>([]);
+  const { month, selectedDate, setMonth, toggleDate } = useCalendarViewState();
+  const { occurrences, loading, error, reload, patchOne, setError } =
+    useMonthOccurrences(month);
+
   const [categories, setCategories] = useState<CategoryResponse[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const fail = (e: unknown, fallback: string) =>
     setError(e instanceof Error ? e.message : fallback);
@@ -40,22 +40,6 @@ export default function CalendarPage() {
     }
   }, []);
 
-  const load = useCallback(async (category: string | null) => {
-    setLoading(true);
-    setError(null);
-    try {
-      setOccurrences(await fetchSchedules(category ? { category } : undefined));
-    } catch (e) {
-      fail(e, "목록을 불러오지 못했습니다");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load(selectedCategory);
-  }, [load, selectedCategory]);
-
   useEffect(() => {
     void loadCategories();
   }, [loadCategories]);
@@ -65,7 +49,7 @@ export default function CalendarPage() {
     setError(null);
     try {
       await createSchedule(body);
-      await Promise.all([load(selectedCategory), loadCategories()]);
+      await Promise.all([reload(), loadCategories()]);
       setFormOpen(false);
       return true;
     } catch (e) {
@@ -77,12 +61,13 @@ export default function CalendarPage() {
   const handleToggleStatus = async (occurrence: ScheduleResponse) => {
     setError(null);
     try {
-      const updated = await changeOccurrenceStatus(
-        occurrence.id,
-        occurrence.occurrenceDate,
-        occurrence.status === "DONE" ? "PLANNED" : "DONE",
+      patchOne(
+        await changeOccurrenceStatus(
+          occurrence.id,
+          occurrence.occurrenceDate,
+          occurrence.status === "DONE" ? "PLANNED" : "DONE",
+        ),
       );
-      setOccurrences((prev) => replaceOccurrence(prev, updated));
     } catch (e) {
       fail(e, "상태를 변경하지 못했습니다");
     }
@@ -91,12 +76,11 @@ export default function CalendarPage() {
   const handlePostpone = async (occurrence: ScheduleResponse, to: string) => {
     setError(null);
     try {
-      const updated = await postponeOccurrence(
-        occurrence.id,
-        occurrence.occurrenceDate,
-        to,
+      patchOne(
+        await postponeOccurrence(occurrence.id, occurrence.occurrenceDate, to),
       );
-      setOccurrences((prev) => replaceOccurrence(prev, updated));
+      // 창 밖으로 미뤘다면 목록에서 사라져야 하므로 다시 받는다
+      await reload();
     } catch (e) {
       fail(e, "일정을 미루지 못했습니다");
     }
@@ -110,16 +94,20 @@ export default function CalendarPage() {
     setError(null);
     try {
       await deleteSchedule(occurrence.id, scope);
-      await Promise.all([load(selectedCategory), loadCategories()]);
+      await Promise.all([reload(), loadCategories()]);
     } catch (e) {
       fail(e, "일정을 삭제하지 못했습니다");
     }
   };
 
-  // 달력은 전체를 받고, 목록만 선택한 날짜로 좁힌다
-  const visibleOccurrences = selectedDate
-    ? occurrences.filter((o) => isSameDay(new Date(o.startAt), selectedDate))
+  const inCategory = selectedCategory
+    ? occurrences.filter((o) => o.category === selectedCategory)
     : occurrences;
+
+  // 달력은 분류까지 반영하고, 목록만 선택한 날짜로 더 좁힌다
+  const visibleOccurrences = selectedDate
+    ? inCategory.filter((o) => isSameDay(new Date(o.startAt), selectedDate))
+    : inCategory;
 
   const doneCount = visibleOccurrences.filter((o) => o.status === "DONE").length;
 
@@ -132,13 +120,12 @@ export default function CalendarPage() {
       />
 
       <ScheduleCalendar
-        occurrences={occurrences}
-        // 같은 날짜를 다시 누르면 선택을 푼다
-        onSelectDate={(date) =>
-          setSelectedDate((prev) =>
-            prev && isSameDay(prev, date) ? null : date,
-          )
-        }
+        month={month}
+        onMonthChange={setMonth}
+        selectedDate={selectedDate}
+        onSelectDate={toggleDate}
+        occurrences={inCategory}
+        loading={loading}
       />
 
       <section className="flex flex-col gap-2">
@@ -147,7 +134,7 @@ export default function CalendarPage() {
             <h2 className="text-lg font-semibold text-slate-800">
               {selectedDate
                 ? `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일`
-                : "전체 일정"}
+                : "이 달 전체"}
             </h2>
             <p className="text-sm text-slate-500">
               {visibleOccurrences.length}건 · 완료 {doneCount}건
@@ -185,18 +172,12 @@ export default function CalendarPage() {
           </p>
         )}
 
-        {loading ? (
-          <p className="rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-12 text-center text-sm text-slate-400">
-            불러오는 중…
-          </p>
-        ) : (
-          <ScheduleList
-            occurrences={visibleOccurrences}
-            onToggleStatus={handleToggleStatus}
-            onPostpone={handlePostpone}
-            onDelete={handleDelete}
-          />
-        )}
+        <ScheduleList
+          occurrences={visibleOccurrences}
+          onToggleStatus={handleToggleStatus}
+          onPostpone={handlePostpone}
+          onDelete={handleDelete}
+        />
       </section>
     </div>
   );
