@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { occurrenceKey } from "../domain/occurrence";
+import { formatOccurrenceRange, occurrenceKey } from "../domain/occurrence";
 import type {
   DeleteScope,
   ScheduleResponse,
   ScheduleStatus,
 } from "../types/schedule";
-import { formatTime, toLocalInputValue } from "../utils/datetime";
+import { toLocalInputValue } from "../utils/datetime";
 
 interface Props {
   occurrences: ScheduleResponse[];
@@ -25,14 +25,6 @@ const STATUS_LABEL: Record<ScheduleStatus, string> = {
 
 const MENU_ITEM =
   "w-full rounded-md px-3 py-1.5 text-left text-xs whitespace-nowrap transition-colors";
-
-function formatRange(occurrence: ScheduleResponse): string {
-  const start = new Date(occurrence.startAt);
-  const date = `${start.getMonth() + 1}/${start.getDate()}`;
-
-  if (!occurrence.endAt) return `${date} ${formatTime(start)}`;
-  return `${date} ${formatTime(start)} ~ ${formatTime(new Date(occurrence.endAt))}`;
-}
 
 export default function ScheduleList({
   occurrences,
@@ -152,7 +144,7 @@ function ScheduleListItem({
           </span>
 
           <span className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-            {formatRange(occurrence)}
+            {formatOccurrenceRange(occurrence)}
 
             {occurrence.category && (
               <span className="rounded-full border border-brand-100 bg-brand-50 px-2 py-0.5 font-medium text-brand-700">
