@@ -1,10 +1,10 @@
+import type { DayLanes, LaneSlot } from "../../../domain/calendarLanes";
 import { occurrenceKey } from "../../../domain/occurrence";
-import type { ScheduleResponse } from "../../../types/schedule";
 
 interface Props {
   date: Date;
-  /** 이 날짜에 걸린 회차. 부모가 미리 골라 넘긴다 */
-  occurrences: ScheduleResponse[];
+  /** 이 날짜의 레인. 부모가 주 단위로 배정해 넘긴다 */
+  day: DayLanes;
   /** 이번 달이 아닌 날(앞뒤로 채워진 칸)은 흐리게 표시한다 */
   inCurrentMonth: boolean;
   isToday: boolean;
@@ -12,27 +12,28 @@ interface Props {
   onSelect: (date: Date) => void;
 }
 
-/** 한 칸에 다 못 넣을 때 "+N" 으로 접는 기준 */
-const MAX_VISIBLE = 3;
+const BAR = "h-4 px-1 text-[11px] leading-4 truncate";
+/** 셀 패딩과 그리드 간격을 넘어가 옆 칸의 띠와 맞닿게 한다 */
+const BLEED_LEFT = "-ml-2.5 pl-2.5";
+const BLEED_RIGHT = "-mr-2.5 pr-2.5";
 
 export default function ScheduleCalendarCell({
   date,
-  occurrences,
+  day,
   inCurrentMonth,
   isToday,
   isSelected,
   onSelect,
 }: Props) {
-  const visible = occurrences.slice(0, MAX_VISIBLE);
-  const hidden = occurrences.length - visible.length;
+  const count = day.lanes.filter(Boolean).length + day.hidden;
 
   return (
     <button
       type="button"
       onClick={() => onSelect(date)}
-      aria-label={`${date.getMonth() + 1}월 ${date.getDate()}일, 일정 ${occurrences.length}건`}
+      aria-label={`${date.getMonth() + 1}월 ${date.getDate()}일, 일정 ${count}건`}
       aria-pressed={isSelected}
-      className={`flex min-h-24 flex-col gap-1 rounded-md border p-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100 ${
+      className={`flex min-h-28 flex-col gap-1 rounded-md border p-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100 ${
         isSelected
           ? "border-brand-500 bg-brand-50"
           : "border-slate-200 bg-white hover:border-brand-200 hover:bg-brand-50/40"
@@ -51,34 +52,57 @@ export default function ScheduleCalendarCell({
       </span>
 
       <ul className="flex list-none flex-col gap-0.5 p-0">
-        {visible.map((occurrence) => (
-          <li
-            key={occurrenceKey(occurrence)}
-            // 칸이 좁으므로 한 줄로 자르고, 전체 제목은 title 속성으로 보여준다
-            title={
-              occurrence.postponeCount > 0
-                ? `${occurrence.title} · ${occurrence.postponeCount}번 미룸`
-                : occurrence.title
-            }
-            className={`truncate rounded-sm px-1 text-[11px] leading-4 ${
-              occurrence.status === "DONE"
-                ? "bg-slate-100 text-slate-400 line-through"
-                : "bg-brand-50 text-brand-700"
-            }`}
-          >
-            {occurrence.postponeCount > 0 && (
-              <span className="text-amber-600">↻ </span>
-            )}
-            {occurrence.title}
-          </li>
-        ))}
+        {day.lanes.map((slot, lane) =>
+          slot ? (
+            <Bar key={occurrenceKey(slot.occurrence)} slot={slot} />
+          ) : (
+            // 빈 레인도 자리를 차지해야 옆 칸의 띠와 높이가 맞는다
+            <li key={`empty-${lane}`} className="h-4" aria-hidden />
+          ),
+        )}
 
-        {hidden > 0 && (
+        {day.hidden > 0 && (
           <li className="px-1 text-[11px] leading-4 text-slate-400">
-            +{hidden}건
+            +{day.hidden}건
           </li>
         )}
       </ul>
     </button>
+  );
+}
+
+function Bar({ slot }: { slot: LaneSlot }) {
+  const { occurrence, isStart, isEnd } = slot;
+  const done = occurrence.status === "DONE";
+
+  const shape = [
+    isStart ? "rounded-l-sm" : BLEED_LEFT,
+    isEnd ? "rounded-r-sm" : BLEED_RIGHT,
+  ].join(" ");
+
+  return (
+    <li
+      // 칸이 좁으므로 한 줄로 자르고, 전체 제목은 title 속성으로 보여준다
+      title={
+        occurrence.postponeCount > 0
+          ? `${occurrence.title} · ${occurrence.postponeCount}번 미룸`
+          : occurrence.title
+      }
+      className={`${BAR} ${shape} ${
+        done
+          ? "bg-slate-100 text-slate-400 line-through"
+          : "bg-brand-100 text-brand-800"
+      }`}
+    >
+      {/* 제목은 띠가 시작하는 칸에만 적는다. 이어지는 칸은 띠만 보인다 */}
+      {isStart && (
+        <>
+          {occurrence.postponeCount > 0 && (
+            <span className="text-amber-600">↻ </span>
+          )}
+          {occurrence.title}
+        </>
+      )}
+    </li>
   );
 }
