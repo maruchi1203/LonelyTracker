@@ -11,6 +11,7 @@ import ScheduleCalendar from "../components/layouts/Calendar/ScheduleCalendar";
 import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
 import ScheduleList from "../components/ScheduleList";
 import { applyFilters, countByCategory } from "../domain/filter";
+import { coversDate } from "../domain/occurrence";
 import { useCalendarViewState } from "../hooks/useCalendarViewState";
 import { useMonthOccurrences } from "../hooks/useMonthOccurrences";
 import type {
@@ -19,7 +20,6 @@ import type {
   ScheduleCreateRequest,
   ScheduleResponse,
 } from "../types/schedule";
-import { isSameDay } from "../utils/datetime";
 
 export default function CalendarPage() {
   const {
@@ -121,17 +121,23 @@ export default function CalendarPage() {
   // 칩 개수는 필터를 걸기 전의 창 전체로 센다
   const usage = useMemo(() => countByCategory(occurrences), [occurrences]);
 
-  // 분류·검색은 달력까지 반영하고, 날짜 선택은 목록에만 적용한다
-  const filtered = useMemo(
+  // 달력에 그릴 것 — 분류와 검색만 반영한다
+  const forCalendar = useMemo(
     () => applyFilters(occurrences, { category, query }),
     [occurrences, category, query],
   );
 
-  const visibleOccurrences = selectedDate
-    ? filtered.filter((o) => isSameDay(new Date(o.startAt), selectedDate))
-    : filtered;
+  // 아래 목록에 그릴 것 — 고른 날짜까지 좁힌다.
+  // 여러 날에 걸친 일정은 첫날뿐 아니라 걸친 날 모두에서 보여야 한다
+  const forList = useMemo(
+    () =>
+      selectedDate
+        ? forCalendar.filter((o) => coversDate(o, selectedDate))
+        : forCalendar,
+    [forCalendar, selectedDate],
+  );
 
-  const doneCount = visibleOccurrences.filter((o) => o.status === "DONE").length;
+  const doneCount = forList.filter((o) => o.status === "DONE").length;
   const filtering = Boolean(category) || query.trim().length > 0;
   const monthLabel = `${month.getFullYear()}년 ${month.getMonth() + 1}월`;
 
@@ -160,7 +166,7 @@ export default function CalendarPage() {
         onMonthChange={setMonth}
         selectedDate={selectedDate}
         onSelectDate={toggleDate}
-        occurrences={filtered}
+        occurrences={forCalendar}
         loading={loading}
       />
 
@@ -172,7 +178,7 @@ export default function CalendarPage() {
               : "이 달 전체"}
           </h2>
           <p className="text-sm text-slate-500">
-            {visibleOccurrences.length}건 · 완료 {doneCount}건
+            {forList.length}건 · 완료 {doneCount}건
           </p>
         </div>
 
@@ -183,7 +189,7 @@ export default function CalendarPage() {
         )}
 
         <ScheduleList
-          occurrences={visibleOccurrences}
+          occurrences={forList}
           onToggleStatus={handleToggleStatus}
           onPostpone={handlePostpone}
           onDelete={handleDelete}
