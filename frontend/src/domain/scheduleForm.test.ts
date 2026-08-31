@@ -1,0 +1,152 @@
+import { describe, expect, it } from 'vitest'
+import type { ParsedSchedule } from '../types/parse'
+import type { ScheduleForm } from './scheduleForm'
+import {
+  draftFromParsed,
+  draftToCreateRequest,
+  emptyForm,
+  formToCreateRequest,
+  formValidationError,
+} from './scheduleForm'
+
+const PARSED: ParsedSchedule = {
+  title: '운동',
+  startAt: '2026-08-31T07:00:00',
+  allDay: false,
+  place: '헬스장',
+  recurrence: { freq: 'WEEKLY', byWeekday: ['MONDAY', 'WEDNESDAY', 'FRIDAY'] },
+  questions: [],
+}
+
+function form(overrides: Partial<ScheduleForm> = {}): ScheduleForm {
+  return {
+    ...emptyForm(new Date(2026, 7, 31)),
+    title: '러닝',
+    startTime: '07:00',
+    ...overrides,
+  }
+}
+
+describe('초안 만들기', () => {
+  it('날짜와 시각을 따로 나눠 담는다', () => {
+    const d = draftFromParsed(PARSED, null)
+
+    expect(d.startDate).toBe('2026-08-31')
+    expect(d.startTime).toBe('07:00')
+    expect(d.repeating).toBe(true)
+    expect(d.byWeekday).toEqual(['MONDAY', 'WEDNESDAY', 'FRIDAY'])
+    expect(d.place).toBe('헬스장')
+  })
+
+  it('반복이면 종료일자 칸이 반복 종료일을 받는다', () => {
+    const d = draftFromParsed(
+      { ...PARSED, recurrence: { freq: 'DAILY', endsOn: '2026-09-02' } },
+      null,
+    )
+
+    expect(d.endDate).toBe('2026-09-02')
+  })
+
+  it('하루 종일이면 시작시각을 비운다', () => {
+    const d = draftFromParsed({ ...PARSED, allDay: true }, null)
+
+    expect(d.startTime).toBe('')
+  })
+
+  it('시작일을 못 채웠어도 비워두지 않는다', () => {
+    const d = draftFromParsed({ title: '회의', allDay: false }, new Date(2026, 7, 31))
+
+    expect(d.startDate).toBe('2026-08-31')
+    expect(d.repeating).toBe(false)
+  })
+})
+
+describe('저장 전 검증', () => {
+  it('제목과 시작일자는 있어야 한다', () => {
+    expect(formValidationError(form({ title: '  ' }))).not.toBeNull()
+    expect(formValidationError(form({ startDate: '' }))).not.toBeNull()
+    expect(formValidationError(form())).toBeNull()
+  })
+
+  it('매주 반복인데 요일이 없으면 막는다', () => {
+    const weekly = form({ repeating: true, freq: 'WEEKLY', byWeekday: [] })
+
+    expect(formValidationError(weekly)).not.toBeNull()
+    expect(formValidationError({ ...weekly, byWeekday: ['MONDAY'] })).toBeNull()
+  })
+
+  it('매일 반복은 요일이 없어도 된다', () => {
+    expect(formValidationError(form({ repeating: true, freq: 'DAILY' }))).toBeNull()
+  })
+
+  it('매월은 아직 보낼 수 없다고 알린다', () => {
+    expect(formValidationError(form({ repeating: true, freq: 'MONTHLY' }))).toContain(
+      '준비 중',
+    )
+  })
+
+  it('종료가 시작보다 앞서면 막는다', () => {
+    expect(formValidationError(form({ endDate: '2026-08-30' }))).not.toBeNull()
+    expect(formValidationError(form({ endTime: '06:00' }))).not.toBeNull()
+    expect(formValidationError(form({ endTime: '08:00' }))).toBeNull()
+  })
+})
+
+describe('생성 요청으로 바꾸기', () => {
+  it('날짜와 시각을 합쳐 LocalDateTime 으로 만든다', () => {
+    expect(formToCreateRequest(form()).startAt).toBe('2026-08-31T07:00:00')
+  })
+
+  it('시작시각을 비우면 하루 종일로 보낸다', () => {
+    const body = formToCreateRequest(form({ startTime: '' }))
+
+    expect(body.allDay).toBe(true)
+    expect(body.startAt).toBe('2026-08-31T00:00:00')
+  })
+
+  it('한번만이면 종료일자가 endAt 으로 간다', () => {
+    const body = formToCreateRequest(form({ endDate: '2026-09-02', endTime: '09:00' }))
+
+    expect(body.endAt).toBe('2026-09-02T09:00:00')
+    expect(body.recurrence).toBeUndefined()
+  })
+
+  it('반복이면 종료일자가 endsOn 으로 가고, 종료시각은 시작일자에 얹힌다', () => {
+    // 회차마다 날짜가 달라 절대 종료시각은 첫 회차에만 맞는다
+    const body = formToCreateRequest(
+      form({
+        repeating: true,
+        freq: 'WEEKLY',
+        byWeekday: ['MONDAY'],
+        endDate: '2026-09-30',
+        endTime: '08:00',
+      }),
+    )
+
+    expect(body.recurrence?.endsOn).toBe('2026-09-30')
+    expect(body.endAt).toBe('2026-08-31T08:00:00')
+  })
+
+  it('매일 반복은 요일을 싣지 않는다', () => {
+    const body = formToCreateRequest(form({ repeating: true, freq: 'DAILY' }))
+
+    expect(body.recurrence?.freq).toBe('DAILY')
+    expect(body.recurrence?.byWeekday).toBeUndefined()
+  })
+
+  it('빈 칸은 undefined 로 보내 서버가 기본값을 쓰게 한다', () => {
+    const body = formToCreateRequest(form({ category: '  ' }))
+
+    expect(body.category).toBeUndefined()
+    expect(body.endAt).toBeUndefined()
+  })
+
+  it('장소는 체크했을 때만 메모로 넘어간다', () => {
+    const draft = draftFromParsed(PARSED, null)
+
+    expect(draftToCreateRequest(draft).description).toBeUndefined()
+    expect(
+      draftToCreateRequest({ ...draft, keepPlaceInDescription: true }).description,
+    ).toBe('장소: 헬스장')
+  })
+})

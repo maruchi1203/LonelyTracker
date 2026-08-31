@@ -4,8 +4,8 @@ import { HttpError } from "../../api/http";
 import { parseSchedule } from "../../api/schedules";
 import { fetchOpenAiKeyStatus } from "../../api/users";
 import { knownQuestions } from "../../constants/parseQuestions";
-import type { Draft } from "../../domain/draft";
-import { draftFromParsed, draftToCreateRequest } from "../../domain/draft";
+import type { ScheduleDraft } from "../../domain/scheduleForm";
+import { draftFromParsed, draftToCreateRequest } from "../../domain/scheduleForm";
 import type { ParseQuestion } from "../../types/parse";
 import type { ScheduleCreateRequest } from "../../types/schedule";
 import ScheduleInputForm from "../ScheduleInputForm";
@@ -23,8 +23,8 @@ interface Props {
 type State =
   | { mode: "idle" }
   | { mode: "parsing" }
-  | { mode: "draft"; draft: Draft; questions: ParseQuestion[] }
-  | { mode: "saving"; draft: Draft; questions: ParseQuestion[] }
+  | { mode: "draft"; draft: ScheduleDraft; questions: ParseQuestion[] }
+  | { mode: "saving"; draft: ScheduleDraft; questions: ParseQuestion[] }
   | { mode: "error"; message: string; needsKey: boolean };
 
 /** 서버 읽기 타임아웃이 30초라 그보다 조금 뒤에 포기한다 */
@@ -134,7 +134,7 @@ export default function QuickAddBar({
     return created;
   };
 
-  const patch = (changes: Partial<Draft>) =>
+  const patch = (changes: Partial<ScheduleDraft>) =>
     setState((prev) =>
       prev.mode === "draft" ? { ...prev, draft: { ...prev.draft, ...changes } } : prev,
     );

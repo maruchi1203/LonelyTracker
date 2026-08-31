@@ -2,12 +2,12 @@ import {
   PARSE_QUESTION_FIELD,
   PARSE_QUESTION_TEXT,
 } from "../../constants/parseQuestions";
-import type { DraftFieldId } from "../../domain/draft";
+import type { FormFieldId } from "../../domain/scheduleForm";
 import type { ParseQuestion } from "../../types/parse";
 
 interface Props {
   questions: ParseQuestion[];
-  onFocusField: (field: DraftFieldId) => void;
+  onFocusField: (field: FormFieldId) => void;
   onDismiss: (question: ParseQuestion) => void;
 }
 

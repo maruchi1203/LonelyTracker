@@ -1,4 +1,4 @@
-import type { DraftFieldId } from '../domain/draft'
+import type { FormFieldId } from '../domain/scheduleForm'
 import type { ParseQuestion } from '../types/parse'
 
 /** 서버는 질문 ID만 보낸다. 사용자가 읽을 문구는 화면이 갖는다 */
@@ -13,12 +13,12 @@ export const PARSE_QUESTION_TEXT: Record<ParseQuestion, string> = {
 }
 
 /** 질문을 누르면 옮겨갈 입력칸 */
-export const PARSE_QUESTION_FIELD: Record<ParseQuestion, DraftFieldId> = {
-  START_TIME: 'startAt',
-  DATE: 'startAt',
+export const PARSE_QUESTION_FIELD: Record<ParseQuestion, FormFieldId> = {
+  START_TIME: 'startTime',
+  DATE: 'startDate',
   PLACE: 'place',
   WEEKDAY: 'byWeekday',
-  RECUR_END: 'endsOn',
+  RECUR_END: 'endDate',
   TOO_VAGUE: 'title',
   CATEGORY: 'category',
 }
