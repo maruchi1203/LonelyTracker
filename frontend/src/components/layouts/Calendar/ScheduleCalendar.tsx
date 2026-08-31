@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { groupByStartDate } from "../../../domain/occurrence";
+import { groupByDate } from "../../../domain/occurrence";
 import type { ScheduleResponse } from "../../../types/schedule";
 import { toLocalDate } from "../../../utils/datetime";
 import { buildMonthDays } from "../../../utils/monthGrid";
@@ -29,7 +29,7 @@ export default function ScheduleCalendar({
   loading,
 }: Props) {
   const days = useMemo(() => buildMonthDays(month), [month]);
-  const byDate = useMemo(() => groupByStartDate(occurrences), [occurrences]);
+  const byDate = useMemo(() => groupByDate(occurrences), [occurrences]);
 
   const shiftMonth = (delta: number) =>
     onMonthChange(new Date(month.getFullYear(), month.getMonth() + delta, 1));

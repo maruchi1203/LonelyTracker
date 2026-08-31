@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { ScheduleResponse } from '../types/schedule'
 import {
-  groupByStartDate,
+  formatOccurrenceRange,
+  groupByDate,
   isPostponed,
   occurrenceKey,
   replaceOccurrence,
@@ -73,14 +74,14 @@ describe('달력 칸에 담기', () => {
       postponeCount: 1,
     })
 
-    const grouped = groupByStartDate([postponed])
+    const grouped = groupByDate([postponed])
 
     expect(grouped.get('2026-09-01')).toHaveLength(1)
     expect(grouped.has('2026-08-31')).toBe(false)
   })
 
   it('같은 날의 회차를 한 칸에 모은다', () => {
-    const grouped = groupByStartDate([
+    const grouped = groupByDate([
       occurrence(1, '2026-08-31'),
       occurrence(2, '2026-08-31'),
       occurrence(3, '2026-09-01'),
@@ -88,6 +89,84 @@ describe('달력 칸에 담기', () => {
 
     expect(grouped.get('2026-08-31')).toHaveLength(2)
     expect(grouped.get('2026-09-01')).toHaveLength(1)
+  })
+
+  it('여러 날에 걸친 일정은 걸친 날마다 놓는다', () => {
+    const trip = occurrence(1, '2026-08-31', {
+      startAt: '2026-08-31T09:00:00',
+      endAt: '2026-09-02T18:00:00',
+    })
+
+    const grouped = groupByDate([trip])
+
+    expect([...grouped.keys()].sort()).toEqual([
+      '2026-08-31',
+      '2026-09-01',
+      '2026-09-02',
+    ])
+  })
+
+  it('종료가 같은 날이면 한 칸에만 놓는다', () => {
+    const grouped = groupByDate([
+      occurrence(1, '2026-08-31', {
+        startAt: '2026-08-31T09:00:00',
+        endAt: '2026-08-31T18:00:00',
+      }),
+    ])
+
+    expect(grouped.size).toBe(1)
+  })
+
+  it('종료가 시작보다 앞서도 시작일에서 사라지지 않는다', () => {
+    const broken = occurrence(1, '2026-08-31', {
+      startAt: '2026-08-31T09:00:00',
+      endAt: '2026-08-30T18:00:00',
+    })
+
+    expect(groupByDate([broken]).get('2026-08-31')).toHaveLength(1)
+  })
+})
+
+describe('기간 문구', () => {
+  it('같은 날이면 시각만 이어 붙인다', () => {
+    const text = formatOccurrenceRange(
+      occurrence(1, '2026-08-31', {
+        startAt: '2026-08-31T09:00:00',
+        endAt: '2026-08-31T18:30:00',
+      }),
+    )
+
+    expect(text).toBe('8/31 09:00 ~ 18:30')
+  })
+
+  it('날짜가 넘어가면 종료일자도 적는다', () => {
+    const text = formatOccurrenceRange(
+      occurrence(1, '2026-08-31', {
+        startAt: '2026-08-31T09:00:00',
+        endAt: '2026-09-02T18:00:00',
+      }),
+    )
+
+    expect(text).toBe('8/31 09:00 ~ 9/2 18:00')
+  })
+
+  it('종료가 없으면 시작만 적는다', () => {
+    expect(formatOccurrenceRange(occurrence(1, '2026-08-31'))).toBe('8/31 07:00')
+  })
+
+  it('하루 종일이면 시각을 적지 않는다', () => {
+    const oneDay = occurrence(1, '2026-08-31', {
+      allDay: true,
+      startAt: '2026-08-31T00:00:00',
+    })
+    const span = occurrence(2, '2026-08-31', {
+      allDay: true,
+      startAt: '2026-08-31T00:00:00',
+      endAt: '2026-09-02T23:59:00',
+    })
+
+    expect(formatOccurrenceRange(oneDay)).toBe('8/31')
+    expect(formatOccurrenceRange(span)).toBe('8/31 ~ 9/2')
   })
 })
 
