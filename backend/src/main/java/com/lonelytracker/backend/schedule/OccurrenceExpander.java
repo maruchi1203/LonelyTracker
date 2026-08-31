@@ -41,10 +41,11 @@ public final class OccurrenceExpander {
         Set<String> emitted = new HashSet<>();
 
         for (Schedule s : schedules) {
-            for (LocalDate date : occurrenceDatesOf(s, recurByScheduleId.get(s.getId()), from, to)) {
+            ScheduleRecur recur = recurByScheduleId.get(s.getId());
+            for (LocalDate date : occurrenceDatesOf(s, recur, from, to)) {
                 String k = key(s.getId(), date);
                 emitted.add(k);
-                result.add(merge(s, date, byKey.get(k)));
+                result.add(merge(s, date, byKey.get(k), recur != null));
             }
         }
 
@@ -56,7 +57,8 @@ public final class OccurrenceExpander {
                 continue;
             }
             if (!p.getStartAt().isBefore(from) && !p.getStartAt().isAfter(to)) {
-                result.add(merge(p.getSchedule(), p.getOnDate(), p));
+                result.add(merge(p.getSchedule(), p.getOnDate(), p,
+                        recurByScheduleId.containsKey(p.getSchedule().getId())));
             }
         }
 
@@ -86,7 +88,8 @@ public final class OccurrenceExpander {
     }
 
     /** 일정 값에 회차 기록을 덮어쓴다. 기록이 null 이면 일정 값 그대로. */
-    private static ScheduleResponse merge(Schedule s, LocalDate onDate, ScheduleProgress p) {
+    private static ScheduleResponse merge(Schedule s, LocalDate onDate, ScheduleProgress p,
+            boolean recurring) {
         LocalDateTime defaultStart = LocalDateTime.of(onDate, s.getStartAt().toLocalTime());
         LocalDateTime startAt = (p != null && p.getStartAt() != null) ? p.getStartAt() : defaultStart;
 
@@ -107,6 +110,7 @@ public final class OccurrenceExpander {
                 startAt,
                 endAt,
                 s.isAllDay(),
+                recurring,
                 (p == null) ? ScheduleStatus.PLANNED : p.getStatus(),
                 pick(p == null ? null : p.getCategory(), s.getCategory()),
                 (p == null) ? 0 : p.getPostponeCount(),

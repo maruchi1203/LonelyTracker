@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
  *
  * @param occurrenceDate 규칙이 만들어낸 원래 날짜. 미뤘어도 이 값은 안 바뀐다.
  *                       startAt 과 날짜가 다르면 그 회차는 옮겨진 것이다
+ * @param recurring      반복 일정의 회차인지. 규칙 자체는 담지 않는다
  * @param postponeCount  몇 번 미뤘는지. 코칭 지표
  */
 public record ScheduleResponse(
@@ -22,6 +23,7 @@ public record ScheduleResponse(
         LocalDateTime startAt,
         LocalDateTime endAt,
         boolean allDay,
+        boolean recurring,
         ScheduleStatus status,
         String category,
         int postponeCount,

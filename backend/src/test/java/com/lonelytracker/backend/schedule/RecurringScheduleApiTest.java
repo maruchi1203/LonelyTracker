@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -63,6 +64,7 @@ class RecurringScheduleApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.occurrenceDate").value("2026-09-07"))
                 .andExpect(jsonPath("$.title").value("운동"))
                 .andExpect(jsonPath("$.status").value("PLANNED"))
+                .andExpect(jsonPath("$.recurring").value(true))
                 .andExpect(jsonPath("$.postponeCount").value(0));
     }
 
@@ -75,6 +77,53 @@ class RecurringScheduleApiTest extends IntegrationTest {
         List<JsonNode> month = occurrencesOf(id, "2026-09-01T00:00:00", "2026-09-30T23:59:59");
 
         assertThat(datesOf(month)).containsExactly("2026-09-08");
+    }
+
+    @Test
+    @DisplayName("회차마다 반복 일정인지 알려준다")
+    void tellsWhetherTheOccurrenceRepeats() throws Exception {
+        // 규칙 자체는 응답에 없다. 화면이 반복과 1회성을 나눠 보여주려면 이 값이 필요하다
+        long weekly = createSchedule("""
+                {
+                  "title": "운동",
+                  "startAt": "2026-09-07T07:00:00",
+                  "recurrence": { "freq": "WEEKLY", "byWeekday": ["MONDAY"] }
+                }""");
+        long once = createSchedule("""
+                { "title": "혼자", "startAt": "2026-09-08T09:00:00" }""");
+
+        String window = "2026-09-01T00:00:00";
+        String end = "2026-09-30T23:59:59";
+
+        assertThat(occurrencesOf(weekly, window, end))
+                .isNotEmpty()
+                .allSatisfy(o -> assertThat(o.path("recurring").asBoolean()).isTrue());
+        assertThat(occurrencesOf(once, window, end))
+                .isNotEmpty()
+                .allSatisfy(o -> assertThat(o.path("recurring").asBoolean()).isFalse());
+    }
+
+    @Test
+    @DisplayName("범위 밖에서 미뤄져 들어온 회차도 반복 여부를 유지한다")
+    void keepsRecurringOnPostponedOccurrence() throws Exception {
+        long id = createSchedule("""
+                {
+                  "title": "운동",
+                  "startAt": "2026-09-07T07:00:00",
+                  "recurrence": { "freq": "WEEKLY", "byWeekday": ["MONDAY"] }
+                }""");
+
+        // 규칙은 월요일뿐이라 수요일(10/7)에는 이 회차만 잡힌다.
+        // onDate 는 9/7 그대로여서 첫 루프가 아니라 두 번째 루프가 넣는다
+        mvc.perform(patch(BASE + "/" + id + "/occurrences/2026-09-07/postpone")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "to": "2026-10-07T07:00:00" }"""))
+                .andExpect(status().isOk());
+
+        assertThat(occurrencesOf(id, "2026-10-06T00:00:00", "2026-10-08T23:59:59"))
+                .isNotEmpty()
+                .allSatisfy(o -> assertThat(o.path("recurring").asBoolean()).isTrue());
     }
 
     @Test
