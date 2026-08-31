@@ -21,15 +21,37 @@ describe('되물음 칩', () => {
     expect(onFocusField).toHaveBeenCalledWith('place')
   })
 
-  it('날짜 질문은 시작 시각 칸을 가리킨다', () => {
+  it('날짜 질문과 시각 질문이 서로 다른 칸을 가리킨다', () => {
     const onFocusField = vi.fn()
 
     render(
-      <QuestionChips questions={['DATE']} onFocusField={onFocusField} onDismiss={vi.fn()} />,
+      <QuestionChips
+        questions={['DATE', 'START_TIME']}
+        onFocusField={onFocusField}
+        onDismiss={vi.fn()}
+      />,
     )
-    fireEvent.click(screen.getByText(PARSE_QUESTION_TEXT.DATE))
 
-    expect(onFocusField).toHaveBeenCalledWith('startAt')
+    fireEvent.click(screen.getByText(PARSE_QUESTION_TEXT.DATE))
+    expect(onFocusField).toHaveBeenCalledWith('startDate')
+
+    fireEvent.click(screen.getByText(PARSE_QUESTION_TEXT.START_TIME))
+    expect(onFocusField).toHaveBeenCalledWith('startTime')
+  })
+
+  it('반복 종료 질문은 종료일자 칸을 가리킨다', () => {
+    const onFocusField = vi.fn()
+
+    render(
+      <QuestionChips
+        questions={['RECUR_END']}
+        onFocusField={onFocusField}
+        onDismiss={vi.fn()}
+      />,
+    )
+    fireEvent.click(screen.getByText(PARSE_QUESTION_TEXT.RECUR_END))
+
+    expect(onFocusField).toHaveBeenCalledWith('endDate')
   })
 
   it('닫으면 그 질문만 알린다', () => {
