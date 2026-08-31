@@ -37,26 +37,32 @@ export function groupByDate(
   const map = new Map<string, ScheduleResponse[]>()
 
   for (const occurrence of occurrences) {
-    const start = new Date(occurrence.startAt)
-    const finish = occurrence.endAt ? new Date(occurrence.endAt) : start
-
-    const cursor = midnight(start)
-    const last = midnight(finish)
-
-    // 종료가 시작보다 앞서 있어도 시작일에는 반드시 한 번 놓는다
-    let days = 0
-    do {
-      const key = toLocalDate(cursor)
+    for (const key of occurrenceDateKeys(occurrence)) {
       const bucket = map.get(key)
       if (bucket) bucket.push(occurrence)
       else map.set(key, [occurrence])
-
-      cursor.setDate(cursor.getDate() + 1)
-      days++
-    } while (cursor <= last && days < MAX_SPAN_DAYS)
+    }
   }
 
   return map
+}
+
+/** 회차가 걸치는 날짜들. 시작일은 언제나 하나 들어간다 */
+export function occurrenceDateKeys(occurrence: ScheduleResponse): string[] {
+  const start = new Date(occurrence.startAt)
+  const finish = occurrence.endAt ? new Date(occurrence.endAt) : start
+
+  const cursor = midnight(start)
+  const last = midnight(finish)
+  const keys: string[] = []
+
+  // 종료가 시작보다 앞서 있어도 시작일에는 반드시 한 번 놓는다
+  do {
+    keys.push(toLocalDate(cursor))
+    cursor.setDate(cursor.getDate() + 1)
+  } while (cursor <= last && keys.length < MAX_SPAN_DAYS)
+
+  return keys
 }
 
 function midnight(date: Date): Date {

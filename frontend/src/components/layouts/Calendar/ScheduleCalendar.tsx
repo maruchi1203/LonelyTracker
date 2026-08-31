@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { groupByDate } from "../../../domain/occurrence";
+import { assignLanes } from "../../../domain/calendarLanes";
 import type { ScheduleResponse } from "../../../types/schedule";
 import { toLocalDate } from "../../../utils/datetime";
 import { buildMonthDays } from "../../../utils/monthGrid";
@@ -29,7 +29,7 @@ export default function ScheduleCalendar({
   loading,
 }: Props) {
   const days = useMemo(() => buildMonthDays(month), [month]);
-  const byDate = useMemo(() => groupByDate(occurrences), [occurrences]);
+  const byDate = useMemo(() => assignLanes(days, occurrences), [days, occurrences]);
 
   const shiftMonth = (delta: number) =>
     onMonthChange(new Date(month.getFullYear(), month.getMonth() + delta, 1));
@@ -92,7 +92,7 @@ export default function ScheduleCalendar({
             <ScheduleCalendarCell
               key={key}
               date={date}
-              occurrences={byDate.get(key) ?? []}
+              day={byDate.get(key) ?? { lanes: [], hidden: 0 }}
               inCurrentMonth={date.getMonth() === month.getMonth()}
               isToday={key === todayKey}
               isSelected={key === selectedKey}
