@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { ScheduleResponse } from '../types/schedule'
 import {
+  coversDate,
   formatOccurrenceRange,
   groupByDate,
   isPostponed,
@@ -124,6 +125,50 @@ describe('달력 칸에 담기', () => {
     })
 
     expect(groupByDate([broken]).get('2026-08-31')).toHaveLength(1)
+  })
+})
+
+describe('그 날짜에 걸쳐 있는지', () => {
+  const trip = occurrence(1, '2026-08-31', {
+    startAt: '2026-08-31T09:00:00',
+    endAt: '2026-09-02T18:00:00',
+  })
+
+  it('첫날뿐 아니라 걸친 날 모두에서 잡힌다', () => {
+    // 달력에서 둘째 날을 눌렀을 때 목록이 비면 안 된다
+    expect(coversDate(trip, new Date(2026, 7, 31))).toBe(true)
+    expect(coversDate(trip, new Date(2026, 8, 1))).toBe(true)
+    expect(coversDate(trip, new Date(2026, 8, 2))).toBe(true)
+  })
+
+  it('기간 밖은 잡히지 않는다', () => {
+    expect(coversDate(trip, new Date(2026, 7, 30))).toBe(false)
+    expect(coversDate(trip, new Date(2026, 8, 3))).toBe(false)
+  })
+
+  it('하루짜리는 그날만 잡힌다', () => {
+    const single = occurrence(2, '2026-08-31')
+
+    expect(coversDate(single, new Date(2026, 7, 31))).toBe(true)
+    expect(coversDate(single, new Date(2026, 8, 1))).toBe(false)
+  })
+
+  it('연기된 회차는 원래 날짜가 아니라 옮겨간 날에서 잡힌다', () => {
+    const postponed = occurrence(3, '2026-08-31', {
+      startAt: '2026-09-01T07:00:00',
+    })
+
+    expect(coversDate(postponed, new Date(2026, 7, 31))).toBe(false)
+    expect(coversDate(postponed, new Date(2026, 8, 1))).toBe(true)
+  })
+
+  it('달력이 칸에 놓는 기준과 같다', () => {
+    const keys = [...groupByDate([trip]).keys()].sort()
+    const covered = ['2026-08-31', '2026-09-01', '2026-09-02'].filter((_, i) =>
+      coversDate(trip, new Date(2026, 7, 31 + i)),
+    )
+
+    expect(covered).toEqual(keys)
   })
 })
 

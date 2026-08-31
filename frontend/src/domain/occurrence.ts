@@ -47,6 +47,11 @@ export function groupByDate(
   return map
 }
 
+/** 그 날짜에 걸쳐 있는 회차인지. 달력과 목록이 같은 기준을 써야 한다 */
+export function coversDate(occurrence: ScheduleResponse, date: Date): boolean {
+  return occurrenceDateKeys(occurrence).includes(toLocalDate(date))
+}
+
 /** 회차가 걸치는 날짜들. 시작일은 언제나 하나 들어간다 */
 export function occurrenceDateKeys(occurrence: ScheduleResponse): string[] {
   const start = new Date(occurrence.startAt)
