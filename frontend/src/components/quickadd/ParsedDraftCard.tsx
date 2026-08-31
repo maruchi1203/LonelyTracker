@@ -4,7 +4,7 @@ import type { Draft, DraftFieldId } from "../../domain/draft";
 import { draftValidationError } from "../../domain/draft";
 import type { ParseQuestion } from "../../types/parse";
 import QuestionChips from "./QuestionChips";
-import RecurrenceEditor from "./RecurrenceEditor";
+import RecurrenceEditor from "../RecurrenceEditor";
 
 interface Props {
   draft: Draft;
@@ -187,7 +187,7 @@ export default function ParsedDraftCard({
       </label>
 
       <RecurrenceEditor
-        draft={draft}
+        value={draft}
         onChange={change}
         weekdayRef={register("byWeekday")}
         endsOnRef={register("endsOn")}

@@ -1,12 +1,15 @@
-import type { Draft } from "../../domain/draft";
-import type { RecurrenceFreq, Weekday } from "../../types/schedule";
+import type { RecurrenceDraft } from "../domain/draft";
+import type { RecurrenceFreq, Weekday } from "../types/schedule";
 
 interface Props {
-  draft: Draft;
-  onChange: (patch: Partial<Draft>) => void;
+  value: RecurrenceDraft;
+  onChange: (patch: Partial<RecurrenceDraft>) => void;
+  /** 입력칸이 여럿 뜰 수 있어 id 가 겹치지 않게 한다 */
+  idPrefix?: string;
   weekdayRef?: (el: HTMLElement | null) => void;
   endsOnRef?: (el: HTMLInputElement | null) => void;
-  highlight: { byWeekday: boolean; endsOn: boolean };
+  /** 되물음이 가리키는 칸을 표시한다. 수동 입력에는 되물음이 없다 */
+  highlight?: { byWeekday: boolean; endsOn: boolean };
 }
 
 const WEEKDAYS: { value: Weekday; label: string }[] = [
@@ -27,13 +30,15 @@ const FREQ: { value: RecurrenceFreq; label: string }[] = [
 const LABEL = "text-xs font-semibold tracking-wide text-slate-500";
 
 export default function RecurrenceEditor({
-  draft,
+  value: draft,
   onChange,
+  idPrefix = "draft",
   weekdayRef,
   endsOnRef,
-  highlight,
+  highlight = { byWeekday: false, endsOn: false },
 }: Props) {
   const weeklyDisabled = draft.freq === "DAILY";
+  const endsOnId = `${idPrefix}-endsOn`;
 
   const toggleWeekday = (value: Weekday) => {
     const next = draft.byWeekday.includes(value)
@@ -108,11 +113,11 @@ export default function RecurrenceEditor({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className={LABEL} htmlFor="draft-endsOn">
+            <label className={LABEL} htmlFor={endsOnId}>
               종료일 (비우면 계속)
             </label>
             <input
-              id="draft-endsOn"
+              id={endsOnId}
               ref={endsOnRef}
               type="date"
               value={draft.endsOn}
