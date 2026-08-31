@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { ParsedSchedule } from '../types/parse'
-import type { Draft } from './draft'
-import { draftFromParsed, draftToCreateRequest, draftValidationError } from './draft'
+import type { Draft, RecurrenceDraft } from './draft'
+import {
+  NO_RECURRENCE,
+  draftFromParsed,
+  draftToCreateRequest,
+  draftValidationError,
+  recurrenceValidationError,
+  toRecurrenceRequest,
+} from './draft'
 
 const PARSED: ParsedSchedule = {
   title: '운동',
@@ -32,6 +39,41 @@ describe('초안 만들기', () => {
 
     expect(d.startAt).toMatch(/^2026-08-31T\d{2}:\d{2}$/)
     expect(d.recurring).toBe(false)
+  })
+})
+
+// AI 확인 카드와 수동 입력 폼이 함께 쓰는 부분
+describe('반복 규칙', () => {
+  const weekly: RecurrenceDraft = {
+    recurring: true,
+    freq: 'WEEKLY',
+    byWeekday: ['MONDAY'],
+    endsOn: '',
+  }
+
+  it('꺼져 있으면 아예 보내지 않는다', () => {
+    expect(toRecurrenceRequest(NO_RECURRENCE)).toBeUndefined()
+  })
+
+  it('매일 반복은 요일을 싣지 않는다', () => {
+    const body = toRecurrenceRequest({ ...weekly, freq: 'DAILY' })
+
+    expect(body?.freq).toBe('DAILY')
+    expect(body?.byWeekday).toBeUndefined()
+  })
+
+  it('종료일이 비면 무기한으로 보낸다', () => {
+    expect(toRecurrenceRequest(weekly)?.endsOn).toBeUndefined()
+    expect(toRecurrenceRequest({ ...weekly, endsOn: '2026-09-02' })?.endsOn).toBe(
+      '2026-09-02',
+    )
+  })
+
+  it('매주인데 요일이 없으면 저장을 막는다', () => {
+    expect(recurrenceValidationError({ ...weekly, byWeekday: [] })).not.toBeNull()
+    expect(recurrenceValidationError(weekly)).toBeNull()
+    // 반복이 꺼져 있으면 요일이 없어도 문제가 아니다
+    expect(recurrenceValidationError(NO_RECURRENCE)).toBeNull()
   })
 })
 

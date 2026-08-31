@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
+import type { RecurrenceDraft } from "../domain/draft";
+import {
+  NO_RECURRENCE,
+  recurrenceValidationError,
+  toRecurrenceRequest,
+} from "../domain/draft";
 import type { ScheduleCreateRequest } from "../types/schedule";
 import { nextHour } from "../utils/datetime";
+import RecurrenceEditor from "./RecurrenceEditor";
 
 interface Props {
   /** 저장에 성공했는지 돌려준다. 실패하면 입력값을 지우지 않는다 */
@@ -31,15 +38,18 @@ export default function ScheduleInputForm({
   const [category, setCategory] = useState("");
   // 종료 시각은 안 쓰는 일정이 더 많아 기본으로 감춘다
   const [showEndAt, setShowEndAt] = useState(false);
+  const [recurrence, setRecurrence] = useState<RecurrenceDraft>(NO_RECURRENCE);
 
   // 폼이 열릴 때와 고른 날짜가 바뀔 때 시작 시각을 다시 잡는다
   useEffect(() => {
     setStartAt(nextHour(defaultDate));
   }, [defaultDate]);
 
+  const problem = recurrenceValidationError(recurrence);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); // 폼 기본 동작(페이지 새로고침)을 막는다
-    if (!title.trim() || !startAt) return;
+    if (!title.trim() || !startAt || problem) return;
 
     const created = await onSubmit({
       title: title.trim(),
@@ -47,6 +57,7 @@ export default function ScheduleInputForm({
       startAt: `${startAt}:00`,
       endAt: endAt ? `${endAt}:00` : undefined,
       category: category || undefined,
+      recurrence: toRecurrenceRequest(recurrence),
     });
 
     // 실패했는데 입력을 지우면 사용자가 처음부터 다시 써야 한다
@@ -56,6 +67,7 @@ export default function ScheduleInputForm({
     setStartAt(nextHour(defaultDate));
     setEndAt("");
     setCategory("");
+    setRecurrence(NO_RECURRENCE);
   };
 
   return (
@@ -131,6 +143,14 @@ export default function ScheduleInputForm({
         </div>
       </div>
 
+      <RecurrenceEditor
+        value={recurrence}
+        onChange={(patch) => setRecurrence((prev) => ({ ...prev, ...patch }))}
+        idPrefix="manual"
+      />
+
+      {problem && <p className="text-sm text-red-600">{problem}</p>}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600 select-none">
           <input
@@ -150,7 +170,7 @@ export default function ScheduleInputForm({
         <button
           type="submit"
           className="rounded-md bg-brand-500 px-5 py-2 font-semibold text-white shadow-xs transition-colors hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={disabled}
+          disabled={disabled || problem !== null}
         >
           일정 추가
         </button>
