@@ -1,6 +1,6 @@
 package com.lonelytracker.backend.ai;
 
-import com.lonelytracker.backend.schedule.RecurrenceFreq;
+import com.lonelytracker.backend.schedule.domain.RecurrenceFreq;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;

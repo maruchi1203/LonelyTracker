@@ -1,6 +1,6 @@
 package com.lonelytracker.backend.schedule.dto;
 
-import com.lonelytracker.backend.schedule.ScheduleStatus;
+import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
 import jakarta.validation.constraints.NotNull;
 
 public record ScheduleStatusRequest(

@@ -1,6 +1,6 @@
 package com.lonelytracker.backend.schedule.dto;
 
-import com.lonelytracker.backend.schedule.RecurrenceFreq;
+import com.lonelytracker.backend.schedule.domain.RecurrenceFreq;
 import jakarta.validation.constraints.NotNull;
 
 import java.time.DayOfWeek;

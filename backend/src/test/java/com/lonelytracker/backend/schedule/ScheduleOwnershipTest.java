@@ -1,8 +1,8 @@
 package com.lonelytracker.backend.schedule;
 
 import com.lonelytracker.backend.support.IntegrationTest;
-import com.lonelytracker.backend.user.User;
-import com.lonelytracker.backend.user.UserRepository;
+import com.lonelytracker.backend.user.entity.User;
+import com.lonelytracker.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +22,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.lonelytracker.backend.schedule.entity.Schedule;
+import com.lonelytracker.backend.schedule.repository.ScheduleRepository;
 
 /**
  * 일정이 소유자 단위로 격리되는지 검증한다.

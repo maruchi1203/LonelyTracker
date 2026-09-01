@@ -17,6 +17,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.lonelytracker.backend.user.entity.UserCategory;
+import com.lonelytracker.backend.user.repository.UserCategoryRepository;
 
 /**
  * 사용자 API. 가입 시 추천 카테고리가 함께 만들어지는지가 핵심이다.

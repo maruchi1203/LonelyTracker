@@ -1,6 +1,6 @@
 package com.lonelytracker.backend.user.dto;
 
-import com.lonelytracker.backend.user.UserCategory;
+import com.lonelytracker.backend.user.entity.UserCategory;
 
 import java.time.LocalDateTime;
 

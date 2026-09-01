@@ -1,7 +1,7 @@
 package com.lonelytracker.backend.user;
 
-import com.lonelytracker.backend.schedule.Schedule;
-import com.lonelytracker.backend.schedule.ScheduleRepository;
+import com.lonelytracker.backend.schedule.entity.Schedule;
+import com.lonelytracker.backend.schedule.repository.ScheduleRepository;
 import com.lonelytracker.backend.common.AppProperties;
 import com.lonelytracker.backend.support.IntegrationTest;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +25,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.lonelytracker.backend.user.entity.User;
+import com.lonelytracker.backend.user.entity.UserCategory;
+import com.lonelytracker.backend.user.repository.UserCategoryRepository;
+import com.lonelytracker.backend.user.repository.UserRepository;
 
 /**
  * 카테고리 목록 API. 소유자 격리와, 목록 변경이 기존 일정에 영향을 주지 않는지를 본다.

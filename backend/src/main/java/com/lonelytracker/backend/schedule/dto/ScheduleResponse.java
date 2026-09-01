@@ -1,6 +1,6 @@
 package com.lonelytracker.backend.schedule.dto;
 
-import com.lonelytracker.backend.schedule.ScheduleStatus;
+import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;

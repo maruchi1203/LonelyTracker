@@ -3,7 +3,7 @@ package com.lonelytracker.backend.ai;
 import com.lonelytracker.backend.common.AppProperties;
 import com.lonelytracker.backend.common.exception.AiParseException;
 import com.lonelytracker.backend.common.exception.AiUnavailableException;
-import com.lonelytracker.backend.schedule.RecurrenceFreq;
+import com.lonelytracker.backend.schedule.domain.RecurrenceFreq;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
