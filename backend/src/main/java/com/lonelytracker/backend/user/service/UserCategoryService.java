@@ -14,9 +14,7 @@ import com.lonelytracker.backend.user.repository.UserCategoryRepository;
 
 /**
  * 사용자가 고를 수 있는 카테고리 목록을 관리한다.
- * <p>
- * 일정에는 카테고리 <b>이름이 문자열로</b> 기록되므로, 이 목록을 바꿔도
- * 이미 저장된 일정의 분류는 영향을 받지 않는다. 목록은 어디까지나 "고를 수 있는 후보"다.
+ * 일정에는 이름이 문자열로 기록되므로 목록을 바꿔도 저장된 일정의 분류는 그대로다.
  */
 @Service
 @RequiredArgsConstructor
@@ -50,10 +48,7 @@ public class UserCategoryService {
                 .build()));
     }
 
-    /**
-     * 목록의 이름만 바꾼다. 이미 기록된 일정의 분류 문자열은 바뀌지 않는다.
-     * 계층이 없으므로 후손 경로를 갱신할 일도 없다.
-     */
+    /** 목록의 이름만 바꾼다. 이미 기록된 일정의 분류는 바뀌지 않는다 */
     @Transactional
     public CategoryResponse rename(Long id, String rawName) {
         UserCategoryEntity category = getOrThrow(id);
@@ -77,10 +72,7 @@ public class UserCategoryService {
         return CategoryResponse.from(category);
     }
 
-    /**
-     * 목록에서만 지운다. 이 분류를 쓰던 일정은 그대로 남는다.
-     * FK로 묶여 있지 않으므로 제약 위반이 발생하지 않는다.
-     */
+    /** 목록에서만 지운다. 이 분류를 쓰던 일정은 그대로 남는다 */
     @Transactional
     public void delete(Long id) {
         userCategoryRepository.delete(getOrThrow(id));

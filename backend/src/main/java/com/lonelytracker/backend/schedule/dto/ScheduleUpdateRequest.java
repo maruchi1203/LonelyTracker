@@ -9,12 +9,9 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 /**
- * 일정 수정 = <b>앞으로 전부 수정</b>.
- * <p>
- * 회차 기록(schedule_progress)이 붙어 있는 회차는 영향받지 않는다.
- * 이미 손댄 회차이므로 그쪽 값이 이긴다.
+ * 앞으로의 회차를 전부 수정한다. 이미 손댄 회차는 그쪽 값이 이겨 영향받지 않는다.
  *
- * @param recurrence 주면 반복 규칙을 바꾸거나 새로 붙이고, 안 주면 <b>반복을 없앤다</b>
+ * @param recurrence 주면 반복 규칙을 바꾸거나 새로 붙이고, 안 주면 반복을 없앤다
  */
 public record ScheduleUpdateRequest(
         @NotBlank(message = "title은 필수입니다")

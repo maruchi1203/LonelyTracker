@@ -30,14 +30,7 @@ import java.util.Set;
 import com.lonelytracker.backend.schedule.domain.ScheduleRecurrenceFreq;
 
 /**
- * 반복 규칙 - <b>언제 반복되나</b>.
- * <p>
- * {@link ScheduleEntity} 과 1:1 이고 <b>이 행의 존재 자체가 "반복 여부"</b> 다.
- * 별도 플래그를 두지 않는 이유는, 플래그는 true 인데 규칙이 없는 상태가
- * 생길 수 있기 때문이다.
- * <p>
- * 시각·제목·분류는 갖지 않는다. 그건 ScheduleEntity 의 것이고 회차가 물려받는다.
- * 여기는 "며칠마다" 만 안다.
+ * 반복 규칙
  */
 @Entity
 @Table(name = "schedule_recur")

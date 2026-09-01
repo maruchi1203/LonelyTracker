@@ -13,11 +13,9 @@ import java.util.Set;
  * @param endsOn    null 이면 무기한. 회차를 미리 만들지 않으므로 상한이 필요 없다
  */
 public record RecurrenceRequest(
-        @NotNull(message = "freq는 필수입니다")
-        ScheduleRecurrenceFreq freq,
+                @NotNull(message = "freq는 필수입니다") ScheduleRecurrenceFreq freq,
 
-        Set<DayOfWeek> byWeekday,
+                Set<DayOfWeek> byWeekday,
 
-        LocalDate endsOn
-) {
+                LocalDate endsOn) {
 }

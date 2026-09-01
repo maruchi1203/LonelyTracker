@@ -39,10 +39,7 @@ import com.lonelytracker.backend.schedule.repository.ScheduleRepository;
 @Transactional(readOnly = true)
 public class ScheduleService {
 
-    /**
-     * 조건이 없을 때 회차를 펼칠 기본 범위.
-     * 회차를 미리 만들지 않으므로 "어디까지 펼칠지" 를 반드시 정해야 한다.
-     */
+    /** 조회 조건이 없을 때 회차를 펼칠 기본 범위 */
     private static final int DEFAULT_PAST_MONTHS = 1;
     private static final int DEFAULT_FUTURE_MONTHS = 3;
 
@@ -73,8 +70,7 @@ public class ScheduleService {
         List<ScheduleProgressEntity> progresses = progressRepository.findInRange(
                 ids, windowFrom.toLocalDate(), windowTo.toLocalDate(), windowFrom, windowTo);
 
-        // status·category 필터는 전개 후에 건다. 회차의 상태는 progress 에 있고
-        // 분류는 일정과 회차 중 어느 쪽이 이길지 병합해 봐야 알기 때문이다.
+        // 상태와 분류는 전개 후에 거른다. 회차 값이 일정 값을 덮을 수 있어 병합 뒤에야 정해진다
         return ScheduleOccurrenceExpander.expand(candidates, recurs, progresses, windowFrom, windowTo)
                 .stream()
                 .filter(r -> status == null || r.status() == status)
@@ -110,9 +106,9 @@ public class ScheduleService {
     }
 
     /**
-     * 앞으로 전부 수정. 일정 1행(과 규칙 1행)만 바뀐다.
-     * <p>
-     * 전개가 조회 시점이므로 요일이 바뀌어도 회차를 다시 만들 필요가 없다.
+     * 앞으로의 회차를 전부 수정한다. 일정 1행과 규칙 1행만 바뀐다.
+     *
+     * @param request recurrence를 빼면 반복이 해제된다
      */
     @Transactional
     public ScheduleResponse update(Long id, ScheduleUpdateRequest request) {
@@ -131,8 +127,7 @@ public class ScheduleService {
 
         applyRecurChange(schedule, request.recurrence());
 
-        // 반복이 아닌 일정의 날짜를 옮기면 회차 기록의 onDate 도 따라가야 한다.
-        // 그러지 않으면 기록이 어느 회차에도 안 붙은 유령이 된다.
+        // 1회성 일정의 날짜를 옮기면 회차 기록의 onDate도 따라가야 한다
         LocalDate newDate = request.startAt().toLocalDate();
         if (!recurRepository.existsById(id) && !oldDate.equals(newDate)) {
             progressRepository.findByScheduleIdAndOnDate(id, oldDate)
@@ -153,11 +148,10 @@ public class ScheduleService {
     }
 
     /**
-     * 그만두기(FUTURE) 또는 전체 삭제(ALL).
-     * <p>
-     * 그만두기는 행을 지우지 않고 규칙의 종료일을 오늘로 당긴다. 지난 기록을
-     * 보존하면서 이후 회차만 끊는 방법이고 UPDATE 한 줄로 끝난다.
-     * 반복이 아닌 일정은 끊을 미래가 없으므로 어느 쪽이든 삭제한다.
+     * 일정을 지운다.
+     *
+     * @param scope FUTURE는 규칙의 종료일을 오늘로 당겨 지난 기록을 남기고,
+     *              ALL은 전부 지운다. 1회성 일정은 어느 쪽이든 삭제된다
      */
     @Transactional
     public void delete(Long id, ScheduleDeleteScope scope) {
@@ -166,15 +160,14 @@ public class ScheduleService {
 
         if (scope == ScheduleDeleteScope.FUTURE && recur != null) {
             recur.stopOn(LocalDate.now());
-            // 그만둔 뒤로 미뤄둔 회차가 되살아나지 않게 앞으로의 기록을 지운다.
+            // 앞으로 미뤄둔 회차가 되살아나지 않게 지운다
             progressRepository.deleteFutureOf(id, LocalDate.now(),
                     LocalDate.now().atTime(java.time.LocalTime.MAX));
             recurRepository.saveAndFlush(recur);
             return;
         }
 
-        // DB 에 ON DELETE CASCADE 가 걸려 있지만 Hibernate 는 그것을 모른다.
-        // 영속성 컨텍스트에 자식이 남은 채 부모를 지우면 flush 때 예외가 난다.
+        // DB의 ON DELETE CASCADE를 Hibernate는 모른다. 자식을 먼저 지워야 flush에서 안 터진다
         progressRepository.deleteByScheduleId(id);
         if (recur != null) {
             recurRepository.delete(recur);
@@ -182,7 +175,7 @@ public class ScheduleService {
         scheduleRepository.delete(schedule);
     }
 
-    /** 남의 일정은 없는 것으로 취급한다. 404 로 존재 자체를 숨긴다. */
+    /** 남의 일정은 없는 것으로 취급한다 */
     ScheduleEntity getOwnedOrThrow(Long id) {
         Long userId = currentUserProvider.get().getId();
         return scheduleRepository.findById(id)
@@ -209,8 +202,7 @@ public class ScheduleService {
                 .findByScheduleIdAndOnDate(schedule.getId(), first)
                 .map(List::of).orElseGet(List::of);
 
-        // 전개 창을 당일로 한정한다. 하루라도 넘기면 매일 반복에서 회차가 둘 잡히고
-        // 미뤄서 뒤로 간 회차가 정렬에 밀려 엉뚱한 회차가 반환된다.
+        // 전개 구간을 당일로 한정한다. 넓히면 매일 반복에서 회차가 둘 이상 잡힌다
         return ScheduleOccurrenceExpander.expand(
                         List.of(schedule), recurs, progresses,
                         first.atStartOfDay(), first.atTime(java.time.LocalTime.MAX))

@@ -25,13 +25,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 /**
- * 일정의 정체 - <b>무엇인가</b>.
- * <p>
- * 단일 일정이든 반복 일정이든 여기 한 행이다. 반복 여부는
- * {@link ScheduleRecurEntity} 행의 존재로 표현하고, 수행 상태는
- * {@link ScheduleProgressEntity} 가 회차별로 갖는다.
- * <p>
- * 이 엔티티에는 <b>상태가 없다.</b> "무엇을 하기로 했나" 만 안다.
+ * 단일·반복 일정의 공통 정보.
+ * 반복 규칙은 {@link ScheduleRecurEntity}, 회차별 수행은 {@link ScheduleProgressEntity} 에 있다.
  */
 @Entity
 @Table(name = "schedule", indexes = {
@@ -41,7 +36,6 @@ import java.time.LocalDateTime;
 })
 @EntityListeners(AuditingEntityListener.class)
 @Getter
-// JPA는 기본 생성자를 요구하지만, 외부에서 빈 객체를 만들지 못하도록 PROTECTED로 막는다
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
@@ -51,61 +45,78 @@ public class ScheduleEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    /**
+     * 제목
+     */
     @Column(nullable = false, length = FieldLengths.TITLE)
     private String title;
 
-    /** 마크다운 원문을 그대로 보관한다. 렌더링은 화면이 맡는다. */
+    /**
+     * 설명 (마크다운 원문)
+     */
     @Column(columnDefinition = "TEXT")
     private String description;
 
     /**
-     * 단일 일정이면 그 시각, 반복이면 <b>첫 회차의 시각</b>이다.
-     * 반복의 시작일과 시각을 이 하나로 표현한다.
+     * 시작일시
+     * 반복 일정이면 첫 회차의 일시다
      */
     @Column(name = "start_at", nullable = false)
     private LocalDateTime startAt;
 
     /**
-     * 소요시간(분). 종료 시각을 절대값이 아니라 <b>길이</b>로 저장한다.
-     * <p>
-     * 반복 회차는 날짜가 매번 다르므로 절대 시각은 첫 회차에만 쓸모가 있다.
-     * 각 회차의 종료는 {@code 그 회차의 startAt + durationMinutes} 로 계산한다.
-     * null 이면 종료 시각이 없는 일정이다.
+     * 소요시간(분). null이면 종료 시각 없음
+     * 회차의 종료는 그 회차의 startAt + durationMinutes 로 구한다
      */
     @Column(name = "duration_minutes")
     private Integer durationMinutes;
 
+    /**
+     * 하루 종일 여부
+     */
     @Column(name = "all_day", nullable = false)
     private boolean allDay;
 
     /**
-     * 소유자. 인증이 붙기 전까지는 기본 사용자가 들어간다.
+     * 소유자 {@link UserEntity}
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private UserEntity user;
 
     /**
-     * 분류. 사용자의 카테고리 목록과 FK로 묶지 않고 <b>이름을 문자열로</b> 기록한다.
-     * 목록에서 이름을 바꾸거나 지워도 이미 남긴 기록은 그대로 보존된다.
+     * 일정 카테고리
+     * 목록과 FK로 묶지 않아 분류를 지워도 기록은 남는다
      */
     @Column(length = FieldLengths.CATEGORY_NAME)
     private String category;
 
+    /**
+     * 등록일시
+     */
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    /**
+     * 수정일시
+     */
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
     /**
-     * setter를 열어두는 대신 의도가 드러나는 메서드로 상태를 바꾼다.
-     * 영속 상태의 엔티티라면 트랜잭션 종료 시 변경 감지(dirty checking)로 자동 UPDATE된다.
+     * 일정 정보를 변경한다.
+     *
+     * @param title           제목
+     * @param description     설명
+     * @param startAt         시작일시
+     * @param durationMinutes 소요시간(분)
+     * @param allDay          하루 종일 여부
+     * @param category        일정 카테고리
      */
     public void update(String title, String description, LocalDateTime startAt,
-                       Integer durationMinutes, boolean allDay, String category) {
+            Integer durationMinutes, boolean allDay, String category) {
         this.title = title;
         this.description = description;
         this.startAt = startAt;

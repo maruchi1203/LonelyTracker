@@ -25,12 +25,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 /**
- * 사용자가 고를 수 있는 카테고리 목록의 한 항목.
- * <p>
- * 계층은 없다. 일정에는 이 이름이 <b>문자열로</b> 기록되므로 FK로 묶이지 않는다.
- * 목록에서 이름을 바꿔도 이미 기록된 일정의 분류는 그대로 남는다.
- * <p>
- * 이름은 한 사용자 안에서만 유일하면 된다. 사용자가 다르면 같은 이름을 쓸 수 있다.
+ * 사용자가 고를 수 있는 카테고리 목록의 한 항목. 계층은 없다.
+ * 일정에는 이름이 문자열로 기록되므로 FK로 묶이지 않고, 이름은 사용자 안에서만 유일하다.
  */
 @Entity
 @Table(
@@ -57,7 +53,9 @@ public class UserCategoryEntity {
     @Column(nullable = false, length = FieldLengths.CATEGORY_NAME)
     private String name;
 
-    /** 화면 표시용 색상. {@code #RRGGBB} 형식을 기대하지만 강제하지는 않는다. */
+    /**
+     * 표시 색상. {@code #RRGGBB} 를 기대하지만 강제하지 않는다
+     */
     @Column(length = FieldLengths.COLOR)
     private String color;
 
@@ -65,7 +63,9 @@ public class UserCategoryEntity {
     @Builder.Default
     private int displayOrder = 0;
 
-    /** 보관 처리. 목록에서 감추되 기존 일정의 분류 문자열은 그대로 둔다. */
+    /**
+     * 보관 여부. 목록에서만 감추고 기존 일정의 분류는 그대로 둔다
+     */
     @Column(nullable = false)
     @Builder.Default
     private boolean archived = false;
@@ -82,7 +82,9 @@ public class UserCategoryEntity {
         this.name = name;
     }
 
-    /** null 은 "변경 없음"을 뜻한다. */
+    /**
+     * 표시 정보를 바꾼다. null인 인자는 변경하지 않는다
+     */
     public void updateAppearance(String color, Integer displayOrder, Boolean archived) {
         if (color != null) this.color = color;
         if (displayOrder != null) this.displayOrder = displayOrder;

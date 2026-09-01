@@ -34,10 +34,8 @@ import com.lonelytracker.backend.schedule.service.ScheduleParseService;
 import com.lonelytracker.backend.schedule.service.ScheduleService;
 
 /**
- * 일정과 그 회차.
- * <p>
- * 단일 일정과 반복 일정이 같은 엔드포인트를 쓴다. 회차는 행이 아니지만
- * 소속 일정에는 id 가 있으므로 {@code /{id}/occurrences/{date}} 로 가리킨다.
+ * 일정과 회차의 HTTP 진입점.
+ * 단일과 반복이 같은 엔드포인트를 쓰고, 회차는 {@code /{id}/occurrences/{date}} 로 가리킨다.
  */
 @RestController
 @RequestMapping("/api/schedules")
@@ -63,12 +61,7 @@ public class ScheduleController {
         return scheduleService.findById(id);
     }
 
-    /**
-     * 자연어를 일정 초안으로 바꾼다. <b>저장하지 않는다.</b>
-     * <p>
-     * 사용자가 화면에서 확인·수정한 뒤 POST /api/schedules 로 저장한다.
-     * 바로 저장하면 AI 가 틀렸을 때 되돌리기가 번거롭다.
-     */
+    /** 자연어를 일정 초안으로 바꾼다. 저장은 사용자가 확인한 뒤 POST /api/schedules 로 한다 */
     @PostMapping("/parse")
     public ParsedSchedule parse(@Valid @RequestBody ScheduleParseRequest request) {
         return scheduleParseService.parse(request.text());
@@ -93,7 +86,7 @@ public class ScheduleController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(
             @PathVariable Long id,
-            // 기본값은 그만두기다. 빠뜨렸을 때 과거 기록이 날아가면 안 된다.
+            // 기본값은 그만두기다. 빠뜨렸을 때 과거 기록이 날아가면 안 된다
             @RequestParam(defaultValue = "FUTURE") ScheduleDeleteScope scope) {
         scheduleService.delete(id, scope);
         return ResponseEntity.noContent().build();

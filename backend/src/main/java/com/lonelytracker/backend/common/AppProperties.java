@@ -13,8 +13,7 @@ import java.util.List;
 public record AppProperties(UserDefaults user, AiSetting ai, Security security) {
 
     /**
-     * @param encryptionKey 사용자 API 키를 DB 에 암호화해 저장할 때 쓰는 마스터 키.
-     *                      <b>이건 서버의 것이라 서버 설정에 두는 게 맞다.</b>
+     * @param encryptionKey 사용자 API 키를 DB에 암호화해 저장할 때 쓰는 마스터 키.
      *                      비어 있으면 앱은 뜨되 키를 저장·조회할 수 없다
      */
     public record Security(String encryptionKey) {

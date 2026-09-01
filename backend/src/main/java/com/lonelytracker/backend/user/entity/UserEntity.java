@@ -23,11 +23,7 @@ import java.time.LocalDateTime;
 
 /**
  * 일정과 카테고리 목록의 소유자.
- * <p>
- * 아직 인증이 없어 비밀번호 같은 자격 정보는 두지 않는다.
- * 지금은 소유 구조만 잡아두고, 로그인은 별도 과제로 남긴다.
- * <p>
- * 테이블명이 app_user 인 이유는 user 가 SQL 예약어이기 때문이다.
+ * 인증이 없어 자격 정보는 두지 않는다. 테이블명이 app_user인 것은 user가 SQL 예약어이기 때문이다.
  */
 @Entity
 @Table(name = "app_user")
@@ -42,7 +38,9 @@ public class UserEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** 로그인 아이디 역할. 전체에서 유일하다. */
+    /**
+     * 로그인 아이디. 전체에서 유일하다
+     */
     @Column(nullable = false, length = FieldLengths.USERNAME, unique = true)
     private String username;
 
@@ -58,13 +56,7 @@ public class UserEntity {
     private LocalDateTime updatedAt;
 
     /**
-     * 이 사용자의 OpenAI API 키. <b>DB 에는 암호화되어 저장된다.</b>
-     * <p>
-     * 서버 설정이 아니라 사용자별로 갖는 이유는, 서버가 모두의 사용료를 대신 낼
-     * 이유가 없고 사용량도 쓰는 사람에게 귀속되어야 하기 때문이다.
-     * <p>
-     * <b>어떤 응답에도 실리면 안 된다.</b> UserResponse 가 필드를 명시적으로
-     * 나열하므로 여기 필드를 더해도 새어나가지 않는다.
+     * OpenAI API 키. DB에는 암호화되어 저장되고 어떤 응답에도 실리지 않는다
      */
     @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "openai_api_key", length = 500)
@@ -74,7 +66,11 @@ public class UserEntity {
         return openAiApiKey != null && !openAiApiKey.isBlank();
     }
 
-    /** null 이나 빈 값을 주면 등록을 해제한다. */
+    /**
+     * OpenAI API 키를 바꾼다.
+     *
+     * @param openAiApiKey null이나 빈 값을 주면 등록을 해제한다
+     */
     public void changeOpenAiApiKey(String apiKey) {
         this.openAiApiKey = (apiKey == null || apiKey.isBlank()) ? null : apiKey.strip();
     }

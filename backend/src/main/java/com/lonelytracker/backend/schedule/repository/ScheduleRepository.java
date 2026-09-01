@@ -12,15 +12,12 @@ import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
 public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> {
 
     /**
-     * 조회 범위에 회차를 낼 수 있는 일정 후보.
-     * <p>
-     * 세 갈래를 OR 로 모은다.
-     * <ol>
-     *   <li>반복 일정 — 시작이 범위 끝보다 앞이고, 종료일이 없거나 범위 시작보다 뒤</li>
-     *   <li>단일 일정 — 자기 날짜가 범위 안</li>
-     *   <li>미뤄서 범위로 들어온 회차를 가진 일정 — 자기 날짜는 범위 밖일 수 있다</li>
-     * </ol>
-     * 정확한 날짜 판정은 {@link ScheduleOccurrenceExpander} 가 한다. 여기서는 후보만 좁힌다.
+     * 조회 범위에 회차를 낼 수 있는 일정 후보를 모은다.
+     * 반복 일정, 범위 안의 1회성 일정, 미뤄서 범위로 들어온 회차를 가진 일정을 OR로 묶는다.
+     * 정확한 날짜 판정은 전개기가 하고 여기서는 후보만 좁힌다.
+     *
+     * @param from 조회 시작 시각
+     * @param to   조회 끝 시각
      */
     @Query("""
             select s from ScheduleEntity s

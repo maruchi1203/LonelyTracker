@@ -34,20 +34,13 @@ public class UserController {
     }
 
     /** 사용자 단건 조회. 없으면 404. */
-    /**
-     * 키 등록 여부. <b>키 자체는 돌려주지 않는다.</b>
-     */
+    /** 키 등록 여부. 키 자체는 돌려주지 않는다 */
     @GetMapping("/me/openai-key")
     public OpenAiKeyStatus openAiKeyStatus() {
         return userService.openAiKeyStatus();
     }
 
-    /**
-     * OpenAI API 키 등록·해제.
-     * <p>
-     * 서버 설정이 아니라 사용자별로 갖는다 - 서버가 모두의 사용료를 대신 낼 이유가 없다.
-     * DB 에는 암호화되어 저장된다.
-     */
+    /** OpenAI API 키를 등록하거나 해제한다. DB에는 암호화되어 저장된다 */
     @PutMapping("/me/openai-key")
     public OpenAiKeyStatus changeOpenAiKey(@Valid @RequestBody OpenAiKeyRequest request) {
         return userService.changeOpenAiKey(request.apiKey());
