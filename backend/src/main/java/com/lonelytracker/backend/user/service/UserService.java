@@ -7,8 +7,8 @@ import com.lonelytracker.backend.user.dto.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.lonelytracker.backend.user.entity.User;
-import com.lonelytracker.backend.user.entity.UserCategory;
+import com.lonelytracker.backend.user.entity.UserEntity;
+import com.lonelytracker.backend.user.entity.UserCategoryEntity;
 import com.lonelytracker.backend.user.repository.UserCategoryRepository;
 import com.lonelytracker.backend.user.repository.UserRepository;
 
@@ -21,7 +21,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserCategoryRepository userCategoryRepository;
     private final AppProperties appProperties;
-    private final CurrentUserProvider currentUserProvider;
+    private final UserProvider currentUserProvider;
 
     public UserResponse findById(Long id) {
         return UserResponse.from(userRepository.findById(id)
@@ -40,7 +40,7 @@ public class UserService {
     /** null 이나 빈 값을 주면 등록을 해제한다. */
     @Transactional
     public OpenAiKeyStatus changeOpenAiKey(String apiKey) {
-        User user = currentUserProvider.get();
+        UserEntity user = currentUserProvider.get();
         user.changeOpenAiApiKey(apiKey);
         userRepository.saveAndFlush(user);
         return OpenAiKeyStatus.of(user.getOpenAiApiKey());
@@ -59,7 +59,7 @@ public class UserService {
             throw new IllegalArgumentException("이미 존재하는 사용자입니다: " + name);
         }
 
-        User user = userRepository.save(User.builder()
+        UserEntity user = userRepository.save(UserEntity.builder()
                 .username(name)
                 .displayName(displayName == null || displayName.isBlank() ? name : displayName.strip())
                 .build());
@@ -70,10 +70,10 @@ public class UserService {
     }
 
     /** 추천 목록은 application.yml 의 lonelytracker.user.recommended-categories 에 있다. */
-    private void seedRecommendedCategories(User user) {
+    private void seedRecommendedCategories(UserEntity user) {
         int order = 0;
         for (String categoryName : appProperties.user().recommendedCategories()) {
-            userCategoryRepository.save(UserCategory.builder()
+            userCategoryRepository.save(UserCategoryEntity.builder()
                     .user(user)
                     .name(categoryName)
                     .displayOrder(order++)

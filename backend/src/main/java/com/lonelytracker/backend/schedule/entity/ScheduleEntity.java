@@ -1,7 +1,7 @@
 package com.lonelytracker.backend.schedule.entity;
 
 import com.lonelytracker.backend.common.FieldLengths;
-import com.lonelytracker.backend.user.entity.User;
+import com.lonelytracker.backend.user.entity.UserEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
@@ -28,8 +28,8 @@ import java.time.LocalDateTime;
  * 일정의 정체 - <b>무엇인가</b>.
  * <p>
  * 단일 일정이든 반복 일정이든 여기 한 행이다. 반복 여부는
- * {@link ScheduleRecur} 행의 존재로 표현하고, 수행 상태는
- * {@link ScheduleProgress} 가 회차별로 갖는다.
+ * {@link ScheduleRecurEntity} 행의 존재로 표현하고, 수행 상태는
+ * {@link ScheduleProgressEntity} 가 회차별로 갖는다.
  * <p>
  * 이 엔티티에는 <b>상태가 없다.</b> "무엇을 하기로 했나" 만 안다.
  */
@@ -45,7 +45,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-public class Schedule {
+public class ScheduleEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -83,7 +83,7 @@ public class Schedule {
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    private UserEntity user;
 
     /**
      * 분류. 사용자의 카테고리 목록과 FK로 묶지 않고 <b>이름을 문자열로</b> 기록한다.

@@ -1,6 +1,6 @@
 package com.lonelytracker.backend.user.dto;
 
-import com.lonelytracker.backend.user.entity.User;
+import com.lonelytracker.backend.user.entity.UserEntity;
 
 import java.time.LocalDateTime;
 
@@ -10,7 +10,7 @@ public record UserResponse(
         String displayName,
         LocalDateTime createdAt
 ) {
-    public static UserResponse from(User user) {
+    public static UserResponse from(UserEntity user) {
         return new UserResponse(user.getId(), user.getUsername(), user.getDisplayName(), user.getCreatedAt());
     }
 }

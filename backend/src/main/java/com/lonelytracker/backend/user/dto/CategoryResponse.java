@@ -1,6 +1,6 @@
 package com.lonelytracker.backend.user.dto;
 
-import com.lonelytracker.backend.user.entity.UserCategory;
+import com.lonelytracker.backend.user.entity.UserCategoryEntity;
 
 import java.time.LocalDateTime;
 
@@ -14,7 +14,7 @@ public record CategoryResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
-    public static CategoryResponse from(UserCategory category) {
+    public static CategoryResponse from(UserCategoryEntity category) {
         return new CategoryResponse(
                 category.getId(),
                 category.getName(),

@@ -15,9 +15,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 정규화 대신 문자열을 쓰는 이유는 요일이 최대 7개로 고정이고 따로 조회할 일이 없기 때문이다.
  * DB 를 눈으로 열었을 때 읽히는 것도 이점이다.
  */
-class WeekdaysConverterTest {
+class ScheduleWeekdaysConverterTest {
 
-    private final WeekdaysConverter converter = new WeekdaysConverter();
+    private final ScheduleWeekdaysConverter converter = new ScheduleWeekdaysConverter();
 
     @Test
     @DisplayName("요일 집합은 항상 같은 순서의 문자열이 된다")

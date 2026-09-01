@@ -11,7 +11,7 @@ import java.util.Set;
  * <p>
  * 행을 미리 만드는 방식이라 끝이 있어야 한다. 종료일을 주지 않으면 1년치까지만 만든다.
  */
-public final class OccurrenceDates {
+public final class ScheduleOccurrenceDates {
 
     /**
      * 한 번에 펼칠 수 있는 회차 수 상한.
@@ -24,7 +24,7 @@ public final class OccurrenceDates {
      */
     public static final int MAX_EXPANDED = 10_000;
 
-    private OccurrenceDates() {
+    private ScheduleOccurrenceDates() {
     }
 
     /**
@@ -36,9 +36,9 @@ public final class OccurrenceDates {
      *
      * @throws IllegalArgumentException 구간이 뒤집혔거나 결과가 {@link #MAX_EXPANDED} 를 넘을 때
      */
-    public static List<LocalDate> generate(RecurrenceFreq freq, Set<DayOfWeek> byWeekday,
+    public static List<LocalDate> generate(ScheduleRecurrenceFreq freq, Set<DayOfWeek> byWeekday,
             LocalDate from, LocalDate to) {
-        if (freq == RecurrenceFreq.WEEKLY && (byWeekday == null || byWeekday.isEmpty())) {
+        if (freq == ScheduleRecurrenceFreq.WEEKLY && (byWeekday == null || byWeekday.isEmpty())) {
             throw new IllegalArgumentException("매주 반복은 요일을 하나 이상 골라야 합니다");
         }
         if (from == null || to == null) {
@@ -50,7 +50,7 @@ public final class OccurrenceDates {
 
         List<LocalDate> dates = new ArrayList<>();
         for (LocalDate date = from; !date.isAfter(to); date = date.plusDays(1)) {
-            if (freq == RecurrenceFreq.DAILY || byWeekday.contains(date.getDayOfWeek())) {
+            if (freq == ScheduleRecurrenceFreq.DAILY || byWeekday.contains(date.getDayOfWeek())) {
                 dates.add(date);
                 if (dates.size() > MAX_EXPANDED) {
                     throw new IllegalArgumentException(

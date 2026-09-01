@@ -5,7 +5,7 @@ import com.lonelytracker.backend.schedule.dto.RecurrenceRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleUpdateRequest;
-import com.lonelytracker.backend.user.service.CurrentUserProvider;
+import com.lonelytracker.backend.user.service.UserProvider;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,13 +19,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import com.lonelytracker.backend.schedule.domain.DeleteScope;
-import com.lonelytracker.backend.schedule.domain.OccurrenceDates;
-import com.lonelytracker.backend.schedule.domain.OccurrenceExpander;
+import com.lonelytracker.backend.schedule.domain.ScheduleDeleteScope;
+import com.lonelytracker.backend.schedule.domain.ScheduleOccurrenceDates;
+import com.lonelytracker.backend.schedule.domain.ScheduleOccurrenceExpander;
 import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
-import com.lonelytracker.backend.schedule.entity.Schedule;
-import com.lonelytracker.backend.schedule.entity.ScheduleProgress;
-import com.lonelytracker.backend.schedule.entity.ScheduleRecur;
+import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
+import com.lonelytracker.backend.schedule.entity.ScheduleProgressEntity;
+import com.lonelytracker.backend.schedule.entity.ScheduleRecurEntity;
 import com.lonelytracker.backend.schedule.repository.ScheduleProgressRepository;
 import com.lonelytracker.backend.schedule.repository.ScheduleRecurRepository;
 import com.lonelytracker.backend.schedule.repository.ScheduleRepository;
@@ -49,7 +49,7 @@ public class ScheduleService {
     private final ScheduleRepository scheduleRepository;
     private final ScheduleRecurRepository recurRepository;
     private final ScheduleProgressRepository progressRepository;
-    private final CurrentUserProvider currentUserProvider;
+    private final UserProvider currentUserProvider;
 
     public List<ScheduleResponse> search(LocalDateTime from, LocalDateTime to,
                                          ScheduleStatus status, String category) {
@@ -60,22 +60,22 @@ public class ScheduleService {
         LocalDateTime windowTo = (to != null)
                 ? to : LocalDateTime.now().plusMonths(DEFAULT_FUTURE_MONTHS);
 
-        List<Schedule> candidates = scheduleRepository.findCandidates(
+        List<ScheduleEntity> candidates = scheduleRepository.findCandidates(
                 userId, windowFrom, windowTo, windowFrom.toLocalDate(), windowTo.toLocalDate());
         if (candidates.isEmpty()) {
             return List.of();
         }
 
-        List<Long> ids = candidates.stream().map(Schedule::getId).toList();
-        Map<Long, ScheduleRecur> recurs = new HashMap<>();
+        List<Long> ids = candidates.stream().map(ScheduleEntity::getId).toList();
+        Map<Long, ScheduleRecurEntity> recurs = new HashMap<>();
         recurRepository.findByScheduleIds(ids)
                 .forEach(r -> recurs.put(r.getScheduleId(), r));
-        List<ScheduleProgress> progresses = progressRepository.findInRange(
+        List<ScheduleProgressEntity> progresses = progressRepository.findInRange(
                 ids, windowFrom.toLocalDate(), windowTo.toLocalDate(), windowFrom, windowTo);
 
         // status·category 필터는 전개 후에 건다. 회차의 상태는 progress 에 있고
         // 분류는 일정과 회차 중 어느 쪽이 이길지 병합해 봐야 알기 때문이다.
-        return OccurrenceExpander.expand(candidates, recurs, progresses, windowFrom, windowTo)
+        return ScheduleOccurrenceExpander.expand(candidates, recurs, progresses, windowFrom, windowTo)
                 .stream()
                 .filter(r -> status == null || r.status() == status)
                 .filter(r -> category == null || category.isBlank()
@@ -85,7 +85,7 @@ public class ScheduleService {
 
     /** 그 일정의 첫 회차를 돌려준다. */
     public ScheduleResponse findById(Long id) {
-        Schedule schedule = getOwnedOrThrow(id);
+        ScheduleEntity schedule = getOwnedOrThrow(id);
         return firstOccurrenceOf(schedule);
     }
 
@@ -93,7 +93,7 @@ public class ScheduleService {
     public ScheduleResponse create(ScheduleCreateRequest request) {
         validatePeriod(request.startAt(), request.endAt());
 
-        Schedule schedule = scheduleRepository.save(Schedule.builder()
+        ScheduleEntity schedule = scheduleRepository.save(ScheduleEntity.builder()
                 .user(currentUserProvider.get())
                 .title(request.title())
                 .description(request.description())
@@ -118,7 +118,7 @@ public class ScheduleService {
     public ScheduleResponse update(Long id, ScheduleUpdateRequest request) {
         validatePeriod(request.startAt(), request.endAt());
 
-        Schedule schedule = getOwnedOrThrow(id);
+        ScheduleEntity schedule = getOwnedOrThrow(id);
         LocalDate oldDate = schedule.getStartAt().toLocalDate();
 
         schedule.update(
@@ -139,7 +139,7 @@ public class ScheduleService {
                     .ifPresent(p -> {
                         progressRepository.delete(p);
                         progressRepository.flush();
-                        progressRepository.save(ScheduleProgress.builder()
+                        progressRepository.save(ScheduleProgressEntity.builder()
                                 .schedule(schedule)
                                 .onDate(newDate)
                                 .status(p.getStatus())
@@ -160,11 +160,11 @@ public class ScheduleService {
      * 반복이 아닌 일정은 끊을 미래가 없으므로 어느 쪽이든 삭제한다.
      */
     @Transactional
-    public void delete(Long id, DeleteScope scope) {
-        Schedule schedule = getOwnedOrThrow(id);
-        ScheduleRecur recur = recurRepository.findById(id).orElse(null);
+    public void delete(Long id, ScheduleDeleteScope scope) {
+        ScheduleEntity schedule = getOwnedOrThrow(id);
+        ScheduleRecurEntity recur = recurRepository.findById(id).orElse(null);
 
-        if (scope == DeleteScope.FUTURE && recur != null) {
+        if (scope == ScheduleDeleteScope.FUTURE && recur != null) {
             recur.stopOn(LocalDate.now());
             // 그만둔 뒤로 미뤄둔 회차가 되살아나지 않게 앞으로의 기록을 지운다.
             progressRepository.deleteFutureOf(id, LocalDate.now(),
@@ -183,7 +183,7 @@ public class ScheduleService {
     }
 
     /** 남의 일정은 없는 것으로 취급한다. 404 로 존재 자체를 숨긴다. */
-    Schedule getOwnedOrThrow(Long id) {
+    ScheduleEntity getOwnedOrThrow(Long id) {
         Long userId = currentUserProvider.get().getId();
         return scheduleRepository.findById(id)
                 .filter(s -> s.getUser().getId().equals(userId))
@@ -191,37 +191,37 @@ public class ScheduleService {
     }
 
     /** 그 일정이 그 날짜에 회차를 내는가. */
-    boolean occursOn(Schedule schedule, LocalDate onDate) {
+    boolean occursOn(ScheduleEntity schedule, LocalDate onDate) {
         if (onDate.isBefore(schedule.getStartAt().toLocalDate())) {
             return false;
         }
-        ScheduleRecur recur = recurRepository.findById(schedule.getId()).orElse(null);
+        ScheduleRecurEntity recur = recurRepository.findById(schedule.getId()).orElse(null);
         if (recur == null) {
             return onDate.equals(schedule.getStartAt().toLocalDate());
         }
         if (recur.getEndsOn() != null && onDate.isAfter(recur.getEndsOn())) {
             return false;
         }
-        return !OccurrenceDates.generate(
+        return !ScheduleOccurrenceDates.generate(
                 recur.getFreq(), recur.getByWeekday(), onDate, onDate).isEmpty();
     }
 
     /** 규칙이 있으면 첫 회차, 없으면 그 일정 자신. */
-    private ScheduleResponse firstOccurrenceOf(Schedule schedule) {
-        ScheduleRecur recur = recurRepository.findById(schedule.getId()).orElse(null);
+    private ScheduleResponse firstOccurrenceOf(ScheduleEntity schedule) {
+        ScheduleRecurEntity recur = recurRepository.findById(schedule.getId()).orElse(null);
         LocalDate first = firstDateOf(schedule, recur);
 
-        Map<Long, ScheduleRecur> recurs = new HashMap<>();
+        Map<Long, ScheduleRecurEntity> recurs = new HashMap<>();
         if (recur != null) {
             recurs.put(schedule.getId(), recur);
         }
-        List<ScheduleProgress> progresses = progressRepository
+        List<ScheduleProgressEntity> progresses = progressRepository
                 .findByScheduleIdAndOnDate(schedule.getId(), first)
                 .map(List::of).orElseGet(List::of);
 
         // 전개 창을 당일로 한정한다. 하루라도 넘기면 매일 반복에서 회차가 둘 잡히고
         // 미뤄서 뒤로 간 회차가 정렬에 밀려 엉뚱한 회차가 반환된다.
-        return OccurrenceExpander.expand(
+        return ScheduleOccurrenceExpander.expand(
                         List.of(schedule), recurs, progresses,
                         first.atStartOfDay(), first.atTime(java.time.LocalTime.MAX))
                 .stream()
@@ -231,12 +231,12 @@ public class ScheduleService {
                         "회차를 전개하지 못했습니다. scheduleId=" + schedule.getId()));
     }
 
-    private LocalDate firstDateOf(Schedule schedule, ScheduleRecur recur) {
+    private LocalDate firstDateOf(ScheduleEntity schedule, ScheduleRecurEntity recur) {
         LocalDate start = schedule.getStartAt().toLocalDate();
         if (recur == null) {
             return start;
         }
-        List<LocalDate> dates = OccurrenceDates.generate(
+        List<LocalDate> dates = ScheduleOccurrenceDates.generate(
                 recur.getFreq(), recur.getByWeekday(), start,
                 (recur.getEndsOn() != null) ? recur.getEndsOn() : start.plusMonths(2));
         if (dates.isEmpty()) {
@@ -245,8 +245,8 @@ public class ScheduleService {
         return dates.get(0);
     }
 
-    private void applyRecurChange(Schedule schedule, RecurrenceRequest rule) {
-        ScheduleRecur existing = recurRepository.findById(schedule.getId()).orElse(null);
+    private void applyRecurChange(ScheduleEntity schedule, RecurrenceRequest rule) {
+        ScheduleRecurEntity existing = recurRepository.findById(schedule.getId()).orElse(null);
 
         if (rule == null) {
             if (existing != null) {
@@ -263,9 +263,9 @@ public class ScheduleService {
         recurRepository.saveAndFlush(existing);
     }
 
-    private void saveRecur(Schedule schedule, RecurrenceRequest rule) {
+    private void saveRecur(ScheduleEntity schedule, RecurrenceRequest rule) {
         validateRule(schedule, rule);
-        recurRepository.save(ScheduleRecur.builder()
+        recurRepository.save(ScheduleRecurEntity.builder()
                 .schedule(schedule)
                 .freq(rule.freq())
                 .byWeekday(toEnumSet(rule.byWeekday()))
@@ -274,9 +274,9 @@ public class ScheduleService {
     }
 
     /** 규칙이 회차를 하나도 못 내면 저장하지 않는다. */
-    private void validateRule(Schedule schedule, RecurrenceRequest rule) {
+    private void validateRule(ScheduleEntity schedule, RecurrenceRequest rule) {
         LocalDate start = schedule.getStartAt().toLocalDate();
-        List<LocalDate> dates = OccurrenceDates.generate(
+        List<LocalDate> dates = ScheduleOccurrenceDates.generate(
                 rule.freq(), toEnumSet(rule.byWeekday()), start,
                 (rule.endsOn() != null) ? rule.endsOn() : start.plusMonths(2));
         if (dates.isEmpty()) {

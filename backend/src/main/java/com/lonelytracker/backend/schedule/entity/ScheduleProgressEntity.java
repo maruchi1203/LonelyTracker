@@ -56,7 +56,7 @@ import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-public class ScheduleProgress {
+public class ScheduleProgressEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -70,7 +70,7 @@ public class ScheduleProgress {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_id", nullable = false)
     @OnDelete(action = OnDeleteAction.CASCADE)
-    private Schedule schedule;
+    private ScheduleEntity schedule;
 
     @Column(name = "on_date", nullable = false)
     private LocalDate onDate;

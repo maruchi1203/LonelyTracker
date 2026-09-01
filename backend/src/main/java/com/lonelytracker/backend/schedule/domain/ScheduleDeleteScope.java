@@ -7,7 +7,7 @@ package com.lonelytracker.backend.schedule.domain;
  * "이 회차만 삭제" 는 두지 않는다 — 습관 추적에서 "이날은 안 함" 은 곧 건너뛰기이므로
  * SKIPPED 로 통일했다.
  */
-public enum DeleteScope {
+public enum ScheduleDeleteScope {
     /** 그만두기. 규칙의 종료일을 오늘로 당겨 이후 회차를 끊고 지난 기록은 남긴다 */
     FUTURE,
     /** 전체 삭제. 회차 기록까지 사라진다 */

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
-import com.lonelytracker.backend.user.service.CurrentUserProvider;
+import com.lonelytracker.backend.user.service.UserProvider;
 import com.lonelytracker.backend.user.service.UserService;
 
 @RestController
@@ -25,7 +25,7 @@ import com.lonelytracker.backend.user.service.UserService;
 public class UserController {
 
     private final UserService userService;
-    private final CurrentUserProvider currentUserProvider;
+    private final UserProvider currentUserProvider;
 
     /** 현재 로그인한 사용자. 인증이 붙기 전까지는 항상 기본 사용자를 반환한다. */
     @GetMapping("/me")

@@ -9,11 +9,11 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import com.lonelytracker.backend.schedule.entity.ScheduleProgress;
+import com.lonelytracker.backend.schedule.entity.ScheduleProgressEntity;
 
-public interface ScheduleProgressRepository extends JpaRepository<ScheduleProgress, Long> {
+public interface ScheduleProgressRepository extends JpaRepository<ScheduleProgressEntity, Long> {
 
-    Optional<ScheduleProgress> findByScheduleIdAndOnDate(Long scheduleId, LocalDate onDate);
+    Optional<ScheduleProgressEntity> findByScheduleIdAndOnDate(Long scheduleId, LocalDate onDate);
 
     /**
      * 조회 범위에 걸치는 회차 기록.
@@ -22,14 +22,14 @@ public interface ScheduleProgressRepository extends JpaRepository<ScheduleProgre
      * onDate 로는 8월에, startAt 으로는 9월에 잡히고 <b>두 달 모두에 보여야</b> 하기 때문이다.
      */
     @Query("""
-            select p from ScheduleProgress p
+            select p from ScheduleProgressEntity p
             where p.schedule.id in :scheduleIds
               and (
                    (p.onDate between :fromDate and :toDate)
                 or (p.startAt is not null and p.startAt between :from and :to)
               )
             """)
-    List<ScheduleProgress> findInRange(@Param("scheduleIds") List<Long> scheduleIds,
+    List<ScheduleProgressEntity> findInRange(@Param("scheduleIds") List<Long> scheduleIds,
                                        @Param("fromDate") LocalDate fromDate,
                                        @Param("toDate") LocalDate toDate,
                                        @Param("from") LocalDateTime from,
@@ -56,7 +56,7 @@ public interface ScheduleProgressRepository extends JpaRepository<ScheduleProgre
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
-            delete from ScheduleProgress p
+            delete from ScheduleProgressEntity p
             where p.schedule.id = :scheduleId
               and (p.onDate > :today
                 or (p.startAt is not null and p.startAt > :todayEnd))

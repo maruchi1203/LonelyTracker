@@ -12,9 +12,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import com.lonelytracker.backend.schedule.entity.Schedule;
-import com.lonelytracker.backend.schedule.entity.ScheduleProgress;
-import com.lonelytracker.backend.schedule.entity.ScheduleRecur;
+import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
+import com.lonelytracker.backend.schedule.entity.ScheduleProgressEntity;
+import com.lonelytracker.backend.schedule.entity.ScheduleRecurEntity;
 
 /**
  * 일정을 회차로 펼치고 수행 기록을 덮어쓴다. DB 를 타지 않는 순수 계산이다.
@@ -25,26 +25,26 @@ import com.lonelytracker.backend.schedule.entity.ScheduleRecur;
  * 기록이 없는 회차는 PLANNED 로 본다. 행이 없다는 것이
  * "아직 아무것도 안 했다" 는 뜻이므로 자연스럽다.
  */
-public final class OccurrenceExpander {
+public final class ScheduleOccurrenceExpander {
 
-    private OccurrenceExpander() {
+    private ScheduleOccurrenceExpander() {
     }
 
-    public static List<ScheduleResponse> expand(List<Schedule> schedules,
-            Map<Long, ScheduleRecur> recurByScheduleId,
-            List<ScheduleProgress> progresses,
+    public static List<ScheduleResponse> expand(List<ScheduleEntity> schedules,
+            Map<Long, ScheduleRecurEntity> recurByScheduleId,
+            List<ScheduleProgressEntity> progresses,
             LocalDateTime from, LocalDateTime to) {
 
-        Map<String, ScheduleProgress> byKey = new HashMap<>();
-        for (ScheduleProgress p : progresses) {
+        Map<String, ScheduleProgressEntity> byKey = new HashMap<>();
+        for (ScheduleProgressEntity p : progresses) {
             byKey.put(key(p.getSchedule().getId(), p.getOnDate()), p);
         }
 
         List<ScheduleResponse> result = new ArrayList<>();
         Set<String> emitted = new HashSet<>();
 
-        for (Schedule s : schedules) {
-            ScheduleRecur recur = recurByScheduleId.get(s.getId());
+        for (ScheduleEntity s : schedules) {
+            ScheduleRecurEntity recur = recurByScheduleId.get(s.getId());
             for (LocalDate date : occurrenceDatesOf(s, recur, from, to)) {
                 String k = key(s.getId(), date);
                 emitted.add(k);
@@ -54,7 +54,7 @@ public final class OccurrenceExpander {
 
         // 범위 밖 날짜에서 미뤄져 들어온 회차. 위 루프는 onDate 기준이라 이걸 못 잡는다.
         // 8/31 을 9/2 로 미루면 9월 조회에서 여기로 잡힌다.
-        for (ScheduleProgress p : progresses) {
+        for (ScheduleProgressEntity p : progresses) {
             String k = key(p.getSchedule().getId(), p.getOnDate());
             if (emitted.contains(k) || p.getStartAt() == null) {
                 continue;
@@ -70,7 +70,7 @@ public final class OccurrenceExpander {
     }
 
     /** 규칙이 없으면 회차는 하나뿐이다 — 그 일정 자신의 날짜. */
-    private static List<LocalDate> occurrenceDatesOf(Schedule s, ScheduleRecur recur,
+    private static List<LocalDate> occurrenceDatesOf(ScheduleEntity s, ScheduleRecurEntity recur,
             LocalDateTime from, LocalDateTime to) {
         LocalDate firstDate = s.getStartAt().toLocalDate();
 
@@ -87,11 +87,11 @@ public final class OccurrenceExpander {
         if (windowEnd.isBefore(windowStart)) {
             return List.of();
         }
-        return OccurrenceDates.generate(recur.getFreq(), recur.getByWeekday(), windowStart, windowEnd);
+        return ScheduleOccurrenceDates.generate(recur.getFreq(), recur.getByWeekday(), windowStart, windowEnd);
     }
 
     /** 일정 값에 회차 기록을 덮어쓴다. 기록이 null 이면 일정 값 그대로. */
-    private static ScheduleResponse merge(Schedule s, LocalDate onDate, ScheduleProgress p,
+    private static ScheduleResponse merge(ScheduleEntity s, LocalDate onDate, ScheduleProgressEntity p,
             boolean recurring) {
         LocalDateTime defaultStart = LocalDateTime.of(onDate, s.getStartAt().toLocalTime());
         LocalDateTime startAt = (p != null && p.getStartAt() != null) ? p.getStartAt() : defaultStart;

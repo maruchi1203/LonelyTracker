@@ -3,7 +3,7 @@ package com.lonelytracker.backend.ai;
 import com.lonelytracker.backend.common.AppProperties;
 import com.lonelytracker.backend.common.exception.AiParseException;
 import com.lonelytracker.backend.common.exception.AiUnavailableException;
-import com.lonelytracker.backend.schedule.domain.RecurrenceFreq;
+import com.lonelytracker.backend.schedule.domain.ScheduleRecurrenceFreq;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -225,7 +225,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
 
         // 파싱된 스케쥴
         ParsedRecurringSchedule schedule = new ParsedRecurringSchedule(
-                RecurrenceFreq.valueOf(node.path("freq").asString()),
+                ScheduleRecurrenceFreq.valueOf(node.path("freq").asString()),
                 weekdays,
                 (endsOn == null) ? null : LocalDate.parse(endsOn));
 

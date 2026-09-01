@@ -27,16 +27,16 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
-import com.lonelytracker.backend.schedule.domain.RecurrenceFreq;
+import com.lonelytracker.backend.schedule.domain.ScheduleRecurrenceFreq;
 
 /**
  * 반복 규칙 - <b>언제 반복되나</b>.
  * <p>
- * {@link Schedule} 과 1:1 이고 <b>이 행의 존재 자체가 "반복 여부"</b> 다.
+ * {@link ScheduleEntity} 과 1:1 이고 <b>이 행의 존재 자체가 "반복 여부"</b> 다.
  * 별도 플래그를 두지 않는 이유는, 플래그는 true 인데 규칙이 없는 상태가
  * 생길 수 있기 때문이다.
  * <p>
- * 시각·제목·분류는 갖지 않는다. 그건 Schedule 의 것이고 회차가 물려받는다.
+ * 시각·제목·분류는 갖지 않는다. 그건 ScheduleEntity 의 것이고 회차가 물려받는다.
  * 여기는 "며칠마다" 만 안다.
  */
 @Entity
@@ -46,7 +46,7 @@ import com.lonelytracker.backend.schedule.domain.RecurrenceFreq;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-public class ScheduleRecur {
+public class ScheduleRecurEntity {
 
     /** PK 가 곧 FK 다. 별도 id 를 두면 1:1 이 깨질 수 있다. */
     @Id
@@ -57,14 +57,14 @@ public class ScheduleRecur {
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "schedule_id")
     @OnDelete(action = OnDeleteAction.CASCADE)
-    private Schedule schedule;
+    private ScheduleEntity schedule;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
-    private RecurrenceFreq freq;
+    private ScheduleRecurrenceFreq freq;
 
     /** WEEKLY 일 때만 의미가 있다. DAILY 면 비어 있다. */
-    @Convert(converter = WeekdaysConverter.class)
+    @Convert(converter = ScheduleWeekdaysConverter.class)
     @Column(name = "by_weekday", length = 30)
     private Set<DayOfWeek> byWeekday;
 
@@ -81,7 +81,7 @@ public class ScheduleRecur {
     private LocalDateTime updatedAt;
 
     /** 규칙 변경. 전개가 조회 시점이므로 회차를 다시 만들 필요가 없다. */
-    public void updateRule(RecurrenceFreq freq, Set<DayOfWeek> byWeekday, LocalDate endsOn) {
+    public void updateRule(ScheduleRecurrenceFreq freq, Set<DayOfWeek> byWeekday, LocalDate endsOn) {
         this.freq = freq;
         this.byWeekday = byWeekday;
         this.endsOn = endsOn;

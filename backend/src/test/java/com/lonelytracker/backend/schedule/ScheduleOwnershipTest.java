@@ -1,7 +1,7 @@
 package com.lonelytracker.backend.schedule;
 
 import com.lonelytracker.backend.support.IntegrationTest;
-import com.lonelytracker.backend.user.entity.User;
+import com.lonelytracker.backend.user.entity.UserEntity;
 import com.lonelytracker.backend.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -22,7 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import com.lonelytracker.backend.schedule.entity.Schedule;
+import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
 import com.lonelytracker.backend.schedule.repository.ScheduleRepository;
 
 /**
@@ -53,13 +53,13 @@ class ScheduleOwnershipTest extends IntegrationTest {
     ScheduleRepository scheduleRepository;
 
     /** 요청자(기본 사용자)가 아닌 다른 사용자의 일정을 하나 심는다. */
-    private Schedule givenOtherUsersSchedule() {
-        User other = userRepository.save(User.builder()
+    private ScheduleEntity givenOtherUsersSchedule() {
+        UserEntity other = userRepository.save(UserEntity.builder()
                 .username("someone-else")
                 .displayName("남의 계정")
                 .build());
 
-        return scheduleRepository.save(Schedule.builder()
+        return scheduleRepository.save(ScheduleEntity.builder()
                 .user(other)
                 .title("남의 일정")
                 .startAt(LocalDateTime.parse("2026-10-01T10:00:00"))
@@ -135,7 +135,7 @@ class ScheduleOwnershipTest extends IntegrationTest {
                         .andExpect(status().isCreated())
                         .andReturn().getResponse().getContentAsString());
 
-        Schedule saved = scheduleRepository.findById(created.get("id").asLong()).orElseThrow();
+        ScheduleEntity saved = scheduleRepository.findById(created.get("id").asLong()).orElseThrow();
 
         assertThat(saved.getUser().getUsername())
                 .as("생성된 일정의 소유자가 요청자와 다르다")

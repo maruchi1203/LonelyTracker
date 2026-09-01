@@ -5,8 +5,8 @@ import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.ai.ScheduleParser;
 import com.lonelytracker.backend.common.exception.AiParseException;
 import com.lonelytracker.backend.common.exception.AiUnavailableException;
-import com.lonelytracker.backend.user.service.CurrentUserProvider;
-import com.lonelytracker.backend.user.entity.User;
+import com.lonelytracker.backend.user.service.UserProvider;
+import com.lonelytracker.backend.user.entity.UserEntity;
 import com.lonelytracker.backend.user.service.UserCategoryService;
 import com.lonelytracker.backend.user.dto.CategoryResponse;
 import lombok.RequiredArgsConstructor;
@@ -37,11 +37,11 @@ public class ScheduleParseService {
 
     private final ScheduleParser scheduleParser;
     private final UserCategoryService userCategoryService;
-    private final CurrentUserProvider currentUserProvider;
+    private final UserProvider currentUserProvider;
 
     public ParsedSchedule parse(String text) {
         // ① 짧은 트랜잭션. 여기서 닫힌다
-        User user = currentUserProvider.get();
+        UserEntity user = currentUserProvider.get();
         if (!user.hasOpenAiApiKey()) {
             // 서버 설정이 아니라 이 사용자가 키를 등록하지 않은 것이다.
             // 사용자 잘못이 아니므로 4xx 가 아니고, 나머지 기능은 그대로 쓴다.

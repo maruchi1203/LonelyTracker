@@ -4,17 +4,17 @@ import com.lonelytracker.backend.common.exception.UserNotFoundException;
 import com.lonelytracker.backend.common.AppProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-import com.lonelytracker.backend.user.entity.User;
+import com.lonelytracker.backend.user.entity.UserEntity;
 import com.lonelytracker.backend.user.repository.UserRepository;
 
 @Component
 @RequiredArgsConstructor
-public class CurrentUserProvider {
+public class UserProvider {
 
     private final UserRepository userRepository;
     private final AppProperties appProperties;
 
-    public User get() {
+    public UserEntity get() {
         String username = appProperties.user().defaultUsername();
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new UserNotFoundException(

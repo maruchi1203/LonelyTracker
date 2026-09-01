@@ -17,7 +17,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import com.lonelytracker.backend.user.entity.UserCategory;
+import com.lonelytracker.backend.user.entity.UserCategoryEntity;
 import com.lonelytracker.backend.user.repository.UserCategoryRepository;
 
 /**
@@ -65,7 +65,7 @@ class UserApiTest extends IntegrationTest {
         var seeded = userCategoryRepository
                 .findByUserIdOrderByDisplayOrderAscNameAsc(created.get("id").asLong())
                 .stream()
-                .map(UserCategory::getName)
+                .map(UserCategoryEntity::getName)
                 .toList();
 
         assertThat(seeded)

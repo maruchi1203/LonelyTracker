@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
  * 별도 테이블로 정규화하지 않는 이유는 {@code schedule.category} 를 문자열로 둔 것과 같다.
  */
 @Converter
-public class WeekdaysConverter implements AttributeConverter<Set<DayOfWeek>, String> {
+public class ScheduleWeekdaysConverter implements AttributeConverter<Set<DayOfWeek>, String> {
 
     /** DayOfWeek 이름 앞 세 글자. MON/TUE/WED/THU/FRI/SAT/SUN 으로 전부 다르다. */
     private static final int ABBREVIATION_LENGTH = 3;
@@ -40,7 +40,7 @@ public class WeekdaysConverter implements AttributeConverter<Set<DayOfWeek>, Str
         }
         return Arrays.stream(dbData.split(","))
                 .map(String::strip)
-                .map(WeekdaysConverter::toDayOfWeek)
+                .map(ScheduleWeekdaysConverter::toDayOfWeek)
                 .collect(Collectors.toCollection(() -> EnumSet.noneOf(DayOfWeek.class)));
     }
 

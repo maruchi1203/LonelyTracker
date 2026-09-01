@@ -27,7 +27,7 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import com.lonelytracker.backend.schedule.domain.DeleteScope;
+import com.lonelytracker.backend.schedule.domain.ScheduleDeleteScope;
 import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
 import com.lonelytracker.backend.schedule.service.ScheduleOccurrenceService;
 import com.lonelytracker.backend.schedule.service.ScheduleParseService;
@@ -94,7 +94,7 @@ public class ScheduleController {
     public ResponseEntity<Void> delete(
             @PathVariable Long id,
             // 기본값은 그만두기다. 빠뜨렸을 때 과거 기록이 날아가면 안 된다.
-            @RequestParam(defaultValue = "FUTURE") DeleteScope scope) {
+            @RequestParam(defaultValue = "FUTURE") ScheduleDeleteScope scope) {
         scheduleService.delete(id, scope);
         return ResponseEntity.noContent().build();
     }
