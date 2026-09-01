@@ -20,8 +20,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import com.lonelytracker.backend.schedule.domain.ScheduleDeleteScope;
-import com.lonelytracker.backend.schedule.domain.ScheduleOccurrenceDates;
 import com.lonelytracker.backend.schedule.domain.ScheduleOccurrenceExpander;
+import com.lonelytracker.backend.schedule.domain.ScheduleUtil;
 import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
 import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
 import com.lonelytracker.backend.schedule.entity.ScheduleProgressEntity;
@@ -91,16 +91,16 @@ public class ScheduleService {
 
     @Transactional
     public ScheduleResponse create(ScheduleCreateRequest request) {
-        validatePeriod(request.startAt(), request.endAt());
+        ScheduleUtil.validatePeriod(request.startAt(), request.endAt());
 
         ScheduleEntity schedule = scheduleRepository.save(ScheduleEntity.builder()
                 .user(currentUserProvider.get())
                 .title(request.title())
                 .description(request.description())
                 .startAt(request.startAt())
-                .durationMinutes(toMinutes(request.startAt(), request.endAt()))
+                .durationMinutes(ScheduleUtil.toMinutes(request.startAt(), request.endAt()))
                 .allDay(Boolean.TRUE.equals(request.allDay()))
-                .category(normalizeCategory(request.category()))
+                .category(ScheduleUtil.normalizeCategory(request.category()))
                 .build());
 
         if (request.recurrence() != null) {
@@ -116,7 +116,7 @@ public class ScheduleService {
      */
     @Transactional
     public ScheduleResponse update(Long id, ScheduleUpdateRequest request) {
-        validatePeriod(request.startAt(), request.endAt());
+        ScheduleUtil.validatePeriod(request.startAt(), request.endAt());
 
         ScheduleEntity schedule = getOwnedOrThrow(id);
         LocalDate oldDate = schedule.getStartAt().toLocalDate();
@@ -125,9 +125,9 @@ public class ScheduleService {
                 request.title(),
                 request.description(),
                 request.startAt(),
-                toMinutes(request.startAt(), request.endAt()),
+                ScheduleUtil.toMinutes(request.startAt(), request.endAt()),
                 Boolean.TRUE.equals(request.allDay()),
-                normalizeCategory(request.category()));
+                ScheduleUtil.normalizeCategory(request.category()));
 
         applyRecurChange(schedule, request.recurrence());
 
@@ -192,24 +192,14 @@ public class ScheduleService {
 
     /** 그 일정이 그 날짜에 회차를 내는가. */
     boolean occursOn(ScheduleEntity schedule, LocalDate onDate) {
-        if (onDate.isBefore(schedule.getStartAt().toLocalDate())) {
-            return false;
-        }
-        ScheduleRecurEntity recur = recurRepository.findById(schedule.getId()).orElse(null);
-        if (recur == null) {
-            return onDate.equals(schedule.getStartAt().toLocalDate());
-        }
-        if (recur.getEndsOn() != null && onDate.isAfter(recur.getEndsOn())) {
-            return false;
-        }
-        return !ScheduleOccurrenceDates.generate(
-                recur.getFreq(), recur.getByWeekday(), onDate, onDate).isEmpty();
+        return ScheduleUtil.occursOn(schedule,
+                recurRepository.findById(schedule.getId()).orElse(null), onDate);
     }
 
     /** 규칙이 있으면 첫 회차, 없으면 그 일정 자신. */
     private ScheduleResponse firstOccurrenceOf(ScheduleEntity schedule) {
         ScheduleRecurEntity recur = recurRepository.findById(schedule.getId()).orElse(null);
-        LocalDate first = firstDateOf(schedule, recur);
+        LocalDate first = ScheduleUtil.firstDateOf(schedule, recur);
 
         Map<Long, ScheduleRecurEntity> recurs = new HashMap<>();
         if (recur != null) {
@@ -231,20 +221,6 @@ public class ScheduleService {
                         "회차를 전개하지 못했습니다. scheduleId=" + schedule.getId()));
     }
 
-    private LocalDate firstDateOf(ScheduleEntity schedule, ScheduleRecurEntity recur) {
-        LocalDate start = schedule.getStartAt().toLocalDate();
-        if (recur == null) {
-            return start;
-        }
-        List<LocalDate> dates = ScheduleOccurrenceDates.generate(
-                recur.getFreq(), recur.getByWeekday(), start,
-                (recur.getEndsOn() != null) ? recur.getEndsOn() : start.plusMonths(2));
-        if (dates.isEmpty()) {
-            throw new IllegalArgumentException("이 규칙으로는 일정이 하나도 생기지 않습니다");
-        }
-        return dates.get(0);
-    }
-
     private void applyRecurChange(ScheduleEntity schedule, RecurrenceRequest rule) {
         ScheduleRecurEntity existing = recurRepository.findById(schedule.getId()).orElse(null);
 
@@ -258,56 +234,20 @@ public class ScheduleService {
             saveRecur(schedule, rule);
             return;
         }
-        validateRule(schedule, rule);
-        existing.updateRule(rule.freq(), toEnumSet(rule.byWeekday()), rule.endsOn());
+        ScheduleUtil.validateRule(schedule, rule);
+        existing.updateRule(rule.freq(), ScheduleUtil.toWeekdaySet(rule.byWeekday()), rule.endsOn());
         recurRepository.saveAndFlush(existing);
     }
 
     private void saveRecur(ScheduleEntity schedule, RecurrenceRequest rule) {
-        validateRule(schedule, rule);
+        ScheduleUtil.validateRule(schedule, rule);
         recurRepository.save(ScheduleRecurEntity.builder()
                 .schedule(schedule)
                 .freq(rule.freq())
-                .byWeekday(toEnumSet(rule.byWeekday()))
+                .byWeekday(ScheduleUtil.toWeekdaySet(rule.byWeekday()))
                 .endsOn(rule.endsOn())
                 .build());
     }
 
-    /** 규칙이 회차를 하나도 못 내면 저장하지 않는다. */
-    private void validateRule(ScheduleEntity schedule, RecurrenceRequest rule) {
-        LocalDate start = schedule.getStartAt().toLocalDate();
-        List<LocalDate> dates = ScheduleOccurrenceDates.generate(
-                rule.freq(), toEnumSet(rule.byWeekday()), start,
-                (rule.endsOn() != null) ? rule.endsOn() : start.plusMonths(2));
-        if (dates.isEmpty()) {
-            throw new IllegalArgumentException("이 규칙으로는 일정이 하나도 생기지 않습니다");
-        }
-    }
 
-    private Integer toMinutes(LocalDateTime startAt, LocalDateTime endAt) {
-        return (endAt == null) ? null : (int) Duration.between(startAt, endAt).toMinutes();
-    }
-
-    /** EnumSet.copyOf 는 빈 컬렉션에 예외를 던진다. DAILY 는 요일이 비는 게 정상이다. */
-    private Set<DayOfWeek> toEnumSet(Set<DayOfWeek> source) {
-        Set<DayOfWeek> weekdays = EnumSet.noneOf(DayOfWeek.class);
-        if (source != null) {
-            weekdays.addAll(source);
-        }
-        return weekdays;
-    }
-
-    /** 빈 문자열은 미분류(null)로 통일한다. */
-    private String normalizeCategory(String category) {
-        if (category == null || category.isBlank()) {
-            return null;
-        }
-        return category.strip();
-    }
-
-    private void validatePeriod(LocalDateTime startAt, LocalDateTime endAt) {
-        if (endAt != null && endAt.isBefore(startAt)) {
-            throw new IllegalArgumentException("endAt은 startAt보다 이를 수 없습니다");
-        }
-    }
 }
