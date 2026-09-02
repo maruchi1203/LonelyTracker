@@ -13,18 +13,17 @@ import java.time.LocalDateTime;
  * @param postponeCount  연기 횟수
  */
 public record ScheduleResponse(
-        Long id,
-        LocalDate occurrenceDate,
-        String title,
-        String description,
-        LocalDateTime startAt,
-        LocalDateTime endAt,
-        boolean allDay,
-        boolean recurring,
-        ScheduleStatus status,
-        String category,
-        int postponeCount,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
-) {
+                Long id,
+                LocalDate occurrenceDate,
+                String title,
+                String description,
+                LocalDateTime startAt,
+                LocalDateTime endAt,
+                boolean allDay,
+                boolean recurring,
+                ScheduleStatus status,
+                String category,
+                int postponeCount,
+                LocalDateTime createdAt,
+                LocalDateTime updatedAt) {
 }

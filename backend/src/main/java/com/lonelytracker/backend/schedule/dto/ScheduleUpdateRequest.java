@@ -14,24 +14,17 @@ import java.time.LocalDateTime;
  * @param recurrence 주면 반복 규칙을 바꾸거나 새로 붙이고, 안 주면 반복을 없앤다
  */
 public record ScheduleUpdateRequest(
-        @NotBlank(message = "title은 필수입니다")
-        @Size(max = FieldLengths.TITLE, message = "title은 200자를 넘을 수 없습니다")
-        String title,
+                @NotBlank(message = "title은 필수입니다") @Size(max = FieldLengths.TITLE, message = "title은 200자를 넘을 수 없습니다") String title,
 
-        @Size(max = FieldLengths.DESCRIPTION, message = "description은 20000자를 넘을 수 없습니다")
-        String description,
+                @Size(max = FieldLengths.DESCRIPTION, message = "description은 20000자를 넘을 수 없습니다") String description,
 
-        @NotNull(message = "startAt은 필수입니다")
-        LocalDateTime startAt,
+                @NotNull(message = "startAt은 필수입니다") LocalDateTime startAt,
 
-        LocalDateTime endAt,
+                LocalDateTime endAt,
 
-        Boolean allDay,
+                Boolean allDay,
 
-        @Size(max = FieldLengths.CATEGORY_NAME, message = "category는 50자를 넘을 수 없습니다")
-        String category,
+                @Size(max = FieldLengths.CATEGORY_NAME, message = "category는 50자를 넘을 수 없습니다") String category,
 
-        @Valid
-        RecurrenceRequest recurrence
-) {
+                @Valid RecurrenceRequest recurrence) {
 }

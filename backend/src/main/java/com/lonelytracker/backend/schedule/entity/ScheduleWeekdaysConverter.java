@@ -10,7 +10,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 요일 집합을 {@code "MON,WED,FRI"} 문자열로 저장한다.
+ * 요일 집합을 {@code "MON, WED, FRI"} 문자열로 저장한다.
  */
 @Converter
 public class ScheduleWeekdaysConverter implements AttributeConverter<Set<DayOfWeek>, String> {

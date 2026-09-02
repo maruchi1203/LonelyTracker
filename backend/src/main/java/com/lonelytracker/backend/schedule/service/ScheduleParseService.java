@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 자연어를 일정 초안으로 바꾼다. 저장하지 않는다.
+ * 자연어를 일정 초안으로 바꾼다. 초안은 별개로 저장하지 않는다.
  * 클래스에 {@code @Transactional} 을 두지 않아 수 초 걸리는 LLM 호출이 DB 커넥션을 잡지 않는다.
  */
 @Service

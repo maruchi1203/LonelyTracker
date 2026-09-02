@@ -46,7 +46,15 @@ public class ScheduleController {
     private final ScheduleOccurrenceService scheduleOccurrenceService;
     private final ScheduleParseService scheduleParseService;
 
-    /** 기간 안의 회차를 전개해서 돌려준다. 조건이 없으면 기본 범위를 쓴다. */
+    /**
+     * 일자, 상태, 카테고리 기반 검색
+     * 
+     * @param from     시작일자
+     * @param to       종료일자
+     * @param status   일정 상태 {@link ScheduleStatus}
+     * @param category 일정 카테고리
+     * @return 기간 안의 회차 목록 {@link ScheduleResponse}
+     */
     @GetMapping
     public List<ScheduleResponse> search(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
@@ -56,6 +64,13 @@ public class ScheduleController {
         return scheduleService.search(from, to, status, category);
     }
 
+    /**
+     * ID 기반 검색
+     * 단일 혹은 연속된 일정의 초회차 일정 검색 용도
+     * 
+     * @param id 일정 ID
+     * @return 일정 1개 정보 반환 {@link ScheduleResponse}
+     */
     @GetMapping("/{id}")
     public ScheduleResponse findById(@PathVariable Long id) {
         return scheduleService.findById(id);
@@ -79,7 +94,7 @@ public class ScheduleController {
     /** 앞으로 전부 수정. 이미 손댄 회차는 그대로 둔다. */
     @PutMapping("/{id}")
     public ScheduleResponse update(@PathVariable Long id,
-                                   @Valid @RequestBody ScheduleUpdateRequest request) {
+            @Valid @RequestBody ScheduleUpdateRequest request) {
         return scheduleService.update(id, request);
     }
 

@@ -58,7 +58,7 @@ public class ScheduleOccurrenceService {
      */
     @Transactional
     public ScheduleResponse updateOne(Long scheduleId, LocalDate onDate,
-                                      OccurrenceUpdateRequest request) {
+            OccurrenceUpdateRequest request) {
         if (request.startAt() != null && request.endAt() != null
                 && request.endAt().isBefore(request.startAt())) {
             throw new IllegalArgumentException("endAt은 startAt보다 이를 수 없습니다");
@@ -75,7 +75,9 @@ public class ScheduleOccurrenceService {
      * 회차 기록을 가져오고, 없으면 만든다.
      *
      * @throws com.lonelytracker.backend.common.exception.NotFoundException
-     *         규칙이 그 날짜에 회차를 내지 않을 때
+     *                                                                      규칙이 그
+     *                                                                      날짜에 회차를
+     *                                                                      내지 않을 때
      */
     private ScheduleProgressEntity getOrCreate(Long scheduleId, LocalDate onDate) {
         ScheduleEntity schedule = scheduleService.getOwnedOrThrow(scheduleId);
@@ -106,8 +108,8 @@ public class ScheduleOccurrenceService {
                 .ifPresent(r -> recurs.put(schedule.getId(), r));
 
         return ScheduleOccurrenceExpander.expand(
-                        List.of(schedule), recurs, List.of(progress),
-                        onDate.atStartOfDay(), onDate.atTime(LocalTime.MAX)).stream()
+                List.of(schedule), recurs, List.of(progress),
+                onDate.atStartOfDay(), onDate.atTime(LocalTime.MAX)).stream()
                 .filter(r -> onDate.equals(r.occurrenceDate()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(

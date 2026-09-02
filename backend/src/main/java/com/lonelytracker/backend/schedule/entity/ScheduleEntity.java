@@ -26,7 +26,8 @@ import java.time.LocalDateTime;
 
 /**
  * 단일·반복 일정의 공통 정보.
- * 반복 규칙은 {@link ScheduleRecurEntity}, 회차별 수행은 {@link ScheduleProgressEntity} 에 있다.
+ * 반복 규칙은 {@link ScheduleRecurEntity},
+ * 회차별 수행은 {@link ScheduleProgressEntity}에 있다.
  */
 @Entity
 @Table(name = "schedule", indexes = {

@@ -8,8 +8,5 @@ import jakarta.validation.constraints.Size;
  *             토큰 비용이 입력 길이를 따라가므로 상한을 둔다
  */
 public record ScheduleParseRequest(
-        @NotBlank(message = "text는 필수입니다")
-        @Size(max = 500, message = "text는 500자를 넘을 수 없습니다")
-        String text
-) {
+                @NotBlank(message = "text는 필수입니다") @Size(max = 500, message = "text는 500자를 넘을 수 없습니다") String text) {
 }

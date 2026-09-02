@@ -40,8 +40,7 @@ import com.lonelytracker.backend.schedule.domain.ScheduleRecurrenceFreq;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
 public class ScheduleRecurEntity {
-
-    /** PK 가 곧 FK 다. 별도 id 를 두면 1:1 이 깨질 수 있다. */
+    /** PK가 곧 FK다. 별도 id 를 두면 1:1 이 깨질 수 있다. */
     @Id
     @Column(name = "schedule_id")
     private Long scheduleId;
@@ -56,7 +55,7 @@ public class ScheduleRecurEntity {
     @Column(nullable = false, length = 10)
     private ScheduleRecurrenceFreq freq;
 
-    /** WEEKLY 일 때만 의미가 있다. DAILY 면 비어 있다. */
+    /** WEEKLY일 때만 의미가 있다. DAILY 면 비어 있다. */
     @Convert(converter = ScheduleWeekdaysConverter.class)
     @Column(name = "by_weekday", length = 30)
     private Set<DayOfWeek> byWeekday;
