@@ -10,15 +10,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.DayOfWeek;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.EnumSet;
+import java.time.LocalTime;
+import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import com.lonelytracker.backend.schedule.domain.ScheduleDeleteScope;
 import com.lonelytracker.backend.schedule.domain.ScheduleOccurrenceExpander;
 import com.lonelytracker.backend.schedule.domain.ScheduleUtil;
@@ -39,23 +37,31 @@ import com.lonelytracker.backend.schedule.repository.ScheduleRepository;
 @Transactional(readOnly = true)
 public class ScheduleService {
 
-    /** 조회 조건이 없을 때 회차를 펼칠 기본 범위 */
-    private static final int DEFAULT_PAST_MONTHS = 1;
-    private static final int DEFAULT_FUTURE_MONTHS = 3;
-
     private final ScheduleRepository scheduleRepository;
     private final ScheduleRecurRepository recurRepository;
     private final ScheduleProgressRepository progressRepository;
     private final UserProvider currentUserProvider;
 
+    /**
+     * 일자, 상태, 카테고리 기반 일정 검색
+     * 
+     * @param from     시작일시. null이면 이번 달 1일 0시
+     * @param to       종료일시. null이면 이번 달 말일 끝
+     * @param status   일정 상태
+     * @param category 일정 카테고리
+     * @return 일정목록 반환 List<ScheduleResponse>
+     */
     public List<ScheduleResponse> search(LocalDateTime from, LocalDateTime to,
-                                         ScheduleStatus status, String category) {
+            ScheduleStatus status, String category) {
         Long userId = currentUserProvider.get().getId();
 
+        YearMonth thisMonth = YearMonth.now();
         LocalDateTime windowFrom = (from != null)
-                ? from : LocalDateTime.now().minusMonths(DEFAULT_PAST_MONTHS);
+                ? from
+                : thisMonth.atDay(1).atStartOfDay();
         LocalDateTime windowTo = (to != null)
-                ? to : LocalDateTime.now().plusMonths(DEFAULT_FUTURE_MONTHS);
+                ? to
+                : thisMonth.atEndOfMonth().atTime(LocalTime.MAX);
 
         List<ScheduleEntity> candidates = scheduleRepository.findCandidates(
                 userId, windowFrom, windowTo, windowFrom.toLocalDate(), windowTo.toLocalDate());
@@ -204,8 +210,8 @@ public class ScheduleService {
 
         // 전개 구간을 당일로 한정한다. 넓히면 매일 반복에서 회차가 둘 이상 잡힌다
         return ScheduleOccurrenceExpander.expand(
-                        List.of(schedule), recurs, progresses,
-                        first.atStartOfDay(), first.atTime(java.time.LocalTime.MAX))
+                List.of(schedule), recurs, progresses,
+                first.atStartOfDay(), first.atTime(java.time.LocalTime.MAX))
                 .stream()
                 .filter(r -> first.equals(r.occurrenceDate()))
                 .findFirst()
@@ -240,6 +246,5 @@ public class ScheduleService {
                 .endsOn(rule.endsOn())
                 .build());
     }
-
 
 }
