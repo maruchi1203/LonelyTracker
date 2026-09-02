@@ -33,7 +33,6 @@ public class UserController {
         return UserResponse.from(currentUserProvider.get());
     }
 
-    /** 사용자 단건 조회. 없으면 404. */
     /** 키 등록 여부. 키 자체는 돌려주지 않는다 */
     @GetMapping("/me/openai-key")
     public OpenAiKeyStatus openAiKeyStatus() {
@@ -46,6 +45,7 @@ public class UserController {
         return userService.changeOpenAiKey(request.apiKey());
     }
 
+    /** 사용자 단건 조회. 없으면 404. */
     @GetMapping("/{id}")
     public UserResponse findById(@PathVariable Long id) {
         return userService.findById(id);

@@ -7,7 +7,10 @@ import java.time.LocalDate;
 import java.util.Set;
 
 /**
- * AI에게 받은 텍스트 기반해 반복 일정으로 파싱용
+ * 초안의 반복 규칙. 1회성이면 통째로 없다.
+ *
+ * @param byWeekday WEEKLY 일 때만 쓴다
+ * @param endsOn    null이면 무기한
  */
 public record ParsedRecurringSchedule(
         ScheduleRecurrenceFreq freq,

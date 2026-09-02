@@ -13,6 +13,10 @@ import com.lonelytracker.backend.user.repository.UserCategoryRepository;
 import com.lonelytracker.backend.user.repository.UserRepository;
 
 
+/**
+ * 사용자 계정과 OpenAI API 키를 다룬다.
+ * 카테고리 목록은 {@link UserCategoryService} 가 맡는다.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -28,10 +32,6 @@ public class UserService {
                 .orElseThrow(() -> new UserNotFoundException("사용자를 찾을 수 없습니다. id=" + id)));
     }
 
-    /**
-     * 사용자 생성
-     * 1. 
-     */
     /** 키 등록 여부만 돌려준다. 원본은 어떤 경로로도 나가지 않는다. */
     public OpenAiKeyStatus openAiKeyStatus() {
         return OpenAiKeyStatus.of(currentUserProvider.get().getOpenAiApiKey());
@@ -46,11 +46,11 @@ public class UserService {
         return OpenAiKeyStatus.of(user.getOpenAiApiKey());
     }
 
+    /** 사용자를 만들고 추천 카테고리를 함께 넣는다. */
     @Transactional
     public UserResponse create(String username, String displayName) {
         String name = username == null ? "" : username.strip();
 
-        // username 빈칸 오류 처리
         if (name.isEmpty()) {
             throw new IllegalArgumentException("username이 비어 있습니다");
         }

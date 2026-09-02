@@ -1,8 +1,8 @@
 package com.lonelytracker.backend.common;
 
 /**
- * 필드 길이 제한을 한 곳에 모은 클래스
- * properties(.env 등) 파일의 값들은 컴파일 시점에 사용되는 어노테이션에 
+ * 필드 길이 제한을 한 곳에 모은 클래스.
+ * 어노테이션 인자는 컴파일 상수여야 해서 yml로 뺄 수 없다.
  */
 public final class FieldLengths {
 
@@ -18,6 +18,7 @@ public final class FieldLengths {
     /** OAuth 로그인 식별자(이메일 등)가 들어온다 */
     public static final int USERNAME = 100;
 
+    /** 화면에 보여줄 이름 */
     public static final int DISPLAY_NAME = 50;
 
     /** #RRGGBB 형식을 기대하지만 강제하지는 않는다 */

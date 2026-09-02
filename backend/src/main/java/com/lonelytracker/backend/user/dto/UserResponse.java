@@ -4,6 +4,7 @@ import com.lonelytracker.backend.user.entity.UserEntity;
 
 import java.time.LocalDateTime;
 
+/** 사용자 정보. API 키는 어떤 경우에도 싣지 않는다 */
 public record UserResponse(
         Long id,
         String username,
