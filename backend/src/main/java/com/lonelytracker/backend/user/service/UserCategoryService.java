@@ -1,8 +1,8 @@
 package com.lonelytracker.backend.user.service;
 
 import com.lonelytracker.backend.common.exception.CategoryNotFoundException;
-import com.lonelytracker.backend.user.dto.CategoryAppearanceRequest;
-import com.lonelytracker.backend.user.dto.CategoryResponse;
+import com.lonelytracker.backend.user.dto.UserCategoryAppearanceRequest;
+import com.lonelytracker.backend.user.dto.UserCategoryResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,16 +24,16 @@ public class UserCategoryService {
     private final UserCategoryRepository userCategoryRepository;
     private final UserProvider currentUserProvider;
 
-    public List<CategoryResponse> findAll() {
+    public List<UserCategoryResponse> findAll() {
         return userCategoryRepository
                 .findByUserIdOrderByDisplayOrderAscNameAsc(currentUserProvider.get().getId())
                 .stream()
-                .map(CategoryResponse::from)
+                .map(UserCategoryResponse::from)
                 .toList();
     }
 
     @Transactional
-    public CategoryResponse create(String rawName, String color) {
+    public UserCategoryResponse create(String rawName, String color) {
         UserEntity user = currentUserProvider.get();
         String name = normalize(rawName);
 
@@ -41,7 +41,7 @@ public class UserCategoryService {
             throw new IllegalArgumentException("이미 존재하는 카테고리입니다: " + name);
         }
 
-        return CategoryResponse.from(userCategoryRepository.save(UserCategoryEntity.builder()
+        return UserCategoryResponse.from(userCategoryRepository.save(UserCategoryEntity.builder()
                 .user(user)
                 .name(name)
                 .color(color)
@@ -50,26 +50,26 @@ public class UserCategoryService {
 
     /** 목록의 이름만 바꾼다. 이미 기록된 일정의 분류는 바뀌지 않는다 */
     @Transactional
-    public CategoryResponse rename(Long id, String rawName) {
+    public UserCategoryResponse rename(Long id, String rawName) {
         UserCategoryEntity category = getOrThrow(id);
         String name = normalize(rawName);
 
         if (name.equals(category.getName())) {
-            return CategoryResponse.from(category);
+            return UserCategoryResponse.from(category);
         }
         if (userCategoryRepository.existsByUserIdAndName(category.getUser().getId(), name)) {
             throw new IllegalArgumentException("이미 존재하는 카테고리입니다: " + name);
         }
 
         category.rename(name);
-        return CategoryResponse.from(category);
+        return UserCategoryResponse.from(category);
     }
 
     @Transactional
-    public CategoryResponse updateAppearance(Long id, CategoryAppearanceRequest request) {
+    public UserCategoryResponse updateAppearance(Long id, UserCategoryAppearanceRequest request) {
         UserCategoryEntity category = getOrThrow(id);
         category.updateAppearance(request.color(), request.displayOrder(), request.archived());
-        return CategoryResponse.from(category);
+        return UserCategoryResponse.from(category);
     }
 
     /** 목록에서만 지운다. 이 분류를 쓰던 일정은 그대로 남는다 */

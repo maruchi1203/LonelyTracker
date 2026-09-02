@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { CategoryResponse, ScheduleResponse } from '../types/schedule'
+import type { UserCategoryResponse, ScheduleResponse } from '../types/schedule'
 import { applyFilters, countByCategory, matchesQuery, rankCategories } from './filter'
 
 function occurrence(
@@ -20,7 +20,7 @@ function occurrence(
   }
 }
 
-function category(name: string, displayOrder: number): CategoryResponse {
+function category(name: string, displayOrder: number): UserCategoryResponse {
   return {
     id: displayOrder,
     name,

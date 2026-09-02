@@ -1,4 +1,4 @@
-import type { CategoryResponse, ScheduleResponse } from '../types/schedule'
+import type { UserCategoryResponse, ScheduleResponse } from '../types/schedule'
 
 /** 칩에 보여줄 분류 개수 */
 export const TOP_CATEGORIES = 5
@@ -27,7 +27,7 @@ export function countByCategory(
  */
 export function rankCategories(
   usage: Map<string, number>,
-  categories: CategoryResponse[],
+  categories: UserCategoryResponse[],
 ): string[] {
   const order = new Map(categories.map((c) => [c.name, c.displayOrder]))
 

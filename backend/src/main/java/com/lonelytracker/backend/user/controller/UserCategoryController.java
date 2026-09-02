@@ -1,9 +1,9 @@
 package com.lonelytracker.backend.user.controller;
 
-import com.lonelytracker.backend.user.dto.CategoryAppearanceRequest;
-import com.lonelytracker.backend.user.dto.CategoryCreateRequest;
-import com.lonelytracker.backend.user.dto.CategoryRenameRequest;
-import com.lonelytracker.backend.user.dto.CategoryResponse;
+import com.lonelytracker.backend.user.dto.UserCategoryAppearanceRequest;
+import com.lonelytracker.backend.user.dto.UserCategoryCreateRequest;
+import com.lonelytracker.backend.user.dto.UserCategoryRenameRequest;
+import com.lonelytracker.backend.user.dto.UserCategoryResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -33,14 +33,14 @@ public class UserCategoryController {
 
     /** 표시 순서대로 반환한다. */
     @GetMapping
-    public List<CategoryResponse> findAll() {
+    public List<UserCategoryResponse> findAll() {
         return userCategoryService.findAll();
     }
 
     /** 목록에 새 카테고리를 추가한다. 같은 이름이 이미 있으면 400. */
     @PostMapping
-    public ResponseEntity<CategoryResponse> create(@Valid @RequestBody CategoryCreateRequest request) {
-        CategoryResponse created = userCategoryService.create(request.name(), request.color());
+    public ResponseEntity<UserCategoryResponse> create(@Valid @RequestBody UserCategoryCreateRequest request) {
+        UserCategoryResponse created = userCategoryService.create(request.name(), request.color());
         return ResponseEntity
                 .created(URI.create("/api/categories/" + created.id()))
                 .body(created);
@@ -48,14 +48,14 @@ public class UserCategoryController {
 
     /** 이름 변경. 이미 기록된 일정의 분류 문자열은 바뀌지 않는다. */
     @PatchMapping("/{id}/name")
-    public CategoryResponse rename(@PathVariable Long id, @Valid @RequestBody CategoryRenameRequest request) {
+    public UserCategoryResponse rename(@PathVariable Long id, @Valid @RequestBody UserCategoryRenameRequest request) {
         return userCategoryService.rename(id, request.name());
     }
 
     /** 색상·정렬순서·보관 변경. 넘긴 항목만 반영된다. */
     @PatchMapping("/{id}/appearance")
-    public CategoryResponse updateAppearance(@PathVariable Long id,
-                                             @Valid @RequestBody CategoryAppearanceRequest request) {
+    public UserCategoryResponse updateAppearance(@PathVariable Long id,
+                                             @Valid @RequestBody UserCategoryAppearanceRequest request) {
         return userCategoryService.updateAppearance(id, request);
     }
 

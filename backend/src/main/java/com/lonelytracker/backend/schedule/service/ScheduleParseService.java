@@ -8,7 +8,7 @@ import com.lonelytracker.backend.common.exception.AiUnavailableException;
 import com.lonelytracker.backend.user.service.UserProvider;
 import com.lonelytracker.backend.user.entity.UserEntity;
 import com.lonelytracker.backend.user.service.UserCategoryService;
-import com.lonelytracker.backend.user.dto.CategoryResponse;
+import com.lonelytracker.backend.user.dto.UserCategoryResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -39,7 +39,7 @@ public class ScheduleParseService {
 
         List<String> categories = userCategoryService.findAll().stream()
                 .filter(c -> !c.archived())
-                .map(CategoryResponse::name)
+                .map(UserCategoryResponse::name)
                 .toList();
 
         // 트랜잭션 밖에서 호출

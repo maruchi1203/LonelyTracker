@@ -5,14 +5,14 @@ import {
   fetchCategories,
   renameCategory,
 } from "../../api/categories";
-import type { CategoryResponse } from "../../types/schedule";
+import type { UserCategoryResponse } from "../../types/schedule";
 
 const INPUT =
   "rounded-md border border-slate-200 bg-white px-2.5 py-2 text-slate-800 placeholder:text-slate-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-3 focus:ring-brand-100";
 
 /** 분류 목록은 후보일 뿐이라, 지워도 그 분류를 쓰던 일정은 남는다 */
 export default function CategorySection() {
-  const [categories, setCategories] = useState<CategoryResponse[]>([]);
+  const [categories, setCategories] = useState<UserCategoryResponse[]>([]);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
 

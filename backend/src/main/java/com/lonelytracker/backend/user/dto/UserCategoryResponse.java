@@ -4,8 +4,8 @@ import com.lonelytracker.backend.user.entity.UserCategoryEntity;
 
 import java.time.LocalDateTime;
 
-/** 사이드바에 필요한 정보. 계층이 없어 parentId, depth, path 가 모두 사라졌다. */
-public record CategoryResponse(
+/** 사이드바에 뿌릴 카테고리 한 건 */
+public record UserCategoryResponse(
         Long id,
         String name,
         String color,
@@ -14,8 +14,8 @@ public record CategoryResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
-    public static CategoryResponse from(UserCategoryEntity category) {
-        return new CategoryResponse(
+    public static UserCategoryResponse from(UserCategoryEntity category) {
+        return new UserCategoryResponse(
                 category.getId(),
                 category.getName(),
                 category.getColor(),
