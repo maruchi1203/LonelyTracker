@@ -10,10 +10,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.time.YearMonth;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +37,9 @@ import com.lonelytracker.backend.schedule.repository.ScheduleRepository;
 @Transactional(readOnly = true)
 public class ScheduleService {
 
+    /** 조회 조건이 없을 때 이번 주 월요일부터 볼 주 수 */
+    private static final int DEFAULT_WEEKS = 4;
+
     private final ScheduleRepository scheduleRepository;
     private final ScheduleRecurRepository recurRepository;
     private final ScheduleProgressRepository progressRepository;
@@ -45,8 +48,8 @@ public class ScheduleService {
     /**
      * 일자, 상태, 카테고리 기반 일정 검색
      * 
-     * @param from     시작일시. null이면 이번 달 1일 0시
-     * @param to       종료일시. null이면 이번 달 말일 끝
+     * @param from     시작일시. null이면 이번 주 월요일 0시
+     * @param to       종료일시. null이면 그로부터 4주째 일요일 끝
      * @param status   일정 상태
      * @param category 일정 카테고리
      * @return 일정목록 반환 List<ScheduleResponse>
@@ -55,13 +58,13 @@ public class ScheduleService {
             ScheduleStatus status, String category) {
         Long userId = currentUserProvider.get().getId();
 
-        YearMonth thisMonth = YearMonth.now();
+        LocalDate monday = LocalDate.now().with(DayOfWeek.MONDAY);
         LocalDateTime windowFrom = (from != null)
                 ? from
-                : thisMonth.atDay(1).atStartOfDay();
+                : monday.atStartOfDay();
         LocalDateTime windowTo = (to != null)
                 ? to
-                : thisMonth.atEndOfMonth().atTime(LocalTime.MAX);
+                : monday.plusWeeks(DEFAULT_WEEKS).minusDays(1).atTime(LocalTime.MAX);
 
         List<ScheduleEntity> candidates = scheduleRepository.findCandidates(
                 userId, windowFrom, windowTo, windowFrom.toLocalDate(), windowTo.toLocalDate());
@@ -91,6 +94,12 @@ public class ScheduleService {
         return firstOccurrenceOf(schedule);
     }
 
+    /**
+     * 일정 등록
+     * 
+     * @param request 일정 등록 요청 포맷
+     * @return 등록된 일정 정보
+     */
     @Transactional
     public ScheduleResponse create(ScheduleCreateRequest request) {
         ScheduleUtil.validatePeriod(request.startAt(), request.endAt());
@@ -108,6 +117,7 @@ public class ScheduleService {
         if (request.recurrence() != null) {
             saveRecur(schedule, request.recurrence());
         }
+
         return firstOccurrenceOf(schedule);
     }
 
@@ -181,6 +191,8 @@ public class ScheduleService {
         scheduleRepository.delete(schedule);
     }
 
+    // -------------------- Helper --------------------
+
     /** 남의 일정은 없는 것으로 취급한다 */
     ScheduleEntity getOwnedOrThrow(Long id) {
         Long userId = currentUserProvider.get().getId();
@@ -246,5 +258,4 @@ public class ScheduleService {
                 .endsOn(rule.endsOn())
                 .build());
     }
-
 }
