@@ -11,7 +11,7 @@ import java.util.List;
  * @param categories 사용자의 카테고리 목록. 이 안에서만 고르게 한다
  * @param apiKey     사용자의 OpenAI API 키 (개별 저장)
  */
-public record CommandForAI(
+public record AiParseCommand(
         String text,
         LocalDateTime now,
         List<String> categories,

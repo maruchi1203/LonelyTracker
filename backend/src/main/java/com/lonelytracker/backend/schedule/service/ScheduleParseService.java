@@ -1,6 +1,6 @@
 package com.lonelytracker.backend.schedule.service;
 
-import com.lonelytracker.backend.ai.CommandForAI;
+import com.lonelytracker.backend.ai.AiParseCommand;
 import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.ai.ScheduleParser;
 import com.lonelytracker.backend.common.exception.AiParseException;
@@ -44,7 +44,7 @@ public class ScheduleParseService {
 
         // 트랜잭션 밖에서 호출
         ParsedSchedule parsed = scheduleParser.parse(
-                new CommandForAI(text, LocalDateTime.now(), categories, apiKey));
+                new AiParseCommand(text, LocalDateTime.now(), categories, apiKey));
 
         // LLM 응답을 사용자 입력과 같은 등급으로 검증한다
         return validate(parsed, categories);

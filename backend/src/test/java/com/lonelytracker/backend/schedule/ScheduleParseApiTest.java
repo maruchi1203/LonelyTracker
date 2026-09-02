@@ -1,6 +1,6 @@
 package com.lonelytracker.backend.schedule;
 
-import com.lonelytracker.backend.ai.CommandForAI;
+import com.lonelytracker.backend.ai.AiParseCommand;
 import com.lonelytracker.backend.ai.ParseQuestion;
 import com.lonelytracker.backend.ai.ParsedRecurringSchedule;
 import com.lonelytracker.backend.ai.ParsedSchedule;
@@ -293,7 +293,7 @@ class ScheduleParseApiTest extends IntegrationTest {
         }
 
         @Override
-        public ParsedSchedule parse(CommandForAI command) {
+        public ParsedSchedule parse(AiParseCommand command) {
             this.lastNow = command.now();
             this.lastCategories = command.categories();
             this.lastApiKey = command.apiKey();

@@ -45,7 +45,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
     }
 
     @Override
-    public ParsedSchedule parse(CommandForAI command) {
+    public ParsedSchedule parse(AiParseCommand command) {
         String responseBody = callWithRetry(requestBody(command), command.apiKey());
         return toParsed(extractOutput(responseBody));
     }
@@ -138,7 +138,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
     }
 
     // --- 요청 조립 --------------------------------------------------------
-    private Map<String, Object> requestBody(CommandForAI command) {
+    private Map<String, Object> requestBody(AiParseCommand command) {
         return Map.of(
                 "model", setting.model(),
                 "input", List.of(
