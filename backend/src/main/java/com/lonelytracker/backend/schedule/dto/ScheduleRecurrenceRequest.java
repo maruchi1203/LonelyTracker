@@ -12,7 +12,7 @@ import java.util.Set;
  *                  비어 있는지 검사는 ScheduleInstanceDates 가 한다 (freq 를 같이 봐야 하므로)
  * @param endsOn    null 이면 무기한. 회차를 미리 만들지 않으므로 상한이 필요 없다
  */
-public record RecurrenceRequest(
+public record ScheduleRecurrenceRequest(
         @NotNull(message = "freq는 필수입니다") ScheduleRecurrenceFreq freq,
 
         Set<DayOfWeek> byWeekday,

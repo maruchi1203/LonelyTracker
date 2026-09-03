@@ -1,7 +1,7 @@
 package com.lonelytracker.backend.schedule.service;
 
 import com.lonelytracker.backend.common.exception.NotFoundException;
-import com.lonelytracker.backend.schedule.dto.RecurrenceRequest;
+import com.lonelytracker.backend.schedule.dto.ScheduleRecurrenceRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleDetailResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
@@ -234,7 +234,7 @@ public class ScheduleService {
                         "회차를 전개하지 못했습니다. scheduleId=" + schedule.getId()));
     }
 
-    private void applyRecurChange(ScheduleEntity schedule, RecurrenceRequest rule) {
+    private void applyRecurChange(ScheduleEntity schedule, ScheduleRecurrenceRequest rule) {
         ScheduleRecurEntity existing = recurRepository.findById(schedule.getId()).orElse(null);
 
         if (rule == null) {
@@ -252,7 +252,7 @@ public class ScheduleService {
         recurRepository.saveAndFlush(existing);
     }
 
-    private void saveRecur(ScheduleEntity schedule, RecurrenceRequest rule) {
+    private void saveRecur(ScheduleEntity schedule, ScheduleRecurrenceRequest rule) {
         ScheduleUtil.validateRule(schedule, rule);
         recurRepository.save(ScheduleRecurEntity.builder()
                 .schedule(schedule)

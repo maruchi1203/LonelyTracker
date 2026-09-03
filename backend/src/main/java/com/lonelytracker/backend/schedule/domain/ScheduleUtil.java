@@ -1,6 +1,6 @@
 package com.lonelytracker.backend.schedule.domain;
 
-import com.lonelytracker.backend.schedule.dto.RecurrenceRequest;
+import com.lonelytracker.backend.schedule.dto.ScheduleRecurrenceRequest;
 import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
 import com.lonelytracker.backend.schedule.entity.ScheduleRecurEntity;
 
@@ -136,7 +136,7 @@ public final class ScheduleUtil {
      *
      * @throws IllegalArgumentException 회차가 하나도 안 생길 때
      */
-    public static void validateRule(ScheduleEntity schedule, RecurrenceRequest rule) {
+    public static void validateRule(ScheduleEntity schedule, ScheduleRecurrenceRequest rule) {
         LocalDate start = schedule.getStartAt().toLocalDate();
         Set<DayOfWeek> weekdays = toWeekdaySet(rule.byWeekday());
         if (expandForCheck(rule.freq(), weekdays, start, rule.endsOn()).isEmpty()) {
