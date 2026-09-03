@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { formatOccurrenceRange, occurrenceKey } from "../domain/occurrence";
+import { formatInstanceRange, instanceKey } from "../domain/instance";
 import type {
   DeleteScope,
   ScheduleResponse,
@@ -8,10 +8,10 @@ import type {
 import { toLocalInputValue } from "../utils/datetime";
 
 interface Props {
-  occurrences: ScheduleResponse[];
-  onToggleStatus: (occurrence: ScheduleResponse) => void;
-  onPostpone: (occurrence: ScheduleResponse, to: string) => void;
-  onDelete: (occurrence: ScheduleResponse, scope: DeleteScope) => void;
+  instances: ScheduleResponse[];
+  onToggleStatus: (instance: ScheduleResponse) => void;
+  onPostpone: (instance: ScheduleResponse, to: string) => void;
+  onDelete: (instance: ScheduleResponse, scope: DeleteScope) => void;
   /** 비어 있는 이유. 일정이 없는 것과 필터에 걸린 것은 다르다 */
   emptyReason?: "no-data" | "filtered-out";
   onClearFilters?: () => void;
@@ -27,14 +27,14 @@ const MENU_ITEM =
   "w-full rounded-md px-3 py-1.5 text-left text-xs whitespace-nowrap transition-colors";
 
 export default function ScheduleList({
-  occurrences,
+  instances,
   onToggleStatus,
   onPostpone,
   onDelete,
   emptyReason = "no-data",
   onClearFilters,
 }: Props) {
-  if (occurrences.length === 0) {
+  if (instances.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-12 text-center text-sm text-slate-400">
         {emptyReason === "filtered-out" ? (
@@ -59,10 +59,10 @@ export default function ScheduleList({
 
   return (
     <ul className="flex list-none flex-col gap-2 p-0">
-      {occurrences.map((occurrence) => (
+      {instances.map((instance) => (
         <ScheduleListItem
-          key={occurrenceKey(occurrence)}
-          occurrence={occurrence}
+          key={instanceKey(instance)}
+          instance={instance}
           onToggleStatus={onToggleStatus}
           onPostpone={onPostpone}
           onDelete={onDelete}
@@ -75,17 +75,17 @@ export default function ScheduleList({
 type ItemProps = Pick<
   Props,
   "onToggleStatus" | "onPostpone" | "onDelete"
-> & { occurrence: ScheduleResponse };
+> & { instance: ScheduleResponse };
 
 function ScheduleListItem({
-  occurrence,
+  instance,
   onToggleStatus,
   onPostpone,
   onDelete,
 }: ItemProps) {
   const [pane, setPane] = useState<"none" | "menu" | "postpone">("none");
   const [moveTo, setMoveTo] = useState(() =>
-    toLocalInputValue(new Date(occurrence.startAt)),
+    toLocalInputValue(new Date(instance.startAt)),
   );
   const row = useRef<HTMLLIElement>(null);
 
@@ -108,7 +108,7 @@ function ScheduleListItem({
     };
   }, [pane]);
 
-  const done = occurrence.status === "DONE";
+  const done = instance.status === "DONE";
 
   return (
     <li
@@ -130,8 +130,8 @@ function ScheduleListItem({
           type="checkbox"
           className="size-[1.15rem] shrink-0 cursor-pointer accent-brand-500"
           checked={done}
-          onChange={() => onToggleStatus(occurrence)}
-          aria-label={`${occurrence.title} 완료 표시`}
+          onChange={() => onToggleStatus(instance)}
+          aria-label={`${instance.title} 완료 표시`}
         />
 
         <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -140,15 +140,15 @@ function ScheduleListItem({
               done ? "text-slate-400 line-through" : "text-slate-800"
             }`}
           >
-            {occurrence.title}
+            {instance.title}
           </span>
 
           <span className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-            {formatOccurrenceRange(occurrence)}
+            {formatInstanceRange(instance)}
 
-            {occurrence.category && (
+            {instance.category && (
               <span className="rounded-full border border-brand-100 bg-brand-50 px-2 py-0.5 font-medium text-brand-700">
-                {occurrence.category}
+                {instance.category}
               </span>
             )}
 
@@ -159,16 +159,16 @@ function ScheduleListItem({
                   : "border-slate-200 text-slate-400"
               }`}
             >
-              {STATUS_LABEL[occurrence.status]}
+              {STATUS_LABEL[instance.status]}
             </span>
 
             {/* 수행률만 보면 미루는 사람과 계획대로 하는 사람이 같아 보인다 */}
-            {occurrence.postponeCount > 0 && (
+            {instance.postponeCount > 0 && (
               <span
                 className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-medium text-amber-700"
-                title={`원래 ${occurrence.occurrenceDate} 예정`}
+                title={`원래 ${instance.instanceDate} 예정`}
               >
-                ↻ {occurrence.postponeCount}번 미룸
+                ↻ {instance.postponeCount}번 미룸
               </span>
             )}
           </span>
@@ -176,7 +176,7 @@ function ScheduleListItem({
 
         <button
           type="button"
-          aria-label={`${occurrence.title} 작업 메뉴`}
+          aria-label={`${instance.title} 작업 메뉴`}
           aria-expanded={pane === "menu"}
           onClick={() => setPane((p) => (p === "menu" ? "none" : "menu"))}
           className="shrink-0 rounded-md border border-transparent px-2.5 py-1.5 text-slate-400 transition-colors hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100"
@@ -206,7 +206,7 @@ function ScheduleListItem({
             className={`${MENU_ITEM} text-slate-700 hover:bg-red-50 hover:text-red-600`}
             onClick={() => {
               setPane("none");
-              onDelete(occurrence, "FUTURE");
+              onDelete(instance, "FUTURE");
             }}
           >
             앞으로 그만두기 (기록 유지)
@@ -218,7 +218,7 @@ function ScheduleListItem({
             className={`${MENU_ITEM} text-red-600 hover:bg-red-50`}
             onClick={() => {
               setPane("none");
-              onDelete(occurrence, "ALL");
+              onDelete(instance, "ALL");
             }}
           >
             전체 삭제
@@ -230,12 +230,12 @@ function ScheduleListItem({
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 text-xs">
           <label
             className="text-slate-500"
-            htmlFor={`to-${occurrenceKey(occurrence)}`}
+            htmlFor={`to-${instanceKey(instance)}`}
           >
             언제로 미룰까요?
           </label>
           <input
-            id={`to-${occurrenceKey(occurrence)}`}
+            id={`to-${instanceKey(instance)}`}
             type="datetime-local"
             className="rounded-md border border-slate-200 px-2 py-1 text-slate-800 focus:border-brand-500 focus:outline-none"
             value={moveTo}
@@ -245,7 +245,7 @@ function ScheduleListItem({
             type="button"
             className="rounded-md bg-amber-500 px-3 py-1 font-semibold text-white hover:bg-amber-600"
             onClick={() => {
-              onPostpone(occurrence, `${moveTo}:00`);
+              onPostpone(instance, `${moveTo}:00`);
               setPane("none");
             }}
           >

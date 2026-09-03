@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchCategories } from "../api/categories";
 import {
-  changeOccurrenceStatus,
+  changeInstanceStatus,
   createSchedule,
   deleteSchedule,
-  postponeOccurrence,
+  postponeInstance,
 } from "../api/schedules";
 import CalendarToolbar from "../components/calendar/CalendarToolbar";
 import ScheduleCalendar from "../components/layouts/Calendar/ScheduleCalendar";
 import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
 import ScheduleList from "../components/ScheduleList";
 import { applyFilters, countByCategory } from "../domain/filter";
-import { coversDate } from "../domain/occurrence";
+import { coversDate } from "../domain/instance";
 import { useCalendarViewState } from "../hooks/useCalendarViewState";
-import { useMonthOccurrences } from "../hooks/useMonthOccurrences";
+import { useMonthInstances } from "../hooks/useMonthInstances";
 import type {
   UserCategoryResponse,
   DeleteScope,
@@ -33,8 +33,8 @@ export default function CalendarPage() {
     setQuery,
     clearFilters,
   } = useCalendarViewState();
-  const { occurrences, loading, error, reload, patchOne, setError } =
-    useMonthOccurrences(month);
+  const { instances, loading, error, reload, patchOne, setError } =
+    useMonthInstances(month);
 
   const [categories, setCategories] = useState<UserCategoryResponse[]>([]);
 
@@ -76,14 +76,14 @@ export default function CalendarPage() {
     }
   };
 
-  const handleToggleStatus = async (occurrence: ScheduleResponse) => {
+  const handleToggleStatus = async (instance: ScheduleResponse) => {
     setError(null);
     try {
       patchOne(
-        await changeOccurrenceStatus(
-          occurrence.id,
-          occurrence.occurrenceDate,
-          occurrence.status === "DONE" ? "PLANNED" : "DONE",
+        await changeInstanceStatus(
+          instance.id,
+          instance.instanceDate,
+          instance.status === "DONE" ? "PLANNED" : "DONE",
         ),
       );
     } catch (e) {
@@ -91,11 +91,11 @@ export default function CalendarPage() {
     }
   };
 
-  const handlePostpone = async (occurrence: ScheduleResponse, to: string) => {
+  const handlePostpone = async (instance: ScheduleResponse, to: string) => {
     setError(null);
     try {
       patchOne(
-        await postponeOccurrence(occurrence.id, occurrence.occurrenceDate, to),
+        await postponeInstance(instance.id, instance.instanceDate, to),
       );
       // 창 밖으로 미뤘다면 목록에서 사라져야 하므로 다시 받는다
       await reload();
@@ -106,12 +106,12 @@ export default function CalendarPage() {
 
   /** FUTURE 는 지난 회차를 남기므로 화면에서 거르지 말고 다시 받아야 한다 */
   const handleDelete = async (
-    occurrence: ScheduleResponse,
+    instance: ScheduleResponse,
     scope: DeleteScope,
   ) => {
     setError(null);
     try {
-      await deleteSchedule(occurrence.id, scope);
+      await deleteSchedule(instance.id, scope);
       await Promise.all([reload(), loadCategories()]);
     } catch (e) {
       fail(e, "일정을 삭제하지 못했습니다");
@@ -119,12 +119,12 @@ export default function CalendarPage() {
   };
 
   // 칩 개수는 필터를 걸기 전의 창 전체로 센다
-  const usage = useMemo(() => countByCategory(occurrences), [occurrences]);
+  const usage = useMemo(() => countByCategory(instances), [instances]);
 
   // 달력에 그릴 것 — 분류와 검색만 반영한다
   const forCalendar = useMemo(
-    () => applyFilters(occurrences, { category, query }),
-    [occurrences, category, query],
+    () => applyFilters(instances, { category, query }),
+    [instances, category, query],
   );
 
   // 아래 목록에 그릴 것 — 고른 날짜까지 좁힌다.
@@ -155,7 +155,7 @@ export default function CalendarPage() {
         onQueryChange={setQuery}
         categories={categories}
         usage={usage}
-        total={occurrences.length}
+        total={instances.length}
         monthLabel={monthLabel}
         selectedCategory={category}
         onSelectCategory={setCategory}
@@ -166,7 +166,7 @@ export default function CalendarPage() {
         onMonthChange={setMonth}
         selectedDate={selectedDate}
         onSelectDate={toggleDate}
-        occurrences={forCalendar}
+        instances={forCalendar}
         loading={loading}
       />
 
@@ -189,7 +189,7 @@ export default function CalendarPage() {
         )}
 
         <ScheduleList
-          occurrences={forList}
+          instances={forList}
           onToggleStatus={handleToggleStatus}
           onPostpone={handlePostpone}
           onDelete={handleDelete}

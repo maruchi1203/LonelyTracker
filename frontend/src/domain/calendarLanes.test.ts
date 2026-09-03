@@ -14,7 +14,7 @@ function span(
 ): ScheduleResponse {
   return {
     id,
-    occurrenceDate: startDate,
+    instanceDate: startDate,
     title: `일정${id}`,
     startAt: `${startDate}T09:00:00`,
     endAt: endDate ? `${endDate}T18:00:00` : undefined,
@@ -33,7 +33,7 @@ function laneOf(
   key: string,
   id: number,
 ): number {
-  return (map.get(key)?.lanes ?? []).findIndex((s) => s?.occurrence.id === id)
+  return (map.get(key)?.lanes ?? []).findIndex((s) => s?.instance.id === id)
 }
 
 describe('레인 배정', () => {

@@ -20,9 +20,9 @@ import com.lonelytracker.backend.schedule.entity.ScheduleRecurEntity;
  * 일정을 회차로 펼치고 수행 기록을 덮어쓴다. DB와 스프링을 모른다.
  * 회차는 저장하지 않고 조회할 때마다 여기서 만든다.
  */
-public final class ScheduleOccurrenceExpander {
+public final class ScheduleInstanceExpander {
 
-    private ScheduleOccurrenceExpander() {
+    private ScheduleInstanceExpander() {
     }
 
     /**
@@ -50,7 +50,7 @@ public final class ScheduleOccurrenceExpander {
 
         for (ScheduleEntity s : schedules) {
             ScheduleRecurEntity recur = recurByScheduleId.get(s.getId());
-            for (LocalDate date : occurrenceDatesOf(s, recur, from, to)) {
+            for (LocalDate date : instanceDatesOf(s, recur, from, to)) {
                 String k = key(s.getId(), date);
                 emitted.add(k);
                 result.add(merge(s, date, byKey.get(k), recur != null));
@@ -79,7 +79,7 @@ public final class ScheduleOccurrenceExpander {
      *
      * @param recur null이면 회차는 일정 자신의 날짜 하나뿐이다
      */
-    private static List<LocalDate> occurrenceDatesOf(ScheduleEntity s, ScheduleRecurEntity recur,
+    private static List<LocalDate> instanceDatesOf(ScheduleEntity s, ScheduleRecurEntity recur,
             LocalDateTime from, LocalDateTime to) {
         LocalDate firstDate = s.getStartAt().toLocalDate();
 
@@ -96,7 +96,7 @@ public final class ScheduleOccurrenceExpander {
         if (windowEnd.isBefore(windowStart)) {
             return List.of();
         }
-        return ScheduleOccurrenceDates.generate(recur.getFreq(), recur.getByWeekday(), windowStart, windowEnd);
+        return ScheduleInstanceDates.generate(recur.getFreq(), recur.getByWeekday(), windowStart, windowEnd);
     }
 
     /**

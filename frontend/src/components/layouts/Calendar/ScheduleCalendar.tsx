@@ -10,7 +10,7 @@ interface Props {
   onMonthChange: (month: Date) => void;
   selectedDate: Date | null;
   onSelectDate: (date: Date) => void;
-  occurrences: ScheduleResponse[];
+  instances: ScheduleResponse[];
   loading?: boolean;
 }
 
@@ -25,11 +25,11 @@ export default function ScheduleCalendar({
   onMonthChange,
   selectedDate,
   onSelectDate,
-  occurrences,
+  instances,
   loading,
 }: Props) {
   const days = useMemo(() => buildMonthDays(month), [month]);
-  const byDate = useMemo(() => assignLanes(days, occurrences), [days, occurrences]);
+  const byDate = useMemo(() => assignLanes(days, instances), [days, instances]);
 
   const shiftMonth = (delta: number) =>
     onMonthChange(new Date(month.getFullYear(), month.getMonth() + delta, 1));

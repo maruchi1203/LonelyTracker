@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @AutoConfigureMockMvc
 @Transactional
-class OccurrenceApiTest extends IntegrationTest {
+class InstanceApiTest extends IntegrationTest {
 
     private static final String BASE = "/api/schedules";
 
@@ -50,17 +50,17 @@ class OccurrenceApiTest extends IntegrationTest {
 
     @Test
     @DisplayName("회차를 완료로 바꾸면 그 회차만 DONE이 된다")
-    void completeOneOccurrence() throws Exception {
+    void completeOneInstance() throws Exception {
         long id = daily("독서", "2026-09-01T21:00:00");
 
-        mvc.perform(patch(BASE + "/" + id + "/occurrences/2026-09-02/status")
+        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-02/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"DONE\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("DONE"))
-                .andExpect(jsonPath("$.occurrenceDate").value("2026-09-02"));
+                .andExpect(jsonPath("$.instanceDate").value("2026-09-02"));
 
-        List<JsonNode> found = occurrencesOf(id, "2026-09-01T00:00:00", "2026-09-03T23:59:59");
+        List<JsonNode> found = instancesOf(id, "2026-09-01T00:00:00", "2026-09-03T23:59:59");
 
         assertThat(fieldAt(found, "2026-09-01", "status")).isEqualTo("PLANNED");
         assertThat(fieldAt(found, "2026-09-02", "status")).isEqualTo("DONE");
@@ -69,13 +69,13 @@ class OccurrenceApiTest extends IntegrationTest {
 
     @Test
     @DisplayName("규칙이 만들지 않는 날짜의 회차는 404다")
-    void unknownOccurrenceIsNotFound() throws Exception {
+    void unknownInstanceIsNotFound() throws Exception {
         long id = createSchedule("""
                 { "title": "운동", "startAt": "2026-09-07T07:00:00",
                   "recurrence": { "freq": "WEEKLY", "byWeekday": ["MONDAY"] } }""");
 
         // 2026-09-08은 화요일이라 이 규칙에 없는 날이다
-        mvc.perform(patch(BASE + "/" + id + "/occurrences/2026-09-08/status")
+        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-08/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"DONE\"}"))
                 .andExpect(status().isNotFound());
@@ -88,20 +88,20 @@ class OccurrenceApiTest extends IntegrationTest {
     void postponeKeepsOnDate() throws Exception {
         long id = daily("운동", "2026-09-01T07:00:00");
 
-        mvc.perform(patch(BASE + "/" + id + "/occurrences/2026-09-02/postpone")
+        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-02/postpone")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"to\":\"2026-09-04T19:00:00\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.occurrenceDate").value("2026-09-02"))
+                .andExpect(jsonPath("$.instanceDate").value("2026-09-02"))
                 .andExpect(jsonPath("$.startAt").value("2026-09-04T19:00:00"))
                 .andExpect(jsonPath("$.postponeCount").value(1));
     }
 
     @Test
     @DisplayName("두 번 미루면 postponeCount가 2이고 회차는 여전히 하나다")
-    void postponeTwiceKeepsSingleOccurrence() throws Exception {
+    void postponeTwiceKeepsSingleInstance() throws Exception {
         long id = daily("보고서", "2026-09-01T09:00:00");
-        String path = BASE + "/" + id + "/occurrences/2026-09-01/postpone";
+        String path = BASE + "/" + id + "/instances/2026-09-01/postpone";
 
         mvc.perform(patch(path).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"to\":\"2026-09-02T09:00:00\"}")).andExpect(status().isOk());
@@ -110,9 +110,9 @@ class OccurrenceApiTest extends IntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.postponeCount").value(2));
 
-        List<JsonNode> found = occurrencesOf(id, "2026-09-01T00:00:00", "2026-09-05T23:59:59");
+        List<JsonNode> found = instancesOf(id, "2026-09-01T00:00:00", "2026-09-05T23:59:59");
         long sameOnDate = found.stream()
-                .filter(n -> "2026-09-01".equals(n.get("occurrenceDate").asString()))
+                .filter(n -> "2026-09-01".equals(n.get("instanceDate").asString()))
                 .count();
 
         assertThat(sameOnDate).as("미뤄도 회차가 늘어나면 안 된다").isEqualTo(1);
@@ -123,17 +123,17 @@ class OccurrenceApiTest extends IntegrationTest {
     void postponedAcrossMonthsAppearsInBoth() throws Exception {
         long id = daily("마감", "2026-08-30T09:00:00");
 
-        mvc.perform(patch(BASE + "/" + id + "/occurrences/2026-08-31/postpone")
+        mvc.perform(patch(BASE + "/" + id + "/instances/2026-08-31/postpone")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"to\":\"2026-09-02T09:00:00\"}"))
                 .andExpect(status().isOk());
 
         // 8월: onDate로 잡힌다 ("9/2로 미룸"을 그릴 수 있어야 한다)
-        assertThat(occurrencesOf(id, "2026-08-01T00:00:00", "2026-08-31T23:59:59"))
-                .anyMatch(n -> "2026-08-31".equals(n.get("occurrenceDate").asString()));
+        assertThat(instancesOf(id, "2026-08-01T00:00:00", "2026-08-31T23:59:59"))
+                .anyMatch(n -> "2026-08-31".equals(n.get("instanceDate").asString()));
         // 9월: startAt으로 잡힌다
-        assertThat(occurrencesOf(id, "2026-09-01T00:00:00", "2026-09-30T23:59:59"))
-                .anyMatch(n -> "2026-08-31".equals(n.get("occurrenceDate").asString()));
+        assertThat(instancesOf(id, "2026-09-01T00:00:00", "2026-09-30T23:59:59"))
+                .anyMatch(n -> "2026-08-31".equals(n.get("instanceDate").asString()));
     }
 
     @Test
@@ -141,7 +141,7 @@ class OccurrenceApiTest extends IntegrationTest {
     void skipDoesNotTouchPostponeCount() throws Exception {
         long id = daily("운동", "2026-09-01T07:00:00");
 
-        mvc.perform(patch(BASE + "/" + id + "/occurrences/2026-09-02/status")
+        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-02/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"SKIPPED\"}"))
                 .andExpect(status().isOk())
@@ -154,12 +154,12 @@ class OccurrenceApiTest extends IntegrationTest {
     void postponeThenCompleteKeepsBoth() throws Exception {
         long id = daily("운동", "2026-09-01T07:00:00");
 
-        mvc.perform(patch(BASE + "/" + id + "/occurrences/2026-09-02/postpone")
+        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-02/postpone")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"to\":\"2026-09-03T07:00:00\"}")).andExpect(status().isOk());
 
         // 결국 해냈다. 수행률에는 DONE으로 잡히고 "밀렸다"는 사실은 따로 남는다
-        mvc.perform(patch(BASE + "/" + id + "/occurrences/2026-09-02/status")
+        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-02/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"DONE\"}"))
                 .andExpect(status().isOk())
@@ -178,14 +178,14 @@ class OccurrenceApiTest extends IntegrationTest {
                   "recurrence": { "freq": "DAILY" } }""");
 
         // 9/2 회차만 2시간으로 늘린다
-        mvc.perform(put(BASE + "/" + id + "/occurrences/2026-09-02")
+        mvc.perform(put(BASE + "/" + id + "/instances/2026-09-02")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         { "startAt": "2026-09-02T10:00:00", "endAt": "2026-09-02T12:00:00" }"""))
                 .andExpect(status().isOk());
 
         // 미뤄도 2시간이어야 한다. 기본값으로 되돌리면 사용자가 지정한 값이 사라진다
-        mvc.perform(patch(BASE + "/" + id + "/occurrences/2026-09-02/postpone")
+        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-02/postpone")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"to\":\"2026-09-05T14:00:00\"}"))
                 .andExpect(status().isOk())
@@ -200,11 +200,11 @@ class OccurrenceApiTest extends IntegrationTest {
                 { "title": "보고서", "startAt": "2026-09-01T09:00:00",
                   "endAt": "2026-09-01T10:30:00" }""");
 
-        mvc.perform(patch(BASE + "/" + id + "/occurrences/2026-09-01/postpone")
+        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-01/postpone")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"to\":\"2026-09-03T14:00:00\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.occurrenceDate").value("2026-09-01"))
+                .andExpect(jsonPath("$.instanceDate").value("2026-09-01"))
                 .andExpect(jsonPath("$.startAt").value("2026-09-03T14:00:00"))
                 .andExpect(jsonPath("$.endAt").value("2026-09-03T15:30:00"))
                 .andExpect(jsonPath("$.postponeCount").value(1));
@@ -226,7 +226,7 @@ class OccurrenceApiTest extends IntegrationTest {
                 .andExpect(status().isOk());
 
         // 2026-09-08이 화요일이다
-        assertThat(datesOf(occurrencesOf(id, "2026-09-07T00:00:00", "2026-09-13T23:59:59")))
+        assertThat(datesOf(instancesOf(id, "2026-09-07T00:00:00", "2026-09-13T23:59:59")))
                 .containsExactly("2026-09-08");
     }
 
@@ -242,7 +242,7 @@ class OccurrenceApiTest extends IntegrationTest {
                                   "recurrence": { "freq": "DAILY" } }"""))
                 .andExpect(status().isOk());
 
-        List<JsonNode> found = occurrencesOf(id, "2026-09-01T00:00:00", "2026-09-03T23:59:59");
+        List<JsonNode> found = instancesOf(id, "2026-09-01T00:00:00", "2026-09-03T23:59:59");
 
         assertThat(found).allMatch(n -> "바뀐 제목".equals(n.get("title").asString()));
         assertThat(fieldAt(found, "2026-09-02", "status")).isEqualTo("DONE");
@@ -250,17 +250,17 @@ class OccurrenceApiTest extends IntegrationTest {
 
     @Test
     @DisplayName("이 회차만 수정하면 다른 회차는 그대로다")
-    void updateOneOccurrence() throws Exception {
+    void updateOneInstance() throws Exception {
         long id = daily("운동", "2026-09-01T07:00:00");
 
-        mvc.perform(put(BASE + "/" + id + "/occurrences/2026-09-02")
+        mvc.perform(put(BASE + "/" + id + "/instances/2026-09-02")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "title": "가벼운 운동", "startAt": "2026-09-02T20:00:00" }"""))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("가벼운 운동"));
 
-        List<JsonNode> found = occurrencesOf(id, "2026-09-01T00:00:00", "2026-09-03T23:59:59");
+        List<JsonNode> found = instancesOf(id, "2026-09-01T00:00:00", "2026-09-03T23:59:59");
 
         assertThat(fieldAt(found, "2026-09-01", "title")).isEqualTo("운동");
         assertThat(fieldAt(found, "2026-09-02", "title")).isEqualTo("가벼운 운동");
@@ -269,17 +269,17 @@ class OccurrenceApiTest extends IntegrationTest {
 
     @Test
     @DisplayName("이 회차만 수정을 빈 값으로 보내면 일정 값으로 되돌아간다")
-    void occurrenceOverrideCanBeReverted() throws Exception {
+    void instanceOverrideCanBeReverted() throws Exception {
         long id = daily("운동", "2026-09-01T07:00:00");
 
-        mvc.perform(put(BASE + "/" + id + "/occurrences/2026-09-02")
+        mvc.perform(put(BASE + "/" + id + "/instances/2026-09-02")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         { "title": "가벼운 운동", "startAt": "2026-09-02T20:00:00" }"""))
                 .andExpect(status().isOk());
 
         // 모든 필드가 선택이라 빈 본문으로 되돌릴 수 있다
-        mvc.perform(put(BASE + "/" + id + "/occurrences/2026-09-02")
+        mvc.perform(put(BASE + "/" + id + "/instances/2026-09-02")
                         .contentType(MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("운동"))
@@ -290,27 +290,27 @@ class OccurrenceApiTest extends IntegrationTest {
 
     @Test
     @DisplayName("그만두면 미래 회차가 사라진다")
-    void stopRemovesFutureOccurrences() throws Exception {
+    void stopRemovesFutureInstances() throws Exception {
         LocalDate start = LocalDate.now().minusDays(10);
         long id = dailyFrom(start, "그만둘 습관");
 
         mvc.perform(delete(BASE + "/" + id).param("scope", "FUTURE"))
                 .andExpect(status().isNoContent());
 
-        assertThat(occurrencesOf(id,
+        assertThat(instancesOf(id,
                 LocalDate.now().plusDays(1) + "T00:00:00",
                 LocalDate.now().plusDays(10) + "T23:59:59")).isEmpty();
     }
 
     @Test
     @DisplayName("그만두면 미뤄둔 미래 회차도 함께 사라진다")
-    void stopAlsoRemovesPostponedFutureOccurrences() throws Exception {
+    void stopAlsoRemovesPostponedFutureInstances() throws Exception {
         LocalDate start = LocalDate.now().minusDays(10);
         LocalDate tomorrow = LocalDate.now().plusDays(1);
         long id = dailyFrom(start, "미뤄둔 습관");
 
         // 내일 회차를 다음 주로 미룬다
-        mvc.perform(patch(BASE + "/" + id + "/occurrences/" + tomorrow + "/postpone")
+        mvc.perform(patch(BASE + "/" + id + "/instances/" + tomorrow + "/postpone")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"to\":\"" + LocalDate.now().plusDays(7) + "T09:00:00\"}"))
                 .andExpect(status().isOk());
@@ -319,7 +319,7 @@ class OccurrenceApiTest extends IntegrationTest {
                 .andExpect(status().isNoContent());
 
         // 종료일만 당기면 미뤄둔 회차가 되살아난다. 그러면 그만둔 게 아니다
-        assertThat(occurrencesOf(id,
+        assertThat(instancesOf(id,
                 LocalDate.now().plusDays(1) + "T00:00:00",
                 LocalDate.now().plusDays(14) + "T23:59:59")).isEmpty();
     }
@@ -335,7 +335,7 @@ class OccurrenceApiTest extends IntegrationTest {
         mvc.perform(delete(BASE + "/" + id).param("scope", "FUTURE"))
                 .andExpect(status().isNoContent());
 
-        List<JsonNode> past = occurrencesOf(id, start + "T00:00:00", LocalDate.now() + "T23:59:59");
+        List<JsonNode> past = instancesOf(id, start + "T00:00:00", LocalDate.now() + "T23:59:59");
 
         assertThat(past).isNotEmpty();
         assertThat(fieldAt(past, doneOn.toString(), "status")).isEqualTo("DONE");
@@ -351,7 +351,7 @@ class OccurrenceApiTest extends IntegrationTest {
 
         mvc.perform(delete(BASE + "/" + id)).andExpect(status().isNoContent());
 
-        List<JsonNode> past = occurrencesOf(id, start + "T00:00:00", LocalDate.now() + "T23:59:59");
+        List<JsonNode> past = instancesOf(id, start + "T00:00:00", LocalDate.now() + "T23:59:59");
 
         assertThat(fieldAt(past, doneOn.toString(), "status"))
                 .as("기본값이 ALL이면 과거 기록이 사라진다").isEqualTo("DONE");
@@ -367,7 +367,7 @@ class OccurrenceApiTest extends IntegrationTest {
         mvc.perform(delete(BASE + "/" + id).param("scope", "ALL"))
                 .andExpect(status().isNoContent());
 
-        assertThat(occurrencesOf(id, start + "T00:00:00", LocalDate.now() + "T23:59:59")).isEmpty();
+        assertThat(instancesOf(id, start + "T00:00:00", LocalDate.now() + "T23:59:59")).isEmpty();
         mvc.perform(get(BASE + "/" + id)).andExpect(status().isNotFound());
     }
 
@@ -393,13 +393,13 @@ class OccurrenceApiTest extends IntegrationTest {
     }
 
     private void markDone(long id, String onDate) throws Exception {
-        mvc.perform(patch(BASE + "/" + id + "/occurrences/" + onDate + "/status")
+        mvc.perform(patch(BASE + "/" + id + "/instances/" + onDate + "/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"DONE\"}"))
                 .andExpect(status().isOk());
     }
 
-    private List<JsonNode> occurrencesOf(long scheduleId, String from, String to) throws Exception {
+    private List<JsonNode> instancesOf(long scheduleId, String from, String to) throws Exception {
         JsonNode all = json(mvc.perform(get(BASE).param("from", from).param("to", to))
                 .andExpect(status().isOk()));
         List<JsonNode> mine = new ArrayList<>();
@@ -412,15 +412,15 @@ class OccurrenceApiTest extends IntegrationTest {
     }
 
     private List<String> datesOf(List<JsonNode> nodes) {
-        return nodes.stream().map(n -> n.get("occurrenceDate").asString()).toList();
+        return nodes.stream().map(n -> n.get("instanceDate").asString()).toList();
     }
 
-    private String fieldAt(List<JsonNode> nodes, String occurrenceDate, String field) {
+    private String fieldAt(List<JsonNode> nodes, String instanceDate, String field) {
         return nodes.stream()
-                .filter(n -> occurrenceDate.equals(n.get("occurrenceDate").asString()))
+                .filter(n -> instanceDate.equals(n.get("instanceDate").asString()))
                 .map(n -> n.get(field).asString())
                 .findFirst()
-                .orElseThrow(() -> new AssertionError("회차가 없다: " + occurrenceDate));
+                .orElseThrow(() -> new AssertionError("회차가 없다: " + instanceDate));
     }
 
     private JsonNode json(ResultActions actions) throws Exception {

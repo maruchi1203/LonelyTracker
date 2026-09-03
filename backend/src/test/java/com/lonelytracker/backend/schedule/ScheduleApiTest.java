@@ -113,7 +113,7 @@ class ScheduleApiTest extends IntegrationTest {
         long id = createAndGetId("완료할 일", "2026-09-02T10:00:00");
 
         // 상태는 회차의 것이다. 단일 일정도 "1회짜리 일정" 이라 회차 경로를 쓴다.
-        mvc.perform(patch(BASE + "/" + id + "/occurrences/2026-09-02/status")
+        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-02/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"DONE\"}"))
                 .andExpect(status().isOk())
@@ -125,7 +125,7 @@ class ScheduleApiTest extends IntegrationTest {
     void changeStatusWithUnknownValue() throws Exception {
         long id = createAndGetId("상태 테스트", "2026-09-02T10:00:00");
 
-        mvc.perform(patch(BASE + "/" + id + "/occurrences/2026-09-02/status")
+        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-02/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"NOPE\"}"))
                 .andExpect(status().isBadRequest());
@@ -180,7 +180,7 @@ class ScheduleApiTest extends IntegrationTest {
         long done = createAndGetId("끝낸 일정", inWindow(2, "09:00:00"));
         createAndGetId("남은 일정", inWindow(2, "10:00:00"));
 
-        mvc.perform(patch(BASE + "/" + done + "/occurrences/" + MONDAY.plusDays(2) + "/status")
+        mvc.perform(patch(BASE + "/" + done + "/instances/" + MONDAY.plusDays(2) + "/status")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"));
 

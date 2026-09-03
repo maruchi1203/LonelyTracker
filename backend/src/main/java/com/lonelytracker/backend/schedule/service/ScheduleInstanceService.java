@@ -1,7 +1,7 @@
 package com.lonelytracker.backend.schedule.service;
 
 import com.lonelytracker.backend.common.exception.NotFoundException;
-import com.lonelytracker.backend.schedule.dto.OccurrenceUpdateRequest;
+import com.lonelytracker.backend.schedule.dto.ScheduleInstanceUpdateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,7 +14,7 @@ import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import com.lonelytracker.backend.schedule.domain.ScheduleOccurrenceExpander;
+import com.lonelytracker.backend.schedule.domain.ScheduleInstanceExpander;
 import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
 import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
 import com.lonelytracker.backend.schedule.entity.ScheduleProgressEntity;
@@ -29,7 +29,7 @@ import com.lonelytracker.backend.schedule.repository.ScheduleRecurRepository;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class ScheduleOccurrenceService {
+public class ScheduleInstanceService {
 
     private final ScheduleProgressRepository progressRepository;
     private final ScheduleRecurRepository recurRepository;
@@ -58,7 +58,7 @@ public class ScheduleOccurrenceService {
      */
     @Transactional
     public ScheduleResponse updateOne(Long scheduleId, LocalDate onDate,
-            OccurrenceUpdateRequest request) {
+            ScheduleInstanceUpdateRequest request) {
         if (request.startAt() != null && request.endAt() != null
                 && request.endAt().isBefore(request.startAt())) {
             throw new IllegalArgumentException("endAt은 startAt보다 이를 수 없습니다");
@@ -107,10 +107,10 @@ public class ScheduleOccurrenceService {
         recurRepository.findById(schedule.getId())
                 .ifPresent(r -> recurs.put(schedule.getId(), r));
 
-        return ScheduleOccurrenceExpander.expand(
+        return ScheduleInstanceExpander.expand(
                 List.of(schedule), recurs, List.of(progress),
                 onDate.atStartOfDay(), onDate.atTime(LocalTime.MAX)).stream()
-                .filter(r -> onDate.equals(r.occurrenceDate()))
+                .filter(r -> onDate.equals(r.instanceDate()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(
                         "회차를 전개하지 못했습니다. onDate=" + onDate));

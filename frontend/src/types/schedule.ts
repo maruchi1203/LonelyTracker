@@ -29,7 +29,7 @@ export interface UserCategoryResponse {
 /**
  * 일정 조회 응답 한 줄. 1회성 일정도 "회차 하나"로 같은 모양으로 온다.
  *
- * 식별자는 id 하나가 아니라 id + occurrenceDate 다.
+ * 식별자는 id 하나가 아니라 id + instanceDate 다.
  * 반복 일정 하나가 여러 줄로 펼쳐져 오므로 id 는 중복된다.
  *
  * 반복 규칙(recurrence)과 장소(place)는 이 응답에 없다.
@@ -38,7 +38,7 @@ export interface UserCategoryResponse {
 export interface ScheduleResponse {
   id: number
   /** "YYYY-MM-DD". 규칙이 만든 원래 날짜라 연기해도 바뀌지 않는다 */
-  occurrenceDate: string
+  instanceDate: string
   title: string
   /** 마크다운 원문 */
   description?: string
@@ -74,7 +74,7 @@ export interface ScheduleCreateRequest {
 }
 
 /** 회차 하나만 고친다. 준 것만 바뀌고, 생략하면 일정의 값으로 되돌아간다 */
-export interface OccurrenceUpdateRequest {
+export interface InstanceUpdateRequest {
   title?: string
   description?: string
   startAt?: string

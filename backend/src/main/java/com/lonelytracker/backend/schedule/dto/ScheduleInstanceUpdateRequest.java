@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 단일 회차 수정하는 DTO
  */
-public record OccurrenceUpdateRequest(
+public record ScheduleInstanceUpdateRequest(
         @Size(max = FieldLengths.TITLE, message = "title은 200자를 넘을 수 없습니다") String title,
 
         @Size(max = FieldLengths.DESCRIPTION, message = "description은 20000자를 넘을 수 없습니다") String description,
