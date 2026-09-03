@@ -169,6 +169,9 @@ public class OpenAiScheduleParser implements ScheduleParser {
                 "매주 월수금 아침 7시 헬스장에서 운동"
                   startAt=2026-08-31T07:00:00
                   recurrence={"freq":"WEEKLY","byWeekday":["MONDAY","WEDNESDAY","FRIDAY"],"endsOn":null}
+                "다음주 월~수까지 아침 7시 운동"
+                  startAt=2026-08-31T07:00:00
+                  recurrence={"freq":"DAILY","byWeekday":[],"endsOn":"2026-09-02"}
                 "회의"
                   title=회의 startAt=null questions=["DATE","START_TIME","PLACE"]
 
