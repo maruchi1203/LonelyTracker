@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ParsedSchedule } from '../types/parse'
+import type { Weekday } from '../types/schedule'
 import type { ScheduleForm } from './scheduleForm'
 import {
   draftFromParsed,
@@ -17,6 +18,8 @@ const PARSED: ParsedSchedule = {
   recurrence: { freq: 'WEEKLY', byWeekday: ['MONDAY', 'WEDNESDAY', 'FRIDAY'] },
   questions: [],
 }
+
+const WMF: Weekday[] = ['MONDAY', 'WEDNESDAY', 'FRIDAY']
 
 function form(overrides: Partial<ScheduleForm> = {}): ScheduleForm {
   return {
@@ -92,6 +95,38 @@ describe('저장 전 검증', () => {
   })
 })
 
+describe('반복 소요시간', () => {
+  it('매일 반복이 24시간을 넘으면 막는다', () => {
+    const error = formValidationError(
+      form({ repeating: true, freq: 'DAILY', durationHours: '25' }),
+    )
+
+    expect(error).toContain('최대 24시간')
+  })
+
+  it('매주 월수금은 48시간까지 허용한다', () => {
+    const base = { repeating: true, freq: 'WEEKLY' as const, byWeekday: WMF }
+
+    expect(formValidationError(form({ ...base, durationHours: '48' }))).toBeNull()
+    expect(formValidationError(form({ ...base, durationHours: '49' }))).toContain(
+      '최대 48시간',
+    )
+  })
+
+  it('매주 한 요일만 고르면 일주일까지 허용한다', () => {
+    const error = formValidationError(
+      form({
+        repeating: true,
+        freq: 'WEEKLY',
+        byWeekday: ['MONDAY'],
+        durationHours: '167',
+      }),
+    )
+
+    expect(error).toBeNull()
+  })
+})
+
 describe('생성 요청으로 바꾸기', () => {
   it('날짜와 시각을 합쳐 LocalDateTime 으로 만든다', () => {
     expect(formToCreateRequest(form()).startAt).toBe('2026-08-31T07:00:00')
@@ -111,20 +146,40 @@ describe('생성 요청으로 바꾸기', () => {
     expect(body.recurrence).toBeUndefined()
   })
 
-  it('반복이면 종료일자가 endsOn 으로 가고, 종료시각은 시작일자에 얹힌다', () => {
-    // 회차마다 날짜가 달라 절대 종료시각은 첫 회차에만 맞는다
+  it('반복이면 종료일자는 endsOn 으로, 소요시간은 endAt 으로 간다', () => {
+    // 회차마다 날짜가 달라 절대 종료시각을 쓸 수 없다
     const body = formToCreateRequest(
       form({
         repeating: true,
         freq: 'WEEKLY',
         byWeekday: ['MONDAY'],
         endDate: '2026-09-30',
-        endTime: '08:00',
+        durationHours: '1',
+        durationMins: '0',
       }),
     )
 
     expect(body.recurrence?.endsOn).toBe('2026-09-30')
     expect(body.endAt).toBe('2026-08-31T08:00:00')
+  })
+
+  it('자정을 넘는 반복은 endAt 이 다음 날로 간다', () => {
+    const body = formToCreateRequest(
+      form({
+        repeating: true,
+        freq: 'DAILY',
+        startTime: '22:00',
+        durationHours: '4',
+      }),
+    )
+
+    expect(body.endAt).toBe('2026-09-01T02:00:00')
+  })
+
+  it('소요시간을 비우면 endAt 을 보내지 않는다', () => {
+    const body = formToCreateRequest(form({ repeating: true, freq: 'DAILY' }))
+
+    expect(body.endAt).toBeUndefined()
   })
 
   it('매일 반복은 요일을 싣지 않는다', () => {
