@@ -318,6 +318,39 @@ class RecurringScheduleApiTest extends IntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    @DisplayName("일정 하나를 조회하면 반복 규칙이 함께 온다")
+    void detailCarriesTheRecurrenceRule() throws Exception {
+        long id = createSchedule("""
+                { "title": "운동", "startAt": "2026-09-07T07:00:00",
+                  "endAt": "2026-09-07T08:00:00",
+                  "recurrence": { "freq": "WEEKLY",
+                                  "byWeekday": ["MONDAY", "FRIDAY"],
+                                  "endsOn": "2026-12-31" } }""");
+
+        mvc.perform(get(BASE + "/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.startAt").value("2026-09-07T07:00:00"))
+                // 종료 시각이 아니라 소요시간으로 온다 — 회차마다 날짜가 다르다
+                .andExpect(jsonPath("$.durationMinutes").value(60))
+                .andExpect(jsonPath("$.recurrence.freq").value("WEEKLY"))
+                .andExpect(jsonPath("$.recurrence.endsOn").value("2026-12-31"))
+                .andExpect(jsonPath("$.recurrence.byWeekday",
+                        org.hamcrest.Matchers.containsInAnyOrder("MONDAY", "FRIDAY")));
+    }
+
+    @Test
+    @DisplayName("1회성 일정은 recurrence가 null이다")
+    void detailOfSingleScheduleHasNoRule() throws Exception {
+        long id = createSchedule("""
+                { "title": "회의", "startAt": "2026-09-07T10:00:00" }""");
+
+        mvc.perform(get(BASE + "/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recurrence").doesNotExist())
+                .andExpect(jsonPath("$.durationMinutes").doesNotExist());
+    }
+
     // --- 헬퍼 -------------------------------------------------------------
 
     private long createSchedule(String body) throws Exception {
