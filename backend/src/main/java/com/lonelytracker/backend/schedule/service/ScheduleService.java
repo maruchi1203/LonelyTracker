@@ -66,6 +66,8 @@ public class ScheduleService {
                 ? to
                 : monday.plusWeeks(DEFAULT_WEEKS).minusDays(1).atTime(LocalTime.MAX);
 
+        ScheduleUtil.validateWindow(windowFrom, windowTo);
+
         List<ScheduleEntity> candidates = scheduleRepository.findCandidates(
                 userId, windowFrom, windowTo, windowFrom.toLocalDate(), windowTo.toLocalDate());
         if (candidates.isEmpty()) {

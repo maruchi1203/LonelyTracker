@@ -223,6 +223,33 @@ class ScheduleApiTest extends IntegrationTest {
         assertThat(titlesOf(found)).contains("마지막 일요일 밤 일정").doesNotContain("범위 밖 일정");
     }
 
+    @Test
+    @DisplayName("일정 하나가 366일을 넘으면 400을 반환한다")
+    void createWithTooLongPeriod() throws Exception {
+        mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content(request("긴 일정", "2026-01-01T00:00:00", "2028-01-01T00:00:00")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("366일")));
+    }
+
+    @Test
+    @DisplayName("조회 구간이 뒤집히면 400을 반환한다")
+    void searchWithInvertedWindow() throws Exception {
+        mvc.perform(get(BASE)
+                        .param("from", "2026-09-10T00:00:00")
+                        .param("to", "2026-09-01T00:00:00"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("조회 구간이 366일을 넘으면 400을 반환한다")
+    void searchWithTooWideWindow() throws Exception {
+        mvc.perform(get(BASE)
+                        .param("from", "2020-01-01T00:00:00")
+                        .param("to", "2030-01-01T00:00:00"))
+                .andExpect(status().isBadRequest());
+    }
+
     // --- 헬퍼 -------------------------------------------------------------
 
     /** 이번 주 월요일로부터 며칠 뒤의 시각을 요청용 문자열로 만든다. */

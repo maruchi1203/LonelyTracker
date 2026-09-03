@@ -20,6 +20,12 @@ public final class ScheduleUtil {
     /** 종료일을 안 정한 규칙을 검사할 때 들여다볼 기간 */
     private static final int RULE_CHECK_MONTHS = 2;
 
+    /** 일정 하나가 이어질 수 있는 최대 길이. 소요시간을 int 분으로 저장한다 */
+    private static final Duration MAX_DURATION = Duration.ofDays(366);
+
+    /** 한 번에 조회할 수 있는 최대 구간 */
+    private static final Duration MAX_WINDOW = Duration.ofDays(366);
+
     private ScheduleUtil() {
     }
 
@@ -60,13 +66,37 @@ public final class ScheduleUtil {
     }
 
     /**
-     * 기간이 뒤집혔는지 검사한다.
+     * 일정 기간의 방향과 길이를 검사한다.
      *
-     * @throws IllegalArgumentException endAt이 startAt보다 이를 때
+     * @param endAt null이면 검사하지 않는다
+     * @throws IllegalArgumentException 뒤집혔거나 366일을 넘을 때
      */
     public static void validatePeriod(LocalDateTime startAt, LocalDateTime endAt) {
-        if (endAt != null && endAt.isBefore(startAt)) {
+        if (endAt == null) {
+            return;
+        }
+        if (endAt.isBefore(startAt)) {
             throw new IllegalArgumentException("endAt은 startAt보다 이를 수 없습니다");
+        }
+        // 소요시간을 int 분으로 저장하므로 상한이 없으면 넘쳐서 음수가 된다
+        if (Duration.between(startAt, endAt).compareTo(MAX_DURATION) > 0) {
+            throw new IllegalArgumentException(
+                    "일정 하나는 " + MAX_DURATION.toDays() + "일을 넘을 수 없습니다");
+        }
+    }
+
+    /**
+     * 조회 구간의 방향과 크기를 검사한다.
+     *
+     * @throws IllegalArgumentException 뒤집혔거나 366일을 넘을 때
+     */
+    public static void validateWindow(LocalDateTime from, LocalDateTime to) {
+        if (to.isBefore(from)) {
+            throw new IllegalArgumentException("to는 from보다 이를 수 없습니다");
+        }
+        if (Duration.between(from, to).compareTo(MAX_WINDOW) > 0) {
+            throw new IllegalArgumentException(
+                    "조회 구간은 " + MAX_WINDOW.toDays() + "일을 넘을 수 없습니다");
         }
     }
 
