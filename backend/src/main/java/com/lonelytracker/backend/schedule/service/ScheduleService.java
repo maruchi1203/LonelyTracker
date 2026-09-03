@@ -18,7 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import com.lonelytracker.backend.schedule.domain.ScheduleDeleteScope;
-import com.lonelytracker.backend.schedule.domain.ScheduleOccurrenceExpander;
+import com.lonelytracker.backend.schedule.domain.ScheduleInstanceExpander;
 import com.lonelytracker.backend.schedule.domain.ScheduleUtil;
 import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
 import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
@@ -30,7 +30,7 @@ import com.lonelytracker.backend.schedule.repository.ScheduleRepository;
 
 /**
  * 일정 자체를 다룬다 — 만들기 · 앞으로 전부 수정 · 삭제 · 조회.
- * 회차 단위 동작은 {@link ScheduleOccurrenceService} 가 맡는다.
+ * 회차 단위 동작은 {@link ScheduleInstanceService} 가 맡는다.
  */
 @Service
 @RequiredArgsConstructor
@@ -80,7 +80,7 @@ public class ScheduleService {
                 ids, windowFrom.toLocalDate(), windowTo.toLocalDate(), windowFrom, windowTo);
 
         // 상태와 분류는 전개 후에 거른다. 회차 값이 일정 값을 덮을 수 있어 병합 뒤에야 정해진다
-        return ScheduleOccurrenceExpander.expand(candidates, recurs, progresses, windowFrom, windowTo)
+        return ScheduleInstanceExpander.expand(candidates, recurs, progresses, windowFrom, windowTo)
                 .stream()
                 .filter(r -> status == null || r.status() == status)
                 .filter(r -> category == null || category.isBlank()
@@ -91,7 +91,7 @@ public class ScheduleService {
     /** 그 일정의 첫 회차를 돌려준다. */
     public ScheduleResponse findById(Long id) {
         ScheduleEntity schedule = getOwnedOrThrow(id);
-        return firstOccurrenceOf(schedule);
+        return firstInstanceOf(schedule);
     }
 
     /**
@@ -118,7 +118,7 @@ public class ScheduleService {
             saveRecur(schedule, request.recurrence());
         }
 
-        return firstOccurrenceOf(schedule);
+        return firstInstanceOf(schedule);
     }
 
     /**
@@ -160,7 +160,7 @@ public class ScheduleService {
         }
 
         scheduleRepository.saveAndFlush(schedule);
-        return firstOccurrenceOf(schedule);
+        return firstInstanceOf(schedule);
     }
 
     /**
@@ -208,7 +208,7 @@ public class ScheduleService {
     }
 
     /** 규칙이 있으면 첫 회차, 없으면 그 일정 자신. */
-    private ScheduleResponse firstOccurrenceOf(ScheduleEntity schedule) {
+    private ScheduleResponse firstInstanceOf(ScheduleEntity schedule) {
         ScheduleRecurEntity recur = recurRepository.findById(schedule.getId()).orElse(null);
         LocalDate first = ScheduleUtil.firstDateOf(schedule, recur);
 
@@ -221,11 +221,11 @@ public class ScheduleService {
                 .map(List::of).orElseGet(List::of);
 
         // 전개 구간을 당일로 한정한다. 넓히면 매일 반복에서 회차가 둘 이상 잡힌다
-        return ScheduleOccurrenceExpander.expand(
+        return ScheduleInstanceExpander.expand(
                 List.of(schedule), recurs, progresses,
                 first.atStartOfDay(), first.atTime(java.time.LocalTime.MAX))
                 .stream()
-                .filter(r -> first.equals(r.occurrenceDate()))
+                .filter(r -> first.equals(r.instanceDate()))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException(
                         "회차를 전개하지 못했습니다. scheduleId=" + schedule.getId()));

@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest'
 import type { UserCategoryResponse, ScheduleResponse } from '../types/schedule'
 import { applyFilters, countByCategory, matchesQuery, rankCategories } from './filter'
 
-function occurrence(
+function instance(
   id: number,
   overrides: Partial<ScheduleResponse> = {},
 ): ScheduleResponse {
   return {
     id,
-    occurrenceDate: '2026-08-31',
+    instanceDate: '2026-08-31',
     title: '운동',
     startAt: '2026-08-31T07:00:00',
     allDay: false,
@@ -32,10 +32,10 @@ function category(name: string, displayOrder: number): UserCategoryResponse {
 }
 
 const LIST = [
-  occurrence(1, { category: '육체' }),
-  occurrence(2, { category: '육체' }),
-  occurrence(3, { category: '능력' }),
-  occurrence(4), // 분류 없음
+  instance(1, { category: '육체' }),
+  instance(2, { category: '육체' }),
+  instance(3, { category: '능력' }),
+  instance(4), // 분류 없음
 ]
 
 describe('분류별 개수', () => {
@@ -72,14 +72,14 @@ describe('분류 순위', () => {
   })
 
   it('목록에 없는 이름도 일정에 있으면 포함한다', () => {
-    const usage = countByCategory([occurrence(9, { category: '즉흥' })])
+    const usage = countByCategory([instance(9, { category: '즉흥' })])
 
     expect(rankCategories(usage, categories)).toContain('즉흥')
   })
 })
 
 describe('검색', () => {
-  const item = occurrence(1, {
+  const item = instance(1, {
     title: 'Gym Workout',
     description: '스쿼트 5세트',
     category: '육체',
@@ -101,9 +101,9 @@ describe('검색', () => {
 describe('필터 합성', () => {
   it('분류와 검색어가 AND 로 걸린다', () => {
     const list = [
-      occurrence(1, { category: '육체', title: '달리기' }),
-      occurrence(2, { category: '육체', title: '독서' }),
-      occurrence(3, { category: '능력', title: '달리기' }),
+      instance(1, { category: '육체', title: '달리기' }),
+      instance(2, { category: '육체', title: '독서' }),
+      instance(3, { category: '능력', title: '달리기' }),
     ]
 
     expect(applyFilters(list, { category: '육체', query: '달리기' })).toHaveLength(1)

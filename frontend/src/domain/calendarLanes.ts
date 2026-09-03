@@ -1,6 +1,6 @@
 import type { ScheduleResponse } from '../types/schedule'
 import { toLocalDate } from '../utils/datetime'
-import { occurrenceDateKeys, occurrenceKey } from './occurrence'
+import { instanceDateKeys, instanceKey } from './instance'
 
 /** 한 칸에 보여줄 줄 수. 넘치면 "+N건" 으로 접는다 */
 export const MAX_LANES = 4
@@ -8,7 +8,7 @@ export const MAX_LANES = 4
 const DAYS_PER_WEEK = 7
 
 export interface LaneSlot {
-  occurrence: ScheduleResponse
+  instance: ScheduleResponse
   /** 이 주에서 띠가 시작하는 날 */
   isStart: boolean
   /** 이 주에서 띠가 끝나는 날 */
@@ -23,7 +23,7 @@ export interface DayLanes {
 }
 
 interface Segment {
-  occurrence: ScheduleResponse
+  instance: ScheduleResponse
   /** 주 안에서의 칸 번호 (0~6) */
   from: number
   to: number
@@ -39,14 +39,14 @@ interface Segment {
  */
 export function assignLanes(
   days: Date[],
-  occurrences: ScheduleResponse[],
+  instances: ScheduleResponse[],
 ): Map<string, DayLanes> {
   const result = new Map<string, DayLanes>()
 
   // 회차 하나가 걸치는 날짜를 미리 구해둔다
-  const spans = occurrences.map((occurrence) => ({
-    occurrence,
-    keys: new Set(occurrenceDateKeys(occurrence)),
+  const spans = instances.map((instance) => ({
+    instance,
+    keys: new Set(instanceDateKeys(instance)),
   }))
 
   for (let offset = 0; offset < days.length; offset += DAYS_PER_WEEK) {
@@ -54,14 +54,14 @@ export function assignLanes(
     const weekKeys = week.map(toLocalDate)
 
     const segments: Segment[] = []
-    for (const { occurrence, keys } of spans) {
+    for (const { instance, keys } of spans) {
       const covered = weekKeys
         .map((key, i) => (keys.has(key) ? i : -1))
         .filter((i) => i >= 0)
 
       if (covered.length > 0) {
         segments.push({
-          occurrence,
+          instance,
           from: covered[0],
           to: covered[covered.length - 1],
         })
@@ -85,7 +85,7 @@ function place(
     (a, b) =>
       a.from - b.from ||
       b.to - b.from - (a.to - a.from) ||
-      occurrenceKey(a.occurrence).localeCompare(occurrenceKey(b.occurrence)),
+      instanceKey(a.instance).localeCompare(instanceKey(b.instance)),
   )
 
   const taken: boolean[][] = []
@@ -109,7 +109,7 @@ function place(
       const { lanes } = result.get(weekKeys[i])!
       while (lanes.length <= lane) lanes.push(null)
       lanes[lane] = {
-        occurrence: segment.occurrence,
+        instance: segment.instance,
         isStart: i === segment.from,
         isEnd: i === segment.to,
       }

@@ -59,9 +59,9 @@ class RecurringScheduleApiTest extends IntegrationTest {
                                   }
                                 }"""))
                 .andExpect(status().isCreated())
-                // 반복이든 아니든 id 가 있다. 회차 식별자는 id + occurrenceDate 다
+                // 반복이든 아니든 id 가 있다. 회차 식별자는 id + instanceDate 다
                 .andExpect(jsonPath("$.id").isNumber())
-                .andExpect(jsonPath("$.occurrenceDate").value("2026-09-07"))
+                .andExpect(jsonPath("$.instanceDate").value("2026-09-07"))
                 .andExpect(jsonPath("$.title").value("운동"))
                 .andExpect(jsonPath("$.status").value("PLANNED"))
                 .andExpect(jsonPath("$.recurring").value(true))
@@ -74,14 +74,14 @@ class RecurringScheduleApiTest extends IntegrationTest {
         long id = createSchedule("""
                 { "title": "혼자", "startAt": "2026-09-08T09:00:00" }""");
 
-        List<JsonNode> month = occurrencesOf(id, "2026-09-01T00:00:00", "2026-09-30T23:59:59");
+        List<JsonNode> month = instancesOf(id, "2026-09-01T00:00:00", "2026-09-30T23:59:59");
 
         assertThat(datesOf(month)).containsExactly("2026-09-08");
     }
 
     @Test
     @DisplayName("회차마다 반복 일정인지 알려준다")
-    void tellsWhetherTheOccurrenceRepeats() throws Exception {
+    void tellsWhetherTheInstanceRepeats() throws Exception {
         // 규칙 자체는 응답에 없다. 화면이 반복과 1회성을 나눠 보여주려면 이 값이 필요하다
         long weekly = createSchedule("""
                 {
@@ -95,17 +95,17 @@ class RecurringScheduleApiTest extends IntegrationTest {
         String window = "2026-09-01T00:00:00";
         String end = "2026-09-30T23:59:59";
 
-        assertThat(occurrencesOf(weekly, window, end))
+        assertThat(instancesOf(weekly, window, end))
                 .isNotEmpty()
                 .allSatisfy(o -> assertThat(o.path("recurring").asBoolean()).isTrue());
-        assertThat(occurrencesOf(once, window, end))
+        assertThat(instancesOf(once, window, end))
                 .isNotEmpty()
                 .allSatisfy(o -> assertThat(o.path("recurring").asBoolean()).isFalse());
     }
 
     @Test
     @DisplayName("범위 밖에서 미뤄져 들어온 회차도 반복 여부를 유지한다")
-    void keepsRecurringOnPostponedOccurrence() throws Exception {
+    void keepsRecurringOnPostponedInstance() throws Exception {
         long id = createSchedule("""
                 {
                   "title": "운동",
@@ -115,13 +115,13 @@ class RecurringScheduleApiTest extends IntegrationTest {
 
         // 규칙은 월요일뿐이라 수요일(10/7)에는 이 회차만 잡힌다.
         // onDate 는 9/7 그대로여서 첫 루프가 아니라 두 번째 루프가 넣는다
-        mvc.perform(patch(BASE + "/" + id + "/occurrences/2026-09-07/postpone")
+        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-07/postpone")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "to": "2026-10-07T07:00:00" }"""))
                 .andExpect(status().isOk());
 
-        assertThat(occurrencesOf(id, "2026-10-06T00:00:00", "2026-10-08T23:59:59"))
+        assertThat(instancesOf(id, "2026-10-06T00:00:00", "2026-10-08T23:59:59"))
                 .isNotEmpty()
                 .allSatisfy(o -> assertThat(o.path("recurring").asBoolean()).isTrue());
     }
@@ -133,7 +133,7 @@ class RecurringScheduleApiTest extends IntegrationTest {
                 { "title": "운동", "startAt": "2026-09-07T07:00:00",
                   "recurrence": { "freq": "WEEKLY", "byWeekday": ["MONDAY", "WEDNESDAY", "FRIDAY"] } }""");
 
-        List<JsonNode> week = occurrencesOf(id, "2026-09-07T00:00:00", "2026-09-13T23:59:59");
+        List<JsonNode> week = instancesOf(id, "2026-09-07T00:00:00", "2026-09-13T23:59:59");
 
         assertThat(datesOf(week)).containsExactly("2026-09-07", "2026-09-09", "2026-09-11");
     }
@@ -146,7 +146,7 @@ class RecurringScheduleApiTest extends IntegrationTest {
                   "endAt": "2026-09-07T08:30:00",
                   "recurrence": { "freq": "WEEKLY", "byWeekday": ["MONDAY"] } }""");
 
-        List<JsonNode> month = occurrencesOf(id, "2026-09-01T00:00:00", "2026-09-30T23:59:59");
+        List<JsonNode> month = instancesOf(id, "2026-09-01T00:00:00", "2026-09-30T23:59:59");
 
         assertThat(month).isNotEmpty();
         month.forEach(node -> {
@@ -164,7 +164,7 @@ class RecurringScheduleApiTest extends IntegrationTest {
                   "endAt": "2026-09-07T13:15:00",
                   "recurrence": { "freq": "DAILY", "endsOn": "2026-09-09" } }""");
 
-        List<JsonNode> found = occurrencesOf(id, "2026-09-07T00:00:00", "2026-09-09T23:59:59");
+        List<JsonNode> found = instancesOf(id, "2026-09-07T00:00:00", "2026-09-09T23:59:59");
 
         assertThat(found).hasSize(3);
         found.forEach(node -> {
@@ -180,7 +180,7 @@ class RecurringScheduleApiTest extends IntegrationTest {
                 { "title": "독서", "startAt": "2026-09-01T21:00:00",
                   "recurrence": { "freq": "DAILY", "endsOn": "2026-09-02" } }""");
 
-        List<JsonNode> found = occurrencesOf(id, "2026-09-01T00:00:00", "2026-09-02T23:59:59");
+        List<JsonNode> found = instancesOf(id, "2026-09-01T00:00:00", "2026-09-02T23:59:59");
 
         assertThat(found).hasSize(2);
         // non_null 직렬화라 값이 없으면 필드 자체가 빠진다
@@ -195,8 +195,8 @@ class RecurringScheduleApiTest extends IntegrationTest {
                 { "title": "매일 독서", "startAt": "2026-09-01T21:00:00",
                   "recurrence": { "freq": "DAILY" } }""");
 
-        assertThat(occurrencesOf(id, "2026-09-01T00:00:00", "2026-09-07T23:59:59")).hasSize(7);
-        assertThat(occurrencesOf(id, "2026-09-01T00:00:00", "2026-09-30T23:59:59")).hasSize(30);
+        assertThat(instancesOf(id, "2026-09-01T00:00:00", "2026-09-07T23:59:59")).hasSize(7);
+        assertThat(instancesOf(id, "2026-09-01T00:00:00", "2026-09-30T23:59:59")).hasSize(30);
     }
 
     @Test
@@ -206,7 +206,7 @@ class RecurringScheduleApiTest extends IntegrationTest {
                 { "title": "짧은 반복", "startAt": "2026-09-01T09:00:00",
                   "recurrence": { "freq": "DAILY", "endsOn": "2026-09-05" } }""");
 
-        List<JsonNode> found = occurrencesOf(id, "2026-09-01T00:00:00", "2026-09-30T23:59:59");
+        List<JsonNode> found = instancesOf(id, "2026-09-01T00:00:00", "2026-09-30T23:59:59");
 
         assertThat(datesOf(found)).containsExactly(
                 "2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-05");
@@ -219,7 +219,7 @@ class RecurringScheduleApiTest extends IntegrationTest {
                 { "title": "나중 시작", "startAt": "2026-09-15T09:00:00",
                   "recurrence": { "freq": "DAILY", "endsOn": "2026-09-17" } }""");
 
-        List<JsonNode> found = occurrencesOf(id, "2026-09-01T00:00:00", "2026-09-30T23:59:59");
+        List<JsonNode> found = instancesOf(id, "2026-09-01T00:00:00", "2026-09-30T23:59:59");
 
         assertThat(datesOf(found)).containsExactly("2026-09-15", "2026-09-16", "2026-09-17");
     }
@@ -282,7 +282,7 @@ class RecurringScheduleApiTest extends IntegrationTest {
         return created.get("id").asLong();
     }
 
-    private List<JsonNode> occurrencesOf(long scheduleId, String from, String to) throws Exception {
+    private List<JsonNode> instancesOf(long scheduleId, String from, String to) throws Exception {
         JsonNode all = json(mvc.perform(get(BASE).param("from", from).param("to", to))
                 .andExpect(status().isOk()));
         List<JsonNode> mine = new ArrayList<>();
@@ -295,7 +295,7 @@ class RecurringScheduleApiTest extends IntegrationTest {
     }
 
     private List<String> datesOf(List<JsonNode> nodes) {
-        return nodes.stream().map(n -> n.get("occurrenceDate").asString()).toList();
+        return nodes.stream().map(n -> n.get("instanceDate").asString()).toList();
     }
 
     private List<String> titlesOf(JsonNode array) {

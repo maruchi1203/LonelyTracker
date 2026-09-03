@@ -1,5 +1,5 @@
 import type { DayLanes, LaneSlot } from "../../../domain/calendarLanes";
-import { occurrenceKey } from "../../../domain/occurrence";
+import { instanceKey } from "../../../domain/instance";
 
 interface Props {
   date: Date;
@@ -54,7 +54,7 @@ export default function ScheduleCalendarCell({
       <ul className="flex list-none flex-col gap-0.5 p-0">
         {day.lanes.map((slot, lane) =>
           slot ? (
-            <Bar key={occurrenceKey(slot.occurrence)} slot={slot} />
+            <Bar key={instanceKey(slot.instance)} slot={slot} />
           ) : (
             // 빈 레인도 자리를 차지해야 옆 칸의 띠와 높이가 맞는다
             <li key={`empty-${lane}`} className="h-4" aria-hidden />
@@ -72,8 +72,8 @@ export default function ScheduleCalendarCell({
 }
 
 function Bar({ slot }: { slot: LaneSlot }) {
-  const { occurrence, isStart, isEnd } = slot;
-  const done = occurrence.status === "DONE";
+  const { instance, isStart, isEnd } = slot;
+  const done = instance.status === "DONE";
 
   const shape = [
     isStart ? "rounded-l-sm" : BLEED_LEFT,
@@ -84,9 +84,9 @@ function Bar({ slot }: { slot: LaneSlot }) {
     <li
       // 칸이 좁으므로 한 줄로 자르고, 전체 제목은 title 속성으로 보여준다
       title={
-        occurrence.postponeCount > 0
-          ? `${occurrence.title} · ${occurrence.postponeCount}번 미룸`
-          : occurrence.title
+        instance.postponeCount > 0
+          ? `${instance.title} · ${instance.postponeCount}번 미룸`
+          : instance.title
       }
       className={`${BAR} ${shape} ${
         done
@@ -97,10 +97,10 @@ function Bar({ slot }: { slot: LaneSlot }) {
       {/* 제목은 띠가 시작하는 칸에만 적는다. 이어지는 칸은 띠만 보인다 */}
       {isStart && (
         <>
-          {occurrence.postponeCount > 0 && (
+          {instance.postponeCount > 0 && (
             <span className="text-amber-600">↻ </span>
           )}
-          {occurrence.title}
+          {instance.title}
         </>
       )}
     </li>

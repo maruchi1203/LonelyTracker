@@ -1,7 +1,7 @@
 import type { ParsedSchedule } from '../types/parse'
 import type {
   DeleteScope,
-  OccurrenceUpdateRequest,
+  InstanceUpdateRequest,
   ScheduleCreateRequest,
   ScheduleQuery,
   ScheduleResponse,
@@ -42,12 +42,12 @@ export async function createSchedule(
 }
 
 /** 회차 하나의 상태를 바꾼다 */
-export async function changeOccurrenceStatus(
+export async function changeInstanceStatus(
   id: number,
   onDate: string,
   status: ScheduleStatus,
 ): Promise<ScheduleResponse> {
-  const res = await fetch(`${BASE}/${id}/occurrences/${onDate}/status`, {
+  const res = await fetch(`${BASE}/${id}/instances/${onDate}/status`, {
     method: 'PATCH',
     headers: JSON_HEADERS,
     body: JSON.stringify({ status }),
@@ -56,12 +56,12 @@ export async function changeOccurrenceStatus(
 }
 
 /** 회차 하나를 다른 시각으로 미룬다. onDate 는 그대로 남는다 */
-export async function postponeOccurrence(
+export async function postponeInstance(
   id: number,
   onDate: string,
   to: string,
 ): Promise<ScheduleResponse> {
-  const res = await fetch(`${BASE}/${id}/occurrences/${onDate}/postpone`, {
+  const res = await fetch(`${BASE}/${id}/instances/${onDate}/postpone`, {
     method: 'PATCH',
     headers: JSON_HEADERS,
     body: JSON.stringify({ to }),
@@ -70,12 +70,12 @@ export async function postponeOccurrence(
 }
 
 /** 회차 하나만 고친다. 생략한 칸은 일정의 값으로 되돌아간다 */
-export async function updateOccurrence(
+export async function updateInstance(
   id: number,
   onDate: string,
-  body: OccurrenceUpdateRequest,
+  body: InstanceUpdateRequest,
 ): Promise<ScheduleResponse> {
-  const res = await fetch(`${BASE}/${id}/occurrences/${onDate}`, {
+  const res = await fetch(`${BASE}/${id}/instances/${onDate}`, {
     method: 'PUT',
     headers: JSON_HEADERS,
     body: JSON.stringify(body),

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { fetchSchedules } from '../api/schedules'
-import { replaceOccurrence } from '../domain/occurrence'
+import { replaceInstance } from '../domain/instance'
 import type { ScheduleResponse } from '../types/schedule'
 import { monthGridWindow } from '../utils/monthGrid'
 
-interface MonthOccurrences {
-  occurrences: ScheduleResponse[]
+interface MonthInstances {
+  instances: ScheduleResponse[]
   loading: boolean
   error: string | null
   reload: () => Promise<void>
@@ -18,8 +18,8 @@ interface MonthOccurrences {
  * 달력에 보이는 기간의 회차를 가져온다.
  * 분류·검색은 서버에 넘기지 않는다 — 창 전체를 받아야 화면에서 빈도를 셀 수 있다.
  */
-export function useMonthOccurrences(month: Date): MonthOccurrences {
-  const [occurrences, setOccurrences] = useState<ScheduleResponse[]>([])
+export function useMonthInstances(month: Date): MonthInstances {
+  const [instances, setInstances] = useState<ScheduleResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -35,7 +35,7 @@ export function useMonthOccurrences(month: Date): MonthOccurrences {
     setError(null)
     try {
       const list = await fetchSchedules({ from, to }, signal)
-      if (seq === requestSeq.current) setOccurrences(list)
+      if (seq === requestSeq.current) setInstances(list)
     } catch (e) {
       if (signal?.aborted) return
       if (seq === requestSeq.current) {
@@ -55,8 +55,8 @@ export function useMonthOccurrences(month: Date): MonthOccurrences {
   const reload = useCallback(() => run(), [run])
 
   const patchOne = useCallback((updated: ScheduleResponse) => {
-    setOccurrences((prev) => replaceOccurrence(prev, updated))
+    setInstances((prev) => replaceInstance(prev, updated))
   }, [])
 
-  return { occurrences, loading, error, reload, patchOne, setError }
+  return { instances, loading, error, reload, patchOne, setError }
 }

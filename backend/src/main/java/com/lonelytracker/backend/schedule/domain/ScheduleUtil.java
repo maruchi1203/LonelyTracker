@@ -119,14 +119,14 @@ public final class ScheduleUtil {
         if (recur.getEndsOn() != null && onDate.isAfter(recur.getEndsOn())) {
             return false;
         }
-        return !ScheduleOccurrenceDates.generate(
+        return !ScheduleInstanceDates.generate(
                 recur.getFreq(), recur.getByWeekday(), onDate, onDate).isEmpty();
     }
 
     /** 종료일이 없으면 앞으로 몇 달만 펼쳐 본다. 무기한 규칙을 끝까지 펼칠 수는 없다. */
     private static List<LocalDate> expandForCheck(ScheduleRecurrenceFreq freq,
             Set<DayOfWeek> byWeekday, LocalDate start, LocalDate endsOn) {
-        return ScheduleOccurrenceDates.generate(freq, byWeekday, start,
+        return ScheduleInstanceDates.generate(freq, byWeekday, start,
                 (endsOn != null) ? endsOn : start.plusMonths(RULE_CHECK_MONTHS));
     }
 }

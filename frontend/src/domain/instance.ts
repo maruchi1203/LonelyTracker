@@ -5,22 +5,22 @@ import { formatTime, isSameDay, toLocalDate } from '../utils/datetime'
  * 회차의 식별자. 반복 일정 하나가 여러 회차로 펼쳐져 오므로 id 만으로는 구분되지 않는다.
  * React key, 조회, 갱신이 모두 이 값을 쓴다.
  */
-export function occurrenceKey(
-  occurrence: Pick<ScheduleResponse, 'id' | 'occurrenceDate'>,
+export function instanceKey(
+  instance: Pick<ScheduleResponse, 'id' | 'instanceDate'>,
 ): string {
-  return `${occurrence.id}:${occurrence.occurrenceDate}`
+  return `${instance.id}:${instance.instanceDate}`
 }
 
-export function sameOccurrence(
-  a: Pick<ScheduleResponse, 'id' | 'occurrenceDate'>,
-  b: Pick<ScheduleResponse, 'id' | 'occurrenceDate'>,
+export function sameInstance(
+  a: Pick<ScheduleResponse, 'id' | 'instanceDate'>,
+  b: Pick<ScheduleResponse, 'id' | 'instanceDate'>,
 ): boolean {
-  return a.id === b.id && a.occurrenceDate === b.occurrenceDate
+  return a.id === b.id && a.instanceDate === b.instanceDate
 }
 
 /** 원래 날짜와 실제 시작일이 다르면 연기된 회차다 */
-export function isPostponed(occurrence: ScheduleResponse): boolean {
-  return occurrence.occurrenceDate !== toLocalDate(new Date(occurrence.startAt))
+export function isPostponed(instance: ScheduleResponse): boolean {
+  return instance.instanceDate !== toLocalDate(new Date(instance.startAt))
 }
 
 /** 한 회차가 걸칠 수 있는 날짜 수의 상한. 잘못된 기간이 달력을 망가뜨리지 않게 한다 */
@@ -29,18 +29,18 @@ const MAX_SPAN_DAYS = 366
 /**
  * 달력 칸에 담는다. 여러 날에 걸친 일정은 걸친 날마다 들어간다.
  *
- * 식별자는 occurrenceDate 지만 화면에 놓이는 자리는 startAt~endAt 이다.
+ * 식별자는 instanceDate 지만 화면에 놓이는 자리는 startAt~endAt 이다.
  */
 export function groupByDate(
-  occurrences: ScheduleResponse[],
+  instances: ScheduleResponse[],
 ): Map<string, ScheduleResponse[]> {
   const map = new Map<string, ScheduleResponse[]>()
 
-  for (const occurrence of occurrences) {
-    for (const key of occurrenceDateKeys(occurrence)) {
+  for (const instance of instances) {
+    for (const key of instanceDateKeys(instance)) {
       const bucket = map.get(key)
-      if (bucket) bucket.push(occurrence)
-      else map.set(key, [occurrence])
+      if (bucket) bucket.push(instance)
+      else map.set(key, [instance])
     }
   }
 
@@ -48,14 +48,14 @@ export function groupByDate(
 }
 
 /** 그 날짜에 걸쳐 있는 회차인지. 달력과 목록이 같은 기준을 써야 한다 */
-export function coversDate(occurrence: ScheduleResponse, date: Date): boolean {
-  return occurrenceDateKeys(occurrence).includes(toLocalDate(date))
+export function coversDate(instance: ScheduleResponse, date: Date): boolean {
+  return instanceDateKeys(instance).includes(toLocalDate(date))
 }
 
 /** 회차가 걸치는 날짜들. 시작일은 언제나 하나 들어간다 */
-export function occurrenceDateKeys(occurrence: ScheduleResponse): string[] {
-  const start = new Date(occurrence.startAt)
-  const finish = occurrence.endAt ? new Date(occurrence.endAt) : start
+export function instanceDateKeys(instance: ScheduleResponse): string[] {
+  const start = new Date(instance.startAt)
+  const finish = instance.endAt ? new Date(instance.endAt) : start
 
   const cursor = midnight(start)
   const last = midnight(finish)
@@ -75,12 +75,12 @@ function midnight(date: Date): Date {
 }
 
 /** 목록에 보여줄 기간 문구. 날짜가 넘어가면 종료일자도 함께 적는다 */
-export function formatOccurrenceRange(occurrence: ScheduleResponse): string {
-  const start = new Date(occurrence.startAt)
-  const end = occurrence.endAt ? new Date(occurrence.endAt) : null
+export function formatInstanceRange(instance: ScheduleResponse): string {
+  const start = new Date(instance.startAt)
+  const end = instance.endAt ? new Date(instance.endAt) : null
   const sameDay = end !== null && isSameDay(start, end)
 
-  if (occurrence.allDay) {
+  if (instance.allDay) {
     return !end || sameDay ? day(start) : `${day(start)} ~ ${day(end)}`
   }
 
@@ -94,9 +94,9 @@ function day(date: Date): string {
 }
 
 /** 회차 하나만 바꾼다. 같은 id 의 다른 회차는 건드리지 않는다 */
-export function replaceOccurrence(
-  occurrences: ScheduleResponse[],
+export function replaceInstance(
+  instances: ScheduleResponse[],
   updated: ScheduleResponse,
 ): ScheduleResponse[] {
-  return occurrences.map((o) => (sameOccurrence(o, updated) ? updated : o))
+  return instances.map((o) => (sameInstance(o, updated) ? updated : o))
 }

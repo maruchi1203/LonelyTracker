@@ -1,6 +1,6 @@
 package com.lonelytracker.backend.schedule.controller;
 
-import com.lonelytracker.backend.schedule.dto.OccurrenceUpdateRequest;
+import com.lonelytracker.backend.schedule.dto.ScheduleInstanceUpdateRequest;
 import com.lonelytracker.backend.schedule.dto.SchedulePostponeRequest;
 import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
@@ -29,13 +29,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 import com.lonelytracker.backend.schedule.domain.ScheduleDeleteScope;
 import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
-import com.lonelytracker.backend.schedule.service.ScheduleOccurrenceService;
+import com.lonelytracker.backend.schedule.service.ScheduleInstanceService;
 import com.lonelytracker.backend.schedule.service.ScheduleParseService;
 import com.lonelytracker.backend.schedule.service.ScheduleService;
 
 /**
  * 일정과 회차의 HTTP 진입점.
- * 단일과 반복이 같은 엔드포인트를 쓰고, 회차는 {@code /{id}/occurrences/{date}} 로 가리킨다.
+ * 단일과 반복이 같은 엔드포인트를 쓰고, 회차는 {@code /{id}/instances/{date}} 로 가리킨다.
  */
 @RestController
 @RequestMapping("/api/schedules")
@@ -43,7 +43,7 @@ import com.lonelytracker.backend.schedule.service.ScheduleService;
 public class ScheduleController {
 
     private final ScheduleService scheduleService;
-    private final ScheduleOccurrenceService scheduleOccurrenceService;
+    private final ScheduleInstanceService scheduleInstanceService;
     private final ScheduleParseService scheduleParseService;
 
     /**
@@ -110,29 +110,29 @@ public class ScheduleController {
     // --- 회차 -------------------------------------------------------------
 
     /** 완료·건너뛰기. 기록이 없으면 여기서 처음 생긴다. */
-    @PatchMapping("/{id}/occurrences/{onDate}/status")
-    public ScheduleResponse changeOccurrenceStatus(
+    @PatchMapping("/{id}/instances/{onDate}/status")
+    public ScheduleResponse changeInstanceStatus(
             @PathVariable Long id,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate onDate,
             @Valid @RequestBody ScheduleStatusRequest request) {
-        return scheduleOccurrenceService.changeStatus(id, onDate, request.status());
+        return scheduleInstanceService.changeStatus(id, onDate, request.status());
     }
 
     /** 연기. onDate 는 그대로 두고 startAt 만 옮긴다. */
-    @PatchMapping("/{id}/occurrences/{onDate}/postpone")
-    public ScheduleResponse postponeOccurrence(
+    @PatchMapping("/{id}/instances/{onDate}/postpone")
+    public ScheduleResponse postponeInstance(
             @PathVariable Long id,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate onDate,
             @Valid @RequestBody SchedulePostponeRequest request) {
-        return scheduleOccurrenceService.postpone(id, onDate, request.to());
+        return scheduleInstanceService.postpone(id, onDate, request.to());
     }
 
     /** 이 회차만 수정. null 을 준 필드는 일정 값으로 되돌아간다. */
-    @PutMapping("/{id}/occurrences/{onDate}")
-    public ScheduleResponse updateOccurrence(
+    @PutMapping("/{id}/instances/{onDate}")
+    public ScheduleResponse updateInstance(
             @PathVariable Long id,
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate onDate,
-            @Valid @RequestBody OccurrenceUpdateRequest request) {
-        return scheduleOccurrenceService.updateOne(id, onDate, request);
+            @Valid @RequestBody ScheduleInstanceUpdateRequest request) {
+        return scheduleInstanceService.updateOne(id, onDate, request);
     }
 }

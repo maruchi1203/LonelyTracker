@@ -9,12 +9,12 @@ import java.util.Set;
 /**
  * 반복 규칙에서 회차 날짜를 뽑는다.
  */
-public final class ScheduleOccurrenceDates {
+public final class ScheduleInstanceDates {
 
     /** 한 번에 펼칠 수 있는 회차 수 상한. 조회 범위가 너무 넓을 때를 막는다 */
     public static final int MAX_EXPANDED = 10_000;
 
-    private ScheduleOccurrenceDates() {
+    private ScheduleInstanceDates() {
     }
 
     /**

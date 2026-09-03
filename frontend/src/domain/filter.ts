@@ -8,12 +8,12 @@ export const TOP_CATEGORIES = 5
  * 필터를 걸기 전의 창 전체로 세야 칩 하나를 골랐을 때 나머지가 0이 되지 않는다.
  */
 export function countByCategory(
-  occurrences: ScheduleResponse[],
+  instances: ScheduleResponse[],
 ): Map<string, number> {
   const counts = new Map<string, number>()
 
-  for (const occurrence of occurrences) {
-    const name = occurrence.category
+  for (const instance of instances) {
+    const name = instance.category
     if (!name) continue
     counts.set(name, (counts.get(name) ?? 0) + 1)
   }
@@ -49,20 +49,20 @@ export function rankCategories(
 }
 
 /** 제목·내용·분류에 검색어가 들어 있는지 */
-export function matchesQuery(occurrence: ScheduleResponse, query: string): boolean {
+export function matchesQuery(instance: ScheduleResponse, query: string): boolean {
   const needle = query.trim().toLocaleLowerCase()
   if (!needle) return true
 
-  return [occurrence.title, occurrence.description ?? '', occurrence.category ?? '']
+  return [instance.title, instance.description ?? '', instance.category ?? '']
     .some((field) => field.toLocaleLowerCase().includes(needle))
 }
 
 /** 분류와 검색어를 함께 건다. 날짜 선택은 여기 넣지 않는다 — 목록에만 적용된다 */
 export function applyFilters(
-  occurrences: ScheduleResponse[],
+  instances: ScheduleResponse[],
   filters: { category: string | null; query: string },
 ): ScheduleResponse[] {
-  return occurrences
+  return instances
     .filter((o) => !filters.category || o.category === filters.category)
     .filter((o) => matchesQuery(o, filters.query))
 }
