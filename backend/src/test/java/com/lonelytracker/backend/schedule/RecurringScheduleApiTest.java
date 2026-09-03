@@ -273,6 +273,51 @@ class RecurringScheduleApiTest extends IntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    @DisplayName("자정을 넘겨도 다음 회차 전에 끝나면 반복할 수 있다")
+    void overnightRecurringIsAllowed() throws Exception {
+        mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "title": "야간 근무", "startAt": "2026-09-01T22:00:00",
+                                  "endAt": "2026-09-02T02:00:00",
+                                  "recurrence": { "freq": "DAILY" } }"""))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.endAt").value("2026-09-02T02:00:00"));
+    }
+
+    @Test
+    @DisplayName("매일 반복이 24시간을 넘으면 400을 반환한다")
+    void dailyLongerThanADayIsRejected() throws Exception {
+        mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "title": "겹치는 일정", "startAt": "2026-09-01T22:00:00",
+                                  "endAt": "2026-09-02T23:00:00",
+                                  "recurrence": { "freq": "DAILY" } }"""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message")
+                        .value(org.hamcrest.Matchers.containsString("다음 회차")));
+    }
+
+    @Test
+    @DisplayName("매주 월수금은 회차 사이 간격인 48시간까지 이어질 수 있다")
+    void weeklyGapAllowsUpToTheNextInstance() throws Exception {
+        mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "title": "합숙", "startAt": "2026-09-07T09:00:00",
+                                  "endAt": "2026-09-09T09:00:00",
+                                  "recurrence": { "freq": "WEEKLY",
+                                                  "byWeekday": ["MONDAY", "WEDNESDAY", "FRIDAY"] } }"""))
+                .andExpect(status().isCreated());
+
+        mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "title": "너무 긴 합숙", "startAt": "2026-09-07T09:00:00",
+                                  "endAt": "2026-09-09T10:00:00",
+                                  "recurrence": { "freq": "WEEKLY",
+                                                  "byWeekday": ["MONDAY", "WEDNESDAY", "FRIDAY"] } }"""))
+                .andExpect(status().isBadRequest());
+    }
+
     // --- 헬퍼 -------------------------------------------------------------
 
     private long createSchedule(String body) throws Exception {

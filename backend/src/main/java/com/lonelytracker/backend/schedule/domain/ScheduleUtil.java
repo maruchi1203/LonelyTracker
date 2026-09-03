@@ -138,9 +138,41 @@ public final class ScheduleUtil {
      */
     public static void validateRule(ScheduleEntity schedule, RecurrenceRequest rule) {
         LocalDate start = schedule.getStartAt().toLocalDate();
-        if (expandForCheck(rule.freq(), toWeekdaySet(rule.byWeekday()), start, rule.endsOn()).isEmpty()) {
+        Set<DayOfWeek> weekdays = toWeekdaySet(rule.byWeekday());
+        if (expandForCheck(rule.freq(), weekdays, start, rule.endsOn()).isEmpty()) {
             throw new IllegalArgumentException("이 규칙으로는 일정이 하나도 생기지 않습니다");
         }
+
+        Integer minutes = schedule.getDurationMinutes();
+        if (minutes == null) {
+            return;
+        }
+        Duration gap = gapToNextInstance(rule.freq(), weekdays);
+        if (Duration.ofMinutes(minutes).compareTo(gap) > 0) {
+            throw new IllegalArgumentException(
+                    "반복 일정은 다음 회차가 시작하기 전에 끝나야 합니다. 최대 "
+                            + gap.toHours() + "시간");
+        }
+    }
+
+    /**
+     * 회차 사이의 가장 짧은 간격. 반복 일정의 소요시간 상한이 된다.
+     *
+     * @param byWeekday WEEKLY 일 때만 본다. 매일이면 24시간이다
+     */
+    public static Duration gapToNextInstance(ScheduleRecurrenceFreq freq, Set<DayOfWeek> byWeekday) {
+        if (freq == ScheduleRecurrenceFreq.DAILY || byWeekday.size() <= 1) {
+            return (freq == ScheduleRecurrenceFreq.DAILY)
+                    ? Duration.ofDays(1)
+                    : Duration.ofDays(7);
+        }
+
+        List<Integer> days = byWeekday.stream().map(DayOfWeek::getValue).sorted().toList();
+        int min = 7 - days.get(days.size() - 1) + days.get(0);   // 마지막 요일에서 다음 주 첫 요일까지
+        for (int i = 1; i < days.size(); i++) {
+            min = Math.min(min, days.get(i) - days.get(i - 1));
+        }
+        return Duration.ofDays(min);
     }
 
     /**
