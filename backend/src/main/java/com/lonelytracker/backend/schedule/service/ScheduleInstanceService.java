@@ -48,6 +48,11 @@ public class ScheduleInstanceService {
         ScheduleProgressEntity progress = getOrCreate(scheduleId, onDate);
         Integer minutes = progress.getSchedule().getDurationMinutes();
 
+        LocalDateTime instanceStart = (progress.getStartAt() != null)
+                ? progress.getStartAt()
+                : LocalDateTime.of(onDate, progress.getSchedule().getStartAt().toLocalTime());
+        ScheduleUtil.validatePostpone(instanceStart, to, LocalDateTime.now());
+
         progress.postponeTo(to, (minutes == null) ? null : Duration.ofMinutes(minutes));
         return toResponse(progressRepository.saveAndFlush(progress));
     }
@@ -62,6 +67,7 @@ public class ScheduleInstanceService {
             ScheduleInstanceUpdateRequest request) {
         if (request.startAt() != null) {
             ScheduleUtil.validatePeriod(request.startAt(), request.endAt());
+            ScheduleUtil.validateInstanceStart(onDate, request.startAt());
         }
 
         ScheduleProgressEntity progress = getOrCreate(scheduleId, onDate);
