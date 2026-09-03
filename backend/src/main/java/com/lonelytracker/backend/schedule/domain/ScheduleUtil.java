@@ -20,6 +20,12 @@ public final class ScheduleUtil {
     /** 종료일을 안 정한 규칙을 검사할 때 들여다볼 기간 */
     private static final int RULE_CHECK_MONTHS = 2;
 
+    /** 일정 하나가 이어질 수 있는 최대 길이. 소요시간을 int 분으로 저장한다 */
+    private static final Duration MAX_DURATION = Duration.ofDays(366);
+
+    /** 한 번에 조회할 수 있는 최대 구간 */
+    private static final Duration MAX_WINDOW = Duration.ofDays(366);
+
     private ScheduleUtil() {
     }
 
@@ -60,13 +66,68 @@ public final class ScheduleUtil {
     }
 
     /**
-     * 기간이 뒤집혔는지 검사한다.
+     * 일정 기간의 방향과 길이를 검사한다.
      *
-     * @throws IllegalArgumentException endAt이 startAt보다 이를 때
+     * @param endAt null이면 검사하지 않는다
+     * @throws IllegalArgumentException 뒤집혔거나 366일을 넘을 때
      */
     public static void validatePeriod(LocalDateTime startAt, LocalDateTime endAt) {
-        if (endAt != null && endAt.isBefore(startAt)) {
+        if (endAt == null) {
+            return;
+        }
+        if (endAt.isBefore(startAt)) {
             throw new IllegalArgumentException("endAt은 startAt보다 이를 수 없습니다");
+        }
+        // 소요시간을 int 분으로 저장하므로 상한이 없으면 넘쳐서 음수가 된다
+        if (Duration.between(startAt, endAt).compareTo(MAX_DURATION) > 0) {
+            throw new IllegalArgumentException(
+                    "일정 하나는 " + MAX_DURATION.toDays() + "일을 넘을 수 없습니다");
+        }
+    }
+
+    /**
+     * 조회 구간의 방향과 크기를 검사한다.
+     *
+     * @throws IllegalArgumentException 뒤집혔거나 366일을 넘을 때
+     */
+    public static void validateWindow(LocalDateTime from, LocalDateTime to) {
+        if (to.isBefore(from)) {
+            throw new IllegalArgumentException("to는 from보다 이를 수 없습니다");
+        }
+        if (Duration.between(from, to).compareTo(MAX_WINDOW) > 0) {
+            throw new IllegalArgumentException(
+                    "조회 구간은 " + MAX_WINDOW.toDays() + "일을 넘을 수 없습니다");
+        }
+    }
+
+    /**
+     * 연기할 시각을 검사한다. 미루기는 뒤로만 간다.
+     *
+     * @param instanceStart 그 회차가 원래 시작하던 시각
+     * @param now           호출자가 넘기는 현재 시각
+     * @throws IllegalArgumentException 원래 시각보다 이르거나 이미 지난 시각일 때
+     */
+    public static void validatePostpone(LocalDateTime instanceStart, LocalDateTime to,
+            LocalDateTime now) {
+        if (!to.isAfter(instanceStart)) {
+            throw new IllegalArgumentException("연기할 시각은 원래 회차보다 뒤여야 합니다");
+        }
+        if (to.isBefore(now)) {
+            throw new IllegalArgumentException("지난 시각으로는 미룰 수 없습니다");
+        }
+    }
+
+    /**
+     * 회차가 자기 날짜에서 너무 멀어지지 않았는지 검사한다.
+     *
+     * @param instanceDate 규칙이 만든 원래 날짜
+     * @throws IllegalArgumentException 366일 넘게 떨어졌을 때
+     */
+    public static void validateInstanceStart(LocalDate instanceDate, LocalDateTime startAt) {
+        Duration gap = Duration.between(instanceDate.atStartOfDay(), startAt).abs();
+        if (gap.compareTo(MAX_DURATION) > 0) {
+            throw new IllegalArgumentException(
+                    "회차는 자기 날짜에서 " + MAX_DURATION.toDays() + "일 넘게 떨어질 수 없습니다");
         }
     }
 
@@ -77,9 +138,41 @@ public final class ScheduleUtil {
      */
     public static void validateRule(ScheduleEntity schedule, RecurrenceRequest rule) {
         LocalDate start = schedule.getStartAt().toLocalDate();
-        if (expandForCheck(rule.freq(), toWeekdaySet(rule.byWeekday()), start, rule.endsOn()).isEmpty()) {
+        Set<DayOfWeek> weekdays = toWeekdaySet(rule.byWeekday());
+        if (expandForCheck(rule.freq(), weekdays, start, rule.endsOn()).isEmpty()) {
             throw new IllegalArgumentException("이 규칙으로는 일정이 하나도 생기지 않습니다");
         }
+
+        Integer minutes = schedule.getDurationMinutes();
+        if (minutes == null) {
+            return;
+        }
+        Duration gap = gapToNextInstance(rule.freq(), weekdays);
+        if (Duration.ofMinutes(minutes).compareTo(gap) > 0) {
+            throw new IllegalArgumentException(
+                    "반복 일정은 다음 회차가 시작하기 전에 끝나야 합니다. 최대 "
+                            + gap.toHours() + "시간");
+        }
+    }
+
+    /**
+     * 회차 사이의 가장 짧은 간격. 반복 일정의 소요시간 상한이 된다.
+     *
+     * @param byWeekday WEEKLY 일 때만 본다. 매일이면 24시간이다
+     */
+    public static Duration gapToNextInstance(ScheduleRecurrenceFreq freq, Set<DayOfWeek> byWeekday) {
+        if (freq == ScheduleRecurrenceFreq.DAILY || byWeekday.size() <= 1) {
+            return (freq == ScheduleRecurrenceFreq.DAILY)
+                    ? Duration.ofDays(1)
+                    : Duration.ofDays(7);
+        }
+
+        List<Integer> days = byWeekday.stream().map(DayOfWeek::getValue).sorted().toList();
+        int min = 7 - days.get(days.size() - 1) + days.get(0);   // 마지막 요일에서 다음 주 첫 요일까지
+        for (int i = 1; i < days.size(); i++) {
+            min = Math.min(min, days.get(i) - days.get(i - 1));
+        }
+        return Duration.ofDays(min);
     }
 
     /**

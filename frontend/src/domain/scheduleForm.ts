@@ -4,7 +4,7 @@ import type {
   ScheduleCreateRequest,
   Weekday,
 } from '../types/schedule'
-import { toLocalDate } from '../utils/datetime'
+import { toLocalDate, toLocalDateTime } from '../utils/datetime'
 
 /** 백엔드에 아직 MONTHLY 가 없다. 화면에서 자리만 잡아두고 보내지 않는다 */
 export type FormFreq = RecurrenceFreq | 'MONTHLY'
@@ -17,6 +17,7 @@ export type FormFieldId =
   | 'startTime'
   | 'endDate'
   | 'endTime'
+  | 'duration'
   | 'byWeekday'
   | 'byMonthDay'
   | 'place'
@@ -24,8 +25,8 @@ export type FormFieldId =
 /**
  * 입력 폼이 다루는 모델. 날짜와 시각을 따로 둔다.
  *
- * 시각을 비우면 하루 종일이고, 종료일자 한 칸이 모드에 따라 다른 곳으로 간다 —
- * 한번만이면 일정이 끝나는 날, 반복이면 반복이 끝나는 날이다.
+ * 시각을 비우면 하루 종일이다. 한번만이면 종료일시로 끝을 적고,
+ * 반복이면 소요시간으로 적는다 — 회차마다 날짜가 달라 절대 종료시각을 쓸 수 없다.
  */
 export interface ScheduleForm {
   title: string
@@ -38,6 +39,9 @@ export interface ScheduleForm {
   startTime: string
   endDate: string
   endTime: string
+  /** 반복일 때만 쓴다. "HH" 와 "mm" 을 따로 받는다 */
+  durationHours: string
+  durationMins: string
   byWeekday: Weekday[]
   /** MONTHLY 용. 백엔드가 받기 전까지 쓰이지 않는다 */
   byMonthDay: number[]
@@ -67,6 +71,8 @@ export function emptyForm(defaultDate?: Date | null): ScheduleForm {
     startTime: nextHourTime(),
     endDate: '',
     endTime: '',
+    durationHours: '',
+    durationMins: '',
     byWeekday: [],
     byMonthDay: [],
   }
@@ -92,12 +98,51 @@ export function draftFromParsed(
     startTime: parsed.allDay ? '' : startTime || base.startTime,
     // 반복이면 종료일자 칸은 반복이 끝나는 날을 뜻한다
     endDate: parsed.recurrence ? (parsed.recurrence.endsOn ?? '') : endDate,
-    endTime,
+    endTime: parsed.recurrence ? '' : endTime,
+    ...(parsed.recurrence
+      ? splitDuration(minutesBetween(parsed.startAt, parsed.endAt))
+      : { durationHours: '', durationMins: '' }),
     repeating: Boolean(parsed.recurrence),
     freq: parsed.recurrence?.freq ?? base.freq,
     byWeekday: parsed.recurrence?.byWeekday ?? [],
     place: parsed.place ?? '',
     keepPlaceInDescription: false,
+  }
+}
+
+/** 회차 사이의 가장 짧은 간격(시간). 반복 일정의 소요시간 상한이다 */
+export function gapHours(freq: FormFreq, byWeekday: Weekday[]): number {
+  if (freq === 'DAILY') return 24
+  if (byWeekday.length <= 1) return 24 * 7
+
+  const order: Weekday[] = [
+    'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY',
+  ]
+  const days = byWeekday.map((d) => order.indexOf(d) + 1).sort((a, b) => a - b)
+
+  let min = 7 - days[days.length - 1] + days[0]
+  for (let i = 1; i < days.length; i++) {
+    min = Math.min(min, days[i] - days[i - 1])
+  }
+  return min * 24
+}
+
+/** 폼의 두 칸을 분으로. 둘 다 비면 소요시간 없음(undefined) */
+export function durationMinutesOf(form: ScheduleForm): number | undefined {
+  if (!form.durationHours && !form.durationMins) return undefined
+  return Number(form.durationHours || 0) * 60 + Number(form.durationMins || 0)
+}
+
+function minutesBetween(startAt?: string, endAt?: string): number | undefined {
+  if (!startAt || !endAt) return undefined
+  return Math.round((Date.parse(endAt) - Date.parse(startAt)) / 60000)
+}
+
+function splitDuration(total: number | undefined) {
+  if (total === undefined || total <= 0) return { durationHours: '', durationMins: '' }
+  return {
+    durationHours: String(Math.floor(total / 60)),
+    durationMins: String(total % 60),
   }
 }
 
@@ -113,6 +158,15 @@ export function formValidationError(form: ScheduleForm): string | null {
     }
     if (form.endDate && form.endDate < form.startDate) {
       return '반복 종료일이 시작일보다 앞설 수 없습니다.'
+    }
+
+    const minutes = durationMinutesOf(form)
+    if (minutes !== undefined) {
+      if (minutes <= 0) return '소요시간을 0보다 크게 적어 주세요.'
+      const max = gapHours(form.freq, form.byWeekday) * 60
+      if (minutes > max) {
+        return `소요시간은 다음 회차가 시작하기 전에 끝나야 합니다. 최대 ${max / 60}시간.`
+      }
     }
   } else if (form.endDate && form.endDate < form.startDate) {
     return '종료일자가 시작일자보다 앞설 수 없습니다.'
@@ -153,13 +207,16 @@ export function formToCreateRequest(form: ScheduleForm): ScheduleCreateRequest {
 }
 
 /**
- * 반복 일정의 종료시각은 시작일자에 얹는다.
- * 백엔드가 이걸 duration_minutes 로 바꿔 저장하므로, 회차마다 날짜가 다른 상황에서
- * 절대 종료시각은 첫 회차에만 맞는다.
+ * 보낼 종료시각. 반복이면 소요시간을 시작에 더해 만든다.
+ * 백엔드가 이걸 duration_minutes 로 바꿔 저장하므로 자정을 넘어도 된다.
  */
 function endAtOf(form: ScheduleForm): string | undefined {
   if (form.repeating) {
-    return form.endTime ? `${form.startDate}T${form.endTime}:00` : undefined
+    const minutes = durationMinutesOf(form)
+    if (minutes === undefined) return undefined
+    const end = new Date(`${form.startDate}T${form.startTime || '00:00'}:00`)
+    end.setMinutes(end.getMinutes() + minutes)
+    return toLocalDateTime(end)
   }
 
   if (!form.endDate && !form.endTime) return undefined

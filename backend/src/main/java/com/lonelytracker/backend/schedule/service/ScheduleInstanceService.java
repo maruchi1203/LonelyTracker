@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import com.lonelytracker.backend.schedule.domain.ScheduleInstanceExpander;
+import com.lonelytracker.backend.schedule.domain.ScheduleUtil;
 import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
 import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
 import com.lonelytracker.backend.schedule.entity.ScheduleProgressEntity;
@@ -47,6 +48,11 @@ public class ScheduleInstanceService {
         ScheduleProgressEntity progress = getOrCreate(scheduleId, onDate);
         Integer minutes = progress.getSchedule().getDurationMinutes();
 
+        LocalDateTime instanceStart = (progress.getStartAt() != null)
+                ? progress.getStartAt()
+                : LocalDateTime.of(onDate, progress.getSchedule().getStartAt().toLocalTime());
+        ScheduleUtil.validatePostpone(instanceStart, to, LocalDateTime.now());
+
         progress.postponeTo(to, (minutes == null) ? null : Duration.ofMinutes(minutes));
         return toResponse(progressRepository.saveAndFlush(progress));
     }
@@ -59,9 +65,9 @@ public class ScheduleInstanceService {
     @Transactional
     public ScheduleResponse updateOne(Long scheduleId, LocalDate onDate,
             ScheduleInstanceUpdateRequest request) {
-        if (request.startAt() != null && request.endAt() != null
-                && request.endAt().isBefore(request.startAt())) {
-            throw new IllegalArgumentException("endAt은 startAt보다 이를 수 없습니다");
+        if (request.startAt() != null) {
+            ScheduleUtil.validatePeriod(request.startAt(), request.endAt());
+            ScheduleUtil.validateInstanceStart(onDate, request.startAt());
         }
 
         ScheduleProgressEntity progress = getOrCreate(scheduleId, onDate);

@@ -13,6 +13,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -31,12 +32,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 핵심은 <b>onDate 가 회차의 정체성</b>이라는 것이다. 미뤄도 onDate 는 안 바뀌고
  * startAt 만 옮겨간다. 그래서 한 행이 "계획했던 날" 과 "실제로 간 날" 을 동시에 갖는다.
  * <p>
- * 그만두기는 {@code LocalDate.now()} 기준이므로 관련 테스트는 고정 날짜 대신
+ * 그만두기와 연기는 {@code LocalDate.now()} 기준이므로 관련 테스트는 고정 날짜 대신
  * <b>오늘로부터의 상대 날짜</b>로 짠다. 고정 날짜로 짜면 시간이 흐르며 조용히 깨진다.
  */
 @AutoConfigureMockMvc
 @Transactional
 class InstanceApiTest extends IntegrationTest {
+
+    /** 연기는 미래로만 갈 수 있어 연기 테스트는 다음 달을 기준으로 잡는다 */
+    private static final YearMonth NEXT_MONTH = YearMonth.now().plusMonths(1);
 
     private static final String BASE = "/api/schedules";
 
@@ -86,33 +90,33 @@ class InstanceApiTest extends IntegrationTest {
     @Test
     @DisplayName("연기하면 onDate는 그대로고 startAt만 옮겨간다")
     void postponeKeepsOnDate() throws Exception {
-        long id = daily("운동", "2026-09-01T07:00:00");
+        long id = daily("운동", day(1) + "T07:00:00");
 
-        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-02/postpone")
+        mvc.perform(patch(BASE + "/" + id + "/instances/" + day(2) + "/postpone")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"to\":\"2026-09-04T19:00:00\"}"))
+                        .content("{\"to\":\"" + day(4) + "T19:00:00\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.instanceDate").value("2026-09-02"))
-                .andExpect(jsonPath("$.startAt").value("2026-09-04T19:00:00"))
+                .andExpect(jsonPath("$.instanceDate").value(day(2).toString()))
+                .andExpect(jsonPath("$.startAt").value(day(4) + "T19:00:00"))
                 .andExpect(jsonPath("$.postponeCount").value(1));
     }
 
     @Test
     @DisplayName("두 번 미루면 postponeCount가 2이고 회차는 여전히 하나다")
     void postponeTwiceKeepsSingleInstance() throws Exception {
-        long id = daily("보고서", "2026-09-01T09:00:00");
-        String path = BASE + "/" + id + "/instances/2026-09-01/postpone";
+        long id = daily("보고서", day(1) + "T09:00:00");
+        String path = BASE + "/" + id + "/instances/" + day(1) + "/postpone";
 
         mvc.perform(patch(path).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"to\":\"2026-09-02T09:00:00\"}")).andExpect(status().isOk());
+                .content("{\"to\":\"" + day(2) + "T09:00:00\"}")).andExpect(status().isOk());
         mvc.perform(patch(path).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"to\":\"2026-09-03T09:00:00\"}"))
+                        .content("{\"to\":\"" + day(3) + "T09:00:00\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.postponeCount").value(2));
 
-        List<JsonNode> found = instancesOf(id, "2026-09-01T00:00:00", "2026-09-05T23:59:59");
+        List<JsonNode> found = instancesOf(id, day(1) + "T00:00:00", day(5) + "T23:59:59");
         long sameOnDate = found.stream()
-                .filter(n -> "2026-09-01".equals(n.get("instanceDate").asString()))
+                .filter(n -> day(1).toString().equals(n.get("instanceDate").asString()))
                 .count();
 
         assertThat(sameOnDate).as("미뤄도 회차가 늘어나면 안 된다").isEqualTo(1);
@@ -121,19 +125,21 @@ class InstanceApiTest extends IntegrationTest {
     @Test
     @DisplayName("월말에서 다음 달로 미루면 두 달 조회 모두에 나온다")
     void postponedAcrossMonthsAppearsInBoth() throws Exception {
-        long id = daily("마감", "2026-08-30T09:00:00");
+        LocalDate lastDay = NEXT_MONTH.atEndOfMonth();
+        YearMonth after = NEXT_MONTH.plusMonths(1);
+        long id = daily("마감", day(1) + "T09:00:00");
 
-        mvc.perform(patch(BASE + "/" + id + "/instances/2026-08-31/postpone")
+        mvc.perform(patch(BASE + "/" + id + "/instances/" + lastDay + "/postpone")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"to\":\"2026-09-02T09:00:00\"}"))
+                        .content("{\"to\":\"" + after.atDay(2) + "T09:00:00\"}"))
                 .andExpect(status().isOk());
 
-        // 8월: onDate로 잡힌다 ("9/2로 미룸"을 그릴 수 있어야 한다)
-        assertThat(instancesOf(id, "2026-08-01T00:00:00", "2026-08-31T23:59:59"))
-                .anyMatch(n -> "2026-08-31".equals(n.get("instanceDate").asString()));
-        // 9월: startAt으로 잡힌다
-        assertThat(instancesOf(id, "2026-09-01T00:00:00", "2026-09-30T23:59:59"))
-                .anyMatch(n -> "2026-08-31".equals(n.get("instanceDate").asString()));
+        // 이번 달: onDate로 잡힌다 ("다음 달로 미룸"을 그릴 수 있어야 한다)
+        assertThat(instancesOf(id, day(1) + "T00:00:00", lastDay + "T23:59:59"))
+                .anyMatch(n -> lastDay.toString().equals(n.get("instanceDate").asString()));
+        // 다음 달: startAt으로 잡힌다
+        assertThat(instancesOf(id, after.atDay(1) + "T00:00:00", after.atEndOfMonth() + "T23:59:59"))
+                .anyMatch(n -> lastDay.toString().equals(n.get("instanceDate").asString()));
     }
 
     @Test
@@ -152,20 +158,20 @@ class InstanceApiTest extends IntegrationTest {
     @Test
     @DisplayName("미뤘다가 완료하면 상태와 미룸 횟수가 함께 남는다")
     void postponeThenCompleteKeepsBoth() throws Exception {
-        long id = daily("운동", "2026-09-01T07:00:00");
+        long id = daily("운동", day(1) + "T07:00:00");
 
-        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-02/postpone")
+        mvc.perform(patch(BASE + "/" + id + "/instances/" + day(2) + "/postpone")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"to\":\"2026-09-03T07:00:00\"}")).andExpect(status().isOk());
+                .content("{\"to\":\"" + day(3) + "T07:00:00\"}")).andExpect(status().isOk());
 
         // 결국 해냈다. 수행률에는 DONE으로 잡히고 "밀렸다"는 사실은 따로 남는다
-        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-02/status")
+        mvc.perform(patch(BASE + "/" + id + "/instances/" + day(2) + "/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"DONE\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("DONE"))
                 .andExpect(jsonPath("$.postponeCount").value(1))
-                .andExpect(jsonPath("$.startAt").value("2026-09-03T07:00:00"));
+                .andExpect(jsonPath("$.startAt").value(day(3) + "T07:00:00"));
     }
 
     @Test
@@ -197,17 +203,51 @@ class InstanceApiTest extends IntegrationTest {
     @DisplayName("단일 일정도 같은 방식으로 미뤄진다")
     void postponeSingleSchedule() throws Exception {
         long id = createSchedule("""
-                { "title": "보고서", "startAt": "2026-09-01T09:00:00",
-                  "endAt": "2026-09-01T10:30:00" }""");
+                { "title": "보고서", "startAt": "%sT09:00:00",
+                  "endAt": "%sT10:30:00" }""".formatted(day(1), day(1)));
 
-        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-01/postpone")
+        mvc.perform(patch(BASE + "/" + id + "/instances/" + day(1) + "/postpone")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"to\":\"2026-09-03T14:00:00\"}"))
+                        .content("{\"to\":\"" + day(3) + "T14:00:00\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.instanceDate").value("2026-09-01"))
-                .andExpect(jsonPath("$.startAt").value("2026-09-03T14:00:00"))
-                .andExpect(jsonPath("$.endAt").value("2026-09-03T15:30:00"))
+                .andExpect(jsonPath("$.instanceDate").value(day(1).toString()))
+                .andExpect(jsonPath("$.startAt").value(day(3) + "T14:00:00"))
+                .andExpect(jsonPath("$.endAt").value(day(3) + "T15:30:00"))
                 .andExpect(jsonPath("$.postponeCount").value(1));
+    }
+
+    @Test
+    @DisplayName("지난 시각으로는 미룰 수 없다")
+    void postponeToThePastIsRejected() throws Exception {
+        long id = daily("운동", day(1) + "T07:00:00");
+
+        mvc.perform(patch(BASE + "/" + id + "/instances/" + day(2) + "/postpone")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"to\":\"2020-01-01T07:00:00\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("원래 회차보다 이른 시각으로는 미룰 수 없다")
+    void postponeEarlierThanTheInstanceIsRejected() throws Exception {
+        long id = daily("운동", day(10) + "T07:00:00");
+
+        // day(11) 회차를 day(11) 새벽으로 — 미래이지만 원래 시각보다 앞이다
+        mvc.perform(patch(BASE + "/" + id + "/instances/" + day(11) + "/postpone")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"to\":\"" + day(11) + "T03:00:00\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("회차를 자기 날짜에서 멀리 떨어뜨릴 수 없다")
+    void editingInstanceTooFarFromItsDateIsRejected() throws Exception {
+        long id = daily("운동", day(1) + "T07:00:00");
+
+        mvc.perform(put(BASE + "/" + id + "/instances/" + day(2))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"startAt\":\"2032-01-01T07:00:00\"}"))
+                .andExpect(status().isBadRequest());
     }
 
     // --- 수정 -------------------------------------------------------------
@@ -372,6 +412,11 @@ class InstanceApiTest extends IntegrationTest {
     }
 
     // --- 헬퍼 -------------------------------------------------------------
+
+    /** 다음 달 며칠 */
+    private static LocalDate day(int dayOfMonth) {
+        return NEXT_MONTH.atDay(dayOfMonth);
+    }
 
     private long daily(String title, String startAt) throws Exception {
         return createSchedule("""

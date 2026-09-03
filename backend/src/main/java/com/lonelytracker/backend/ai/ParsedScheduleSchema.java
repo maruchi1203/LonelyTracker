@@ -36,11 +36,14 @@ final class ParsedScheduleSchema {
     private static Map<String, Object> getRecurringSchedule() {
         Map<String, Object> schema = new LinkedHashMap<>(object(
                 Map.of(
-                        "freq", Map.of("type", "string", "enum", List.of("DAILY", "WEEKLY")),
+                        "freq", Map.of("type", "string", "enum", List.of("DAILY", "WEEKLY"),
+                                "description", "며칠 연속이면 DAILY, 특정 요일마다면 WEEKLY"),
                         "byWeekday", Map.of(
                                 "type", "array",
                                 "items", Map.of("type", "string", "enum", weekdayNames())),
-                        "endsOn", nullableString("YYYY-MM-DD. 끝을 안 정했으면 null")),
+                        "endsOn", nullableString("YYYY-MM-DD. 반복이 끝나는 날. "
+                                + "\"~까지\", \"~주간\", \"이번 주\" 처럼 끝이 있으면 그 날짜를 넣는다. "
+                                + "끝이 없을 때만 null")),
                 List.of("freq", "byWeekday", "endsOn")));
 
         // 반복이 아니면 통째로 null 이다

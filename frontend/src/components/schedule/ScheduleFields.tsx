@@ -1,4 +1,10 @@
-import type { FormFieldId, FormFreq, ScheduleForm } from "../../domain/scheduleForm";
+import {
+  durationMinutesOf,
+  gapHours,
+  type FormFieldId,
+  type FormFreq,
+  type ScheduleForm,
+} from "../../domain/scheduleForm";
 import type { Weekday } from "../../types/schedule";
 
 interface Props {
@@ -50,6 +56,26 @@ export default function ScheduleFields({
   const ref = (name: FormFieldId) => fieldRef?.(name);
   const box = (name: FormFieldId) =>
     `${INPUT} ${decorate?.(name) ?? "border-slate-200"}`;
+
+  const maxHours = gapHours(form.freq, form.byWeekday);
+
+  /** 소요시간을 적으면 실제로 몇 시에 끝나는지 보여준다 */
+  const endsAtHint = (() => {
+    const minutes = durationMinutesOf(form);
+    if (!form.repeating || minutes === undefined || minutes <= 0) return null;
+
+    const end = new Date(`${form.startDate}T${form.startTime || "00:00"}:00`);
+    if (Number.isNaN(end.getTime())) return null;
+    end.setMinutes(end.getMinutes() + minutes);
+
+    const time = `${String(end.getHours()).padStart(2, "0")}:${String(
+      end.getMinutes(),
+    ).padStart(2, "0")}`;
+    const days = Math.floor(
+      (end.getTime() - new Date(`${form.startDate}T00:00:00`).getTime()) / 86400000,
+    );
+    return days > 0 ? `→ ${days}일 뒤 ${time} 에 끝납니다.` : `→ ${time} 에 끝납니다.`;
+  })();
 
   const toggleWeekday = (day: Weekday) =>
     onChange({
@@ -180,7 +206,7 @@ export default function ScheduleFields({
         </div>
       </div>
 
-      {/* 6. 종료 — 한 칸이 모드에 따라 다른 곳으로 간다 */}
+      {/* 6. 끝 — 한번만은 종료일시, 반복은 소요시간 + 반복 종료일 */}
       <div className="flex flex-wrap gap-3">
         <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
           <label className={LABEL} htmlFor={id("endDate")}>
@@ -201,22 +227,53 @@ export default function ScheduleFields({
           </span>
         </div>
 
-        <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
-          <label className={LABEL} htmlFor={id("endTime")}>
-            종료시각 (선택)
-          </label>
-          <input
-            id={id("endTime")}
-            ref={ref("endTime")}
-            type="time"
-            className={box("endTime")}
-            value={form.endTime}
-            onChange={(e) => onChange({ endTime: e.target.value })}
-          />
-          {form.repeating && (
-            <span className={HINT}>회차마다 이 시각에 끝납니다.</span>
-          )}
-        </div>
+        {form.repeating ? (
+          <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
+            <label className={LABEL} htmlFor={id("durationHours")}>
+              소요시간 (선택)
+            </label>
+            <div className="flex items-center gap-1.5" ref={ref("duration")}>
+              <input
+                id={id("durationHours")}
+                type="number"
+                min={0}
+                max={Math.floor(maxHours)}
+                className={`${box("duration")} w-16`}
+                value={form.durationHours}
+                onChange={(e) => onChange({ durationHours: e.target.value })}
+              />
+              <span className="text-sm text-slate-500">시간</span>
+              <input
+                id={id("durationMins")}
+                type="number"
+                min={0}
+                max={59}
+                step={5}
+                className={`${box("duration")} w-16`}
+                value={form.durationMins}
+                onChange={(e) => onChange({ durationMins: e.target.value })}
+              />
+              <span className="text-sm text-slate-500">분</span>
+            </div>
+            <span className={HINT}>
+              {endsAtHint ?? `다음 회차 전까지, 최대 ${maxHours}시간.`}
+            </span>
+          </div>
+        ) : (
+          <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
+            <label className={LABEL} htmlFor={id("endTime")}>
+              종료시각 (선택)
+            </label>
+            <input
+              id={id("endTime")}
+              ref={ref("endTime")}
+              type="time"
+              className={box("endTime")}
+              value={form.endTime}
+              onChange={(e) => onChange({ endTime: e.target.value })}
+            />
+          </div>
+        )}
       </div>
 
       {/* 7. 매주 반복요일 */}
