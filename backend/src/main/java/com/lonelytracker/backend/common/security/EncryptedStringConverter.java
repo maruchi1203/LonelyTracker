@@ -17,18 +17,9 @@ import java.util.Arrays;
 import java.util.Base64;
 
 /**
- * 민감한 문자열을 DB 에 암호화해 저장한다. 지금은 사용자의 OpenAI API 키에 쓴다.
- * <p>
- * <b>API 키는 비밀번호와 같은 등급이다.</b> 평문으로 두면 DB 백업이나 덤프가 새는 순간
- * 키가 그대로 노출되고, 키 하나가 곧 금전 손해로 이어진다.
- * <p>
- * AES-GCM 을 쓰는 이유는 암호화와 <b>무결성 검증</b>을 함께 하기 때문이다.
- * 저장값이 조작되면 복호화 단계에서 예외가 난다.
- * 저장 형식은 {@code base64(iv || ciphertext)} 이고 IV 는 값마다 새로 만든다 —
- * 같은 키를 두 번 저장해도 DB 에는 다른 문자열이 남는다.
- * <p>
- * Spring Boot 가 Hibernate 에 {@code SpringBeanContainer} 를 물려주므로
- * 컨버터도 빈으로 주입받을 수 있다.
+ * 민감한 문자열을 DB에 암호화해 저장한다. 지금은 사용자의 OpenAI API 키에 쓴다.
+ * AES-GCM으로 암호화와 무결성 검증을 함께 하고, 저장 형식은 {@code base64(iv || ciphertext)} 다.
+ * IV는 값마다 새로 만들어 같은 키를 두 번 저장해도 다른 문자열이 남는다.
  */
 @Component
 @Converter
@@ -42,8 +33,7 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
 
     public EncryptedStringConverter(AppProperties properties) {
         String secret = properties.security().encryptionKey();
-        // 설정이 없으면 앱은 뜨되 암호화가 필요한 기능만 막힌다.
-        // 일정 CRUD 는 키 없이도 되므로 기동을 막을 이유가 없다.
+        // 설정이 없으면 앱은 뜨되 암호화가 필요한 기능만 막힌다
         this.key = (secret == null || secret.isBlank()) ? null : toAesKey(secret);
     }
 
@@ -100,7 +90,7 @@ public class EncryptedStringConverter implements AttributeConverter<String, Stri
         }
     }
 
-    /** 설정값 길이가 제각각이므로 SHA-256 으로 256비트 키를 만든다. */
+    /** 설정값 길이가 제각각이라 SHA-256으로 256비트 키를 만든다 */
     private static SecretKeySpec toAesKey(String secret) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")

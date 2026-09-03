@@ -83,10 +83,8 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Spring 이 이미 상태 코드를 정해 던진 예외 — 없는 경로(404), 허용 안 된 메서드(405) 등.
-     * <p>
-     * 아래 폴백보다 <b>먼저 잡아야 한다.</b> 폴백이 이것까지 삼키면
-     * 404 여야 할 응답이 500 이 된다.
+     * Spring이 상태 코드를 정해 던진 예외 — 없는 경로(404), 허용 안 된 메서드(405) 등.
+     * 아래 폴백보다 먼저 잡아야 404가 500이 되지 않는다.
      */
     @ExceptionHandler(ErrorResponseException.class)
     public ResponseEntity<ErrorResponse> handleSpringStatus(
@@ -96,16 +94,12 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 여기서 잡지 못한 예외. 없으면 Spring 기본 오류 페이지가 나가는데,
-     * <b>message 가 없어서 무엇이 터졌는지 알 수 없다.</b>
-     * <p>
+     * 위에서 잡지 못한 예외 → 500.
      * 스택트레이스는 서버 로그에만 남기고 응답에는 예외 이름까지만 싣는다.
-     * 응답에 트레이스를 실으면 내부 구조가 밖으로 샌다.
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception e, WebRequest request) {
-        // NoResourceFoundException 처럼 ErrorResponseException 은 아니지만
-        // ErrorResponse 를 구현해 스스로 상태를 아는 예외가 있다. 그 상태를 존중한다.
+        // ErrorResponse를 구현해 스스로 상태를 아는 예외는 그 상태를 존중한다
         if (e instanceof org.springframework.web.ErrorResponse errorResponse) {
             return build(HttpStatus.valueOf(errorResponse.getStatusCode().value()),
                     errorResponse.getBody().getDetail(), request);

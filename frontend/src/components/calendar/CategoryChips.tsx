@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { rankCategories, TOP_CATEGORIES } from "../../domain/filter";
-import type { CategoryResponse } from "../../types/schedule";
+import type { UserCategoryResponse } from "../../types/schedule";
 
 interface Props {
-  categories: CategoryResponse[];
+  categories: UserCategoryResponse[];
   /** 필터 이전의 창 전체 기준 개수 */
   usage: Map<string, number>;
   total: number;

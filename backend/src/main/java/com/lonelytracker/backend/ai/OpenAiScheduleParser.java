@@ -3,7 +3,7 @@ package com.lonelytracker.backend.ai;
 import com.lonelytracker.backend.common.AppProperties;
 import com.lonelytracker.backend.common.exception.AiParseException;
 import com.lonelytracker.backend.common.exception.AiUnavailableException;
-import com.lonelytracker.backend.schedule.RecurrenceFreq;
+import com.lonelytracker.backend.schedule.domain.ScheduleRecurrenceFreq;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -45,7 +45,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
     }
 
     @Override
-    public ParsedSchedule parse(CommandForAI command) {
+    public ParsedSchedule parse(AiParseCommand command) {
         String responseBody = callWithRetry(requestBody(command), command.apiKey());
         return toParsed(extractOutput(responseBody));
     }
@@ -83,7 +83,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
         throw new AiUnavailableException("AI 응답을 받지 못했습니다", lastFailure);
     }
 
-    /** 호출 연기 시간 1초 → 2초 → 4초 → ... **/
+    /** 재시도 간격을 1초 → 2초 → 4초로 늘려 가며 기다린다 */
     private void sleepBackoff(int attempt) {
         try {
             Thread.sleep(BACKOFF_MILLIS << attempt);
@@ -94,7 +94,10 @@ public class OpenAiScheduleParser implements ScheduleParser {
     }
 
     /**
-     * 1. API 응답 전체 텍스트 → JSON 변환 필요한 부분만 추출 →
+     * 응답 봉투에서 결과 JSON을 꺼낸다.
+     *
+     * @param envelope Responses API 응답 원문
+     * @throws com.lonelytracker.backend.common.exception.AiParseException 결과를 못 찾았을 때
      */
     JsonNode extractOutput(String envelope) {
         JsonNode root;
@@ -135,7 +138,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
     }
 
     // --- 요청 조립 --------------------------------------------------------
-    private Map<String, Object> requestBody(CommandForAI command) {
+    private Map<String, Object> requestBody(AiParseCommand command) {
         return Map.of(
                 "model", setting.model(),
                 "input", List.of(
@@ -209,9 +212,9 @@ public class OpenAiScheduleParser implements ScheduleParser {
                 questionsOf(node.path("questions")));
     }
 
-    // 반복 일정 파싱
+    /** 초안의 반복 규칙. 없으면 null */
     private ParsedRecurringSchedule recurringOf(JsonNode node) {
-        // Node가 없을 경우
+        // 반복이 아니면 통째로 비어 있다
         if (node.isMissingNode() || node.isNull()) {
             return null;
         }
@@ -225,16 +228,14 @@ public class OpenAiScheduleParser implements ScheduleParser {
 
         // 파싱된 스케쥴
         ParsedRecurringSchedule schedule = new ParsedRecurringSchedule(
-                RecurrenceFreq.valueOf(node.path("freq").asString()),
+                ScheduleRecurrenceFreq.valueOf(node.path("freq").asString()),
                 weekdays,
                 (endsOn == null) ? null : LocalDate.parse(endsOn));
 
         return schedule;
     }
 
-    /**
-     * 질문 ID를 반환받아 Parsing
-     */
+    /** 되물음 ID 목록. 모르는 ID는 버린다 */
     private List<ParseQuestion> questionsOf(JsonNode node) {
         List<ParseQuestion> questions = new ArrayList<>();
 

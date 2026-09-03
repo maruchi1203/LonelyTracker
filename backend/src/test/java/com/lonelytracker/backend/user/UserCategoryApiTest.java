@@ -1,7 +1,7 @@
 package com.lonelytracker.backend.user;
 
-import com.lonelytracker.backend.schedule.Schedule;
-import com.lonelytracker.backend.schedule.ScheduleRepository;
+import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
+import com.lonelytracker.backend.schedule.repository.ScheduleRepository;
 import com.lonelytracker.backend.common.AppProperties;
 import com.lonelytracker.backend.support.IntegrationTest;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +25,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.lonelytracker.backend.user.entity.UserEntity;
+import com.lonelytracker.backend.user.entity.UserCategoryEntity;
+import com.lonelytracker.backend.user.repository.UserCategoryRepository;
+import com.lonelytracker.backend.user.repository.UserRepository;
 
 /**
  * 카테고리 목록 API. 소유자 격리와, 목록 변경이 기존 일정에 영향을 주지 않는지를 본다.
@@ -57,13 +61,13 @@ class UserCategoryApiTest extends IntegrationTest {
     AppProperties appProperties;
 
     /** 요청자(기본 사용자)가 아닌 다른 사용자의 카테고리를 하나 심는다. */
-    private UserCategory givenOtherUsersCategory() {
-        User other = userRepository.save(User.builder()
+    private UserCategoryEntity givenOtherUsersCategory() {
+        UserEntity other = userRepository.save(UserEntity.builder()
                 .username("someone-else")
                 .displayName("남의 계정")
                 .build());
 
-        return userCategoryRepository.save(UserCategory.builder()
+        return userCategoryRepository.save(UserCategoryEntity.builder()
                 .user(other)
                 .name("남의 분류")
                 .build());
@@ -131,8 +135,8 @@ class UserCategoryApiTest extends IntegrationTest {
     @Test
     @DisplayName("다른 사용자와는 이름이 겹쳐도 된다")
     void nameIsUniquePerUserOnly() throws Exception {
-        User other = userRepository.save(User.builder().username("other-one").build());
-        userCategoryRepository.save(UserCategory.builder().user(other).name("독서").build());
+        UserEntity other = userRepository.save(UserEntity.builder().username("other-one").build());
+        userCategoryRepository.save(UserCategoryEntity.builder().user(other).name("독서").build());
 
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"독서\"}"))
@@ -159,7 +163,7 @@ class UserCategoryApiTest extends IntegrationTest {
                         .andExpect(status().isCreated())
                         .andReturn().getResponse().getContentAsString());
 
-        Schedule schedule = scheduleRepository.save(Schedule.builder()
+        ScheduleEntity schedule = scheduleRepository.save(ScheduleEntity.builder()
                 .user(userRepository.findByUsername(appProperties.user().defaultUsername()).orElseThrow())
                 .title("책 읽기")
                 .startAt(LocalDateTime.parse("2026-10-05T20:00:00"))
@@ -170,7 +174,7 @@ class UserCategoryApiTest extends IntegrationTest {
                 .andExpect(status().isNoContent());
 
         // FK가 아니라 문자열이라 제약 위반도 없고, 기록도 지워지지 않는다
-        Schedule reloaded = scheduleRepository.findById(schedule.getId()).orElseThrow();
+        ScheduleEntity reloaded = scheduleRepository.findById(schedule.getId()).orElseThrow();
         assertThat(reloaded.getCategory())
                 .as("목록에서 지웠다고 과거 일정의 분류까지 사라지면 안 된다")
                 .isEqualTo("독서");
@@ -185,7 +189,7 @@ class UserCategoryApiTest extends IntegrationTest {
                         .andExpect(status().isCreated())
                         .andReturn().getResponse().getContentAsString());
 
-        Schedule schedule = scheduleRepository.save(Schedule.builder()
+        ScheduleEntity schedule = scheduleRepository.save(ScheduleEntity.builder()
                 .user(userRepository.findByUsername(appProperties.user().defaultUsername()).orElseThrow())
                 .title("책 읽기")
                 .startAt(LocalDateTime.parse("2026-10-05T20:00:00"))
@@ -198,7 +202,7 @@ class UserCategoryApiTest extends IntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("자기계발"));
 
-        Schedule reloaded = scheduleRepository.findById(schedule.getId()).orElseThrow();
+        ScheduleEntity reloaded = scheduleRepository.findById(schedule.getId()).orElseThrow();
         assertThat(reloaded.getCategory())
                 .as("목록의 이름 변경이 과거 기록을 덮어쓰면 안 된다")
                 .isEqualTo("독서");

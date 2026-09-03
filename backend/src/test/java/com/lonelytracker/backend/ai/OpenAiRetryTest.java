@@ -149,8 +149,8 @@ class OpenAiRetryTest {
                 builder.baseUrl("http://ai.test").build());
     }
 
-    private CommandForAI command() {
-        return new CommandForAI("내일 7시 운동",
+    private AiParseCommand command() {
+        return new AiParseCommand("내일 7시 운동",
                 LocalDateTime.parse("2026-08-31T09:00:00"), List.of("육체"), "sk-test");
     }
 }

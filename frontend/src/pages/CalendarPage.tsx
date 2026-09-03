@@ -15,7 +15,7 @@ import { coversDate } from "../domain/occurrence";
 import { useCalendarViewState } from "../hooks/useCalendarViewState";
 import { useMonthOccurrences } from "../hooks/useMonthOccurrences";
 import type {
-  CategoryResponse,
+  UserCategoryResponse,
   DeleteScope,
   ScheduleCreateRequest,
   ScheduleResponse,
@@ -36,7 +36,7 @@ export default function CalendarPage() {
   const { occurrences, loading, error, reload, patchOne, setError } =
     useMonthOccurrences(month);
 
-  const [categories, setCategories] = useState<CategoryResponse[]>([]);
+  const [categories, setCategories] = useState<UserCategoryResponse[]>([]);
 
   const fail = (e: unknown, fallback: string) =>
     setError(e instanceof Error ? e.message : fallback);

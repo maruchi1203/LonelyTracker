@@ -1,10 +1,10 @@
-import type { CategoryResponse } from "../../types/schedule";
+import type { UserCategoryResponse } from "../../types/schedule";
 import CategoryChips from "./CategoryChips";
 
 interface Props {
   query: string;
   onQueryChange: (query: string) => void;
-  categories: CategoryResponse[];
+  categories: UserCategoryResponse[];
   usage: Map<string, number>;
   total: number;
   monthLabel: string;

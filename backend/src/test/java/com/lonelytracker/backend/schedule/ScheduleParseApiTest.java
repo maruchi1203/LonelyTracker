@@ -1,6 +1,6 @@
 package com.lonelytracker.backend.schedule;
 
-import com.lonelytracker.backend.ai.CommandForAI;
+import com.lonelytracker.backend.ai.AiParseCommand;
 import com.lonelytracker.backend.ai.ParseQuestion;
 import com.lonelytracker.backend.ai.ParsedRecurringSchedule;
 import com.lonelytracker.backend.ai.ParsedSchedule;
@@ -31,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.lonelytracker.backend.schedule.domain.ScheduleRecurrenceFreq;
 
 /**
  * 자연어 파싱 API.
@@ -140,7 +141,7 @@ class ScheduleParseApiTest extends IntegrationTest {
     void returnsRecurrence() throws Exception {
         parser.willReturn(new ParsedSchedule(
                 "운동", LocalDateTime.parse("2026-09-07T07:00:00"), null, false, "육체", "헬스장",
-                new ParsedRecurringSchedule(RecurrenceFreq.WEEKLY,
+                new ParsedRecurringSchedule(ScheduleRecurrenceFreq.WEEKLY,
                         EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY), null),
                 List.of()));
 
@@ -292,7 +293,7 @@ class ScheduleParseApiTest extends IntegrationTest {
         }
 
         @Override
-        public ParsedSchedule parse(CommandForAI command) {
+        public ParsedSchedule parse(AiParseCommand command) {
             this.lastNow = command.now();
             this.lastCategories = command.categories();
             this.lastApiKey = command.apiKey();

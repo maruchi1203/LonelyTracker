@@ -12,6 +12,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -35,6 +38,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ScheduleApiTest extends IntegrationTest {
 
     private static final String BASE = "/api/schedules";
+
+    /** 조회 조건이 없을 때의 기본 범위가 이번 주 월요일부터 4주간이라 테스트 날짜도 그 안에서 잡는다 */
+    private static final LocalDate MONDAY = LocalDate.now().with(DayOfWeek.MONDAY);
 
     @Autowired
     MockMvc mvc;                // HTTP 요청 모방 (요청 및 응답 반응 확인용)
@@ -171,10 +177,10 @@ class ScheduleApiTest extends IntegrationTest {
     @Test
     @DisplayName("상태로 거를 수 있다")
     void searchByStatus() throws Exception {
-        long done = createAndGetId("끝낸 일정", "2026-09-11T09:00:00");
-        createAndGetId("남은 일정", "2026-09-11T10:00:00");
+        long done = createAndGetId("끝낸 일정", inWindow(2, "09:00:00"));
+        createAndGetId("남은 일정", inWindow(2, "10:00:00"));
 
-        mvc.perform(patch(BASE + "/" + done + "/occurrences/2026-09-11/status")
+        mvc.perform(patch(BASE + "/" + done + "/occurrences/" + MONDAY.plusDays(2) + "/status")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"DONE\"}"));
 
@@ -186,8 +192,8 @@ class ScheduleApiTest extends IntegrationTest {
     @Test
     @DisplayName("조건을 주지 않으면 시작 시각 오름차순으로 나온다")
     void searchIsSortedByStartAt() throws Exception {
-        createAndGetId("나중 일정", "2026-09-20T18:00:00");
-        createAndGetId("먼저 일정", "2026-09-20T07:00:00");
+        createAndGetId("나중 일정", inWindow(9, "18:00:00"));
+        createAndGetId("먼저 일정", inWindow(9, "07:00:00"));
 
         JsonNode found = json(mvc.perform(get(BASE)).andExpect(status().isOk()));
         var titles = titlesOf(found);
@@ -195,7 +201,34 @@ class ScheduleApiTest extends IntegrationTest {
         assertThat(titles.indexOf("먼저 일정")).isLessThan(titles.indexOf("나중 일정"));
     }
 
+    @Test
+    @DisplayName("조건을 주지 않으면 이번 주 월요일부터 나온다")
+    void searchDefaultsToThisWeek() throws Exception {
+        createAndGetId("월요일 일정", inWindow(0, "09:00:00"));
+        createAndGetId("지난주 일요일 일정", MONDAY.minusDays(1) + "T09:00:00");
+
+        JsonNode found = json(mvc.perform(get(BASE)).andExpect(status().isOk()));
+
+        assertThat(titlesOf(found)).contains("월요일 일정").doesNotContain("지난주 일요일 일정");
+    }
+
+    @Test
+    @DisplayName("기본 범위는 4주째 일요일 밤까지 포함한다")
+    void searchDefaultCoversLastSundayNight() throws Exception {
+        createAndGetId("마지막 일요일 밤 일정", MONDAY.plusWeeks(4).minusDays(1) + "T23:30:00");
+        createAndGetId("범위 밖 일정", MONDAY.plusWeeks(4) + "T09:00:00");
+
+        JsonNode found = json(mvc.perform(get(BASE)).andExpect(status().isOk()));
+
+        assertThat(titlesOf(found)).contains("마지막 일요일 밤 일정").doesNotContain("범위 밖 일정");
+    }
+
     // --- 헬퍼 -------------------------------------------------------------
+
+    /** 이번 주 월요일로부터 며칠 뒤의 시각을 요청용 문자열로 만든다. */
+    private String inWindow(int plusDays, String time) {
+        return MONDAY.plusDays(plusDays) + "T" + time;
+    }
 
     /** title이 null이면 필드 자체를 빼서 검증 실패 상황을 만든다. */
     private String request(String title, String startAt, String endAt) throws Exception {

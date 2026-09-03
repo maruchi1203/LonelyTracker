@@ -16,7 +16,7 @@ export type Weekday =
   | 'SUNDAY'
 
 /** 사용자가 고를 수 있는 분류 목록의 한 항목 (GET /api/categories) */
-export interface CategoryResponse {
+export interface UserCategoryResponse {
   id: number
   name: string
   color?: string
