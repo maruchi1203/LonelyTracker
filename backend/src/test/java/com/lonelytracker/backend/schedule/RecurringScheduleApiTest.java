@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
@@ -19,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -331,12 +333,41 @@ class RecurringScheduleApiTest extends IntegrationTest {
         mvc.perform(get(BASE + "/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.startAt").value("2026-09-07T07:00:00"))
-                // 종료 시각이 아니라 소요시간으로 온다 — 회차마다 날짜가 다르다
-                .andExpect(jsonPath("$.durationMinutes").value(60))
+                // 요청과 같은 모양이라 그대로 되돌려 보낼 수 있다
+                .andExpect(jsonPath("$.endAt").value("2026-09-07T08:00:00"))
                 .andExpect(jsonPath("$.recurrence.freq").value("WEEKLY"))
                 .andExpect(jsonPath("$.recurrence.endsOn").value("2026-12-31"))
                 .andExpect(jsonPath("$.recurrence.byWeekday",
                         org.hamcrest.Matchers.containsInAnyOrder("MONDAY", "FRIDAY")));
+    }
+
+    @Test
+    @DisplayName("조회한 그대로 되돌려 보내면 아무것도 바뀌지 않는다")
+    void detailCanBeSentBackUnchanged() throws Exception {
+        long id = createSchedule("""
+                { "title": "운동", "startAt": "2026-09-07T07:00:00",
+                  "endAt": "2026-09-07T08:00:00", "category": "육체",
+                  "recurrence": { "freq": "WEEKLY",
+                                  "byWeekday": ["MONDAY", "FRIDAY"],
+                                  "endsOn": "2026-12-31" } }""");
+
+        JsonNode before = json(mvc.perform(get(BASE + "/" + id)).andExpect(status().isOk()));
+
+        // 읽기 전용 셋만 떼고 그대로 PUT 한다
+        ObjectNode body = (ObjectNode) before.deepCopy();
+        body.remove("id");
+        body.remove("createdAt");
+        body.remove("updatedAt");
+        mvc.perform(put(BASE + "/" + id).contentType(MediaType.APPLICATION_JSON)
+                .content(body.toString())).andExpect(status().isOk());
+
+        JsonNode after = json(mvc.perform(get(BASE + "/" + id)).andExpect(status().isOk()));
+
+        assertThat(after.get("startAt")).isEqualTo(before.get("startAt"));
+        assertThat(after.get("endAt")).isEqualTo(before.get("endAt"));
+        assertThat(after.get("category")).isEqualTo(before.get("category"));
+        assertThat(after.get("recurrence")).as("반복이 사라지면 안 된다")
+                .isEqualTo(before.get("recurrence"));
     }
 
     @Test
@@ -348,7 +379,7 @@ class RecurringScheduleApiTest extends IntegrationTest {
         mvc.perform(get(BASE + "/" + id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.recurrence").doesNotExist())
-                .andExpect(jsonPath("$.durationMinutes").doesNotExist());
+                .andExpect(jsonPath("$.endAt").doesNotExist());
     }
 
     // --- 헬퍼 -------------------------------------------------------------
