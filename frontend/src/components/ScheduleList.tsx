@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { formatInstanceRange, instanceKey } from "../domain/instance";
+import {
+  formatInstanceRange,
+  instanceKey,
+  isEarlyDone,
+  isMoved,
+} from "../domain/instance";
 import type {
   DeleteScope,
   ScheduleResponse,
@@ -162,13 +167,23 @@ function ScheduleListItem({
               {STATUS_LABEL[instance.status]}
             </span>
 
-            {/* 수행률만 보면 미루는 사람과 계획대로 하는 사람이 같아 보인다 */}
-            {instance.postponeCount > 0 && (
+            {/* 수행률만 보면 원래 날에 한 사람과 옮겨서 한 사람이 같아 보인다 */}
+            {isMoved(instance) && (
               <span
                 className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-medium text-amber-700"
                 title={`원래 ${instance.instanceDate} 예정`}
               >
-                ↻ {instance.postponeCount}번 미룸
+                ↻ 옮김
+              </span>
+            )}
+
+            {/* 분모에 안 들어가므로 수행률에 잡히지 않는다는 것을 알려준다 */}
+            {isEarlyDone(instance) && (
+              <span
+                className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 font-medium text-sky-700"
+                title={`${instance.instanceDate} 이 오기 전에 완료했습니다`}
+              >
+                ⏱ 조기 종료
               </span>
             )}
           </span>

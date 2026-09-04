@@ -37,7 +37,7 @@ export interface UserCategoryResponse {
  */
 export interface ScheduleResponse {
   id: number
-  /** "YYYY-MM-DD". 규칙이 만든 원래 날짜라 연기해도 바뀌지 않는다 */
+  /** "YYYY-MM-DD". 규칙이 만든 원래 날짜라 옮겨도 바뀌지 않는다 */
   instanceDate: string
   title: string
   /** 마크다운 원문 */
@@ -49,7 +49,6 @@ export interface ScheduleResponse {
   status: ScheduleStatus
   /** 분류 이름을 문자열로 기록한다. 목록에 없는 이름도 들어갈 수 있다 */
   category?: string
-  postponeCount: number
   createdAt: string
   updatedAt: string
 }
