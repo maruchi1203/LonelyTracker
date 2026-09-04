@@ -7,9 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
@@ -24,7 +22,8 @@ import com.lonelytracker.backend.schedule.repository.ScheduleProgressRepository;
 import com.lonelytracker.backend.schedule.repository.ScheduleRecurRepository;
 
 /**
- * 회차 하나를 다룬다 — 완료 · 건너뛰기 · 연기 · 이 회차만 수정.
+ * 회차 하나를 다룬다 — 완료 · 건너뛰기 · 이 회차만 수정.
+ * 날짜를 옮기는 것도 수정이다. 옮겨졌는지는 onDate 와 startAt 의 차이로 안다.
  * 손댄 회차만 {@link ScheduleProgressEntity} 행이 되고, 식별자는 scheduleId + onDate 다.
  */
 @Service
@@ -42,7 +41,6 @@ public class ScheduleInstanceService {
         progress.changeStatus(status);
         return toResponse(progressRepository.saveAndFlush(progress));
     }
-
 
     /**
      * 이 회차만 수정한다.
