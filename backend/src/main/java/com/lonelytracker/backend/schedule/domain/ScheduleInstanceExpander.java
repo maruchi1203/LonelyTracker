@@ -57,7 +57,7 @@ public final class ScheduleInstanceExpander {
             }
         }
 
-        // 범위 밖에서 미뤄져 들어온 회차. 위 루프는 onDate 기준이라 못 잡는다.
+        // 범위 밖에서 옮겨져 들어온 회차. 위 루프는 onDate 기준이라 못 잡는다.
         // 8/31을 9/2로 미루면 9월 조회에서 여기로 잡힌다.
         for (ScheduleProgressEntity p : progresses) {
             String k = key(p.getSchedule().getId(), p.getOnDate());
@@ -130,7 +130,6 @@ public final class ScheduleInstanceExpander {
                 recurring,
                 (p == null) ? ScheduleStatus.PLANNED : p.getStatus(),
                 pick(p == null ? null : p.getCategory(), s.getCategory()),
-                (p == null) ? 0 : p.getPostponeCount(),
                 s.getCreatedAt(),
                 (p == null) ? s.getUpdatedAt() : p.getUpdatedAt());
     }

@@ -4,6 +4,7 @@ import com.lonelytracker.backend.common.exception.NotFoundException;
 import com.lonelytracker.backend.schedule.dto.ScheduleRecurrenceRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleDetailResponse;
+import com.lonelytracker.backend.schedule.dto.ScheduleRecurringResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleUpdateRequest;
 import com.lonelytracker.backend.user.service.UserProvider;
@@ -18,8 +19,10 @@ import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import com.lonelytracker.backend.schedule.domain.ScheduleDeleteScope;
 import com.lonelytracker.backend.schedule.domain.ScheduleInstanceExpander;
+import com.lonelytracker.backend.schedule.domain.ScheduleStatsCounter;
 import com.lonelytracker.backend.schedule.domain.ScheduleUtil;
 import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
 import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
@@ -37,6 +40,9 @@ import com.lonelytracker.backend.schedule.repository.ScheduleRepository;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ScheduleService {
+
+    /** 습관 성적을 셀 기간 */
+    private static final int STATS_WEEKS = 4;
 
     /** 조회 조건이 없을 때 이번 주 월요일부터 볼 주 수 */
     private static final int DEFAULT_WEEKS = 4;
@@ -88,6 +94,36 @@ public class ScheduleService {
                 .filter(r -> status == null || r.status() == status)
                 .filter(r -> category == null || category.isBlank()
                         || category.strip().equals(r.category()))
+                .toList();
+    }
+
+    /**
+     * 반복 일정 전부와 최근 성적. 끝난 것도 함께 오므로 화면이 endsOn 으로 갈라 쓴다.
+     * 회차가 아니라 규칙 목록이라 조회 구간을 받지 않는다.
+     */
+    public List<ScheduleRecurringResponse> findRecurring() {
+        List<ScheduleEntity> schedules = scheduleRepository.findRecurring(
+                currentUserProvider.get().getId());
+        if (schedules.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> ids = schedules.stream().map(ScheduleEntity::getId).toList();
+        Map<Long, ScheduleRecurEntity> recurs = new HashMap<>();
+        recurRepository.findByScheduleIds(ids).forEach(r -> recurs.put(r.getScheduleId(), r));
+
+        LocalDate today = LocalDate.now();
+        Map<Long, List<ScheduleProgressEntity>> byScheduleId = progressRepository
+                .findByScheduleIdInAndOnDateGreaterThanEqual(ids, today.minusWeeks(STATS_WEEKS))
+                .stream()
+                .collect(Collectors.groupingBy(p -> p.getSchedule().getId()));
+
+        return schedules.stream()
+                .map(s -> new ScheduleRecurringResponse(
+                        ScheduleDetailResponse.of(s, recurs.get(s.getId())),
+                        ScheduleStatsCounter.count(s, recurs.get(s.getId()),
+                                byScheduleId.getOrDefault(s.getId(), List.of()),
+                                today, STATS_WEEKS)))
                 .toList();
     }
 
@@ -157,7 +193,6 @@ public class ScheduleService {
                                 .schedule(schedule)
                                 .onDate(newDate)
                                 .status(p.getStatus())
-                                .postponeCount(p.getPostponeCount())
                                 .build());
                     });
         }
@@ -179,7 +214,7 @@ public class ScheduleService {
 
         if (scope == ScheduleDeleteScope.FUTURE && recur != null) {
             recur.stopOn(LocalDate.now());
-            // 앞으로 미뤄둔 회차가 되살아나지 않게 지운다
+            // 앞으로 옮겨둔 회차가 되살아나지 않게 지운다
             progressRepository.deleteFutureOf(id, LocalDate.now(),
                     LocalDate.now().atTime(java.time.LocalTime.MAX));
             recurRepository.saveAndFlush(recur);

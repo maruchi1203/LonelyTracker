@@ -33,6 +33,10 @@ public interface ScheduleProgressRepository extends JpaRepository<ScheduleProgre
       @Param("from") LocalDateTime from,
       @Param("to") LocalDateTime to);
 
+  /** 통계용. 창 시작일부터의 기록을 모은다. 미리 완료한 미래 회차도 함께 온다 */
+  List<ScheduleProgressEntity> findByScheduleIdInAndOnDateGreaterThanEqual(
+      List<Long> scheduleIds, LocalDate from);
+
   /**
    * 일정을 지우기 전에 회차 기록을 먼저 지운다.
    * DB의 ON DELETE CASCADE를 Hibernate가 모르므로 벌크가 아닌 파생 삭제를 써야 한다.

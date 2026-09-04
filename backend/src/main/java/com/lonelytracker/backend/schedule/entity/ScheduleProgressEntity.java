@@ -26,7 +26,6 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
@@ -74,14 +73,6 @@ public class ScheduleProgressEntity {
         @Column(nullable = false, length = 20)
         @Builder.Default
         private ScheduleStatus status = ScheduleStatus.PLANNED;
-
-        /**
-         * 연기 횟수
-         * 3번 이상 미루면 일정 포기(SKIPPED)로 간주함
-         */
-        @Column(name = "postpone_count", nullable = false)
-        @Builder.Default
-        private int postponeCount = 0;
 
         /**
          * 제목
@@ -134,22 +125,6 @@ public class ScheduleProgressEntity {
          */
         public void changeStatus(ScheduleStatus status) {
                 this.status = status;
-        }
-
-        /**
-         * 일정 연기 시 startAt, endAt, postponeCount를 수정한다.
-         * onDate는 건드리지 않는다.
-         *
-         * @param fallbackLength 이 회차에 개별 종료 시각이 없을 때 쓸 기본 길이. null이면 종료 시각 없음
-         */
-        public void postponeTo(LocalDateTime to, Duration fallbackLength) {
-                Duration length = (this.startAt != null && this.endAt != null)
-                                ? Duration.between(this.startAt, this.endAt)
-                                : fallbackLength;
-
-                this.startAt = to;
-                this.endAt = (length == null) ? null : to.plus(length);
-                this.postponeCount++;
         }
 
         /**

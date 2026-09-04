@@ -7,9 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
@@ -24,7 +22,8 @@ import com.lonelytracker.backend.schedule.repository.ScheduleProgressRepository;
 import com.lonelytracker.backend.schedule.repository.ScheduleRecurRepository;
 
 /**
- * 회차 하나를 다룬다 — 완료 · 건너뛰기 · 연기 · 이 회차만 수정.
+ * 회차 하나를 다룬다 — 완료 · 건너뛰기 · 이 회차만 수정.
+ * 날짜를 옮기는 것도 수정이다. 옮겨졌는지는 onDate 와 startAt 의 차이로 안다.
  * 손댄 회차만 {@link ScheduleProgressEntity} 행이 되고, 식별자는 scheduleId + onDate 다.
  */
 @Service
@@ -40,20 +39,6 @@ public class ScheduleInstanceService {
     public ScheduleResponse changeStatus(Long scheduleId, LocalDate onDate, ScheduleStatus status) {
         ScheduleProgressEntity progress = getOrCreate(scheduleId, onDate);
         progress.changeStatus(status);
-        return toResponse(progressRepository.saveAndFlush(progress));
-    }
-
-    @Transactional
-    public ScheduleResponse postpone(Long scheduleId, LocalDate onDate, LocalDateTime to) {
-        ScheduleProgressEntity progress = getOrCreate(scheduleId, onDate);
-        Integer minutes = progress.getSchedule().getDurationMinutes();
-
-        LocalDateTime instanceStart = (progress.getStartAt() != null)
-                ? progress.getStartAt()
-                : LocalDateTime.of(onDate, progress.getSchedule().getStartAt().toLocalTime());
-        ScheduleUtil.validatePostpone(instanceStart, to, LocalDateTime.now());
-
-        progress.postponeTo(to, (minutes == null) ? null : Duration.ofMinutes(minutes));
         return toResponse(progressRepository.saveAndFlush(progress));
     }
 

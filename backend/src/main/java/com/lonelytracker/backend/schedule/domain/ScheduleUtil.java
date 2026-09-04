@@ -100,22 +100,6 @@ public final class ScheduleUtil {
         }
     }
 
-    /**
-     * 연기할 시각을 검사한다. 미루기는 뒤로만 간다.
-     *
-     * @param instanceStart 그 회차가 원래 시작하던 시각
-     * @param now           호출자가 넘기는 현재 시각
-     * @throws IllegalArgumentException 원래 시각보다 이르거나 이미 지난 시각일 때
-     */
-    public static void validatePostpone(LocalDateTime instanceStart, LocalDateTime to,
-            LocalDateTime now) {
-        if (!to.isAfter(instanceStart)) {
-            throw new IllegalArgumentException("연기할 시각은 원래 회차보다 뒤여야 합니다");
-        }
-        if (to.isBefore(now)) {
-            throw new IllegalArgumentException("지난 시각으로는 미룰 수 없습니다");
-        }
-    }
 
     /**
      * 회차가 자기 날짜에서 너무 멀어지지 않았는지 검사한다.

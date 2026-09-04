@@ -57,7 +57,7 @@ class UserApiTest extends IntegrationTest {
     void createSeedsRecommendedCategories() throws Exception {
         JsonNode created = mapper.readTree(
                 mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"username\":\"newbie\",\"displayName\":\"새 사용자\"}"))
+                        .content("{\"username\":\"newbie\",\"displayName\":\"새 사용자\"}"))
                         .andExpect(status().isCreated())
                         .andExpect(jsonPath("$.username").value("newbie"))
                         .andReturn().getResponse().getContentAsString());
@@ -77,7 +77,7 @@ class UserApiTest extends IntegrationTest {
     @DisplayName("displayName을 비우면 username을 대신 쓴다")
     void createFallsBackToUsernameAsDisplayName() throws Exception {
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"nameless\"}"))
+                .content("{\"username\":\"nameless\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.displayName").value("nameless"));
     }
@@ -86,7 +86,7 @@ class UserApiTest extends IntegrationTest {
     @DisplayName("이미 있는 username이면 400을 반환한다")
     void createRejectsDuplicateUsername() throws Exception {
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + appProperties.user().defaultUsername() + "\"}"))
+                .content("{\"username\":\"" + appProperties.user().defaultUsername() + "\"}"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -96,7 +96,7 @@ class UserApiTest extends IntegrationTest {
         // 로그인을 OAuth로만 받기로 해서 형식을 우리가 정할 수 없다.
         // 영문·숫자만 허용하던 시절에는 @ 와 . 때문에 이메일이 전부 거부됐다.
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"someone@example.com\"}"))
+                .content("{\"username\":\"someone@example.com\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username").value("someone@example.com"));
     }

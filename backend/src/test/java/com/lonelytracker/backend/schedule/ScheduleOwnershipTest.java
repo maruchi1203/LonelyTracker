@@ -22,7 +22,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.lonelytracker.backend.schedule.domain.ScheduleRecurrenceFreq;
 import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
+import com.lonelytracker.backend.schedule.entity.ScheduleRecurEntity;
+import com.lonelytracker.backend.schedule.repository.ScheduleRecurRepository;
 import com.lonelytracker.backend.schedule.repository.ScheduleRepository;
 
 /**
@@ -52,7 +55,28 @@ class ScheduleOwnershipTest extends IntegrationTest {
     @Autowired
     ScheduleRepository scheduleRepository;
 
+    @Autowired
+    ScheduleRecurRepository recurRepository;
+
     /** 요청자(기본 사용자)가 아닌 다른 사용자의 일정을 하나 심는다. */
+    @Test
+    @DisplayName("반복 목록에 다른 사용자의 습관이 섞이지 않는다")
+    void recurringListExcludesOtherUsersSchedule() throws Exception {
+        ScheduleEntity theirs = givenOtherUsersSchedule();
+        recurRepository.save(ScheduleRecurEntity.builder()
+                .schedule(theirs)
+                .freq(ScheduleRecurrenceFreq.DAILY)
+                .byWeekday(java.util.Set.of())
+                .build());
+
+        JsonNode found = mapper.readTree(
+                mvc.perform(get(BASE + "/recurring"))
+                        .andExpect(status().isOk())
+                        .andReturn().getResponse().getContentAsString());
+
+        assertThat(found).isEmpty();
+    }
+
     private ScheduleEntity givenOtherUsersSchedule() {
         UserEntity other = userRepository.save(UserEntity.builder()
                 .username("someone-else")
