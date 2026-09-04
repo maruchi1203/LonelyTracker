@@ -14,11 +14,12 @@ import tools.jackson.databind.node.ObjectNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -49,17 +50,17 @@ class RecurringScheduleApiTest extends IntegrationTest {
     @DisplayName("recurrence를 주면 반복 일정이 되고 첫 회차를 돌려준다")
     void createsRecurringSchedule() throws Exception {
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "title": "운동",
-                                  "startAt": "2026-09-07T07:00:00",
-                                  "endAt": "2026-09-07T08:00:00",
-                                  "category": "육체",
-                                  "recurrence": {
-                                    "freq": "WEEKLY",
-                                    "byWeekday": ["MONDAY", "WEDNESDAY", "FRIDAY"]
-                                  }
-                                }"""))
+                .content("""
+                        {
+                          "title": "운동",
+                          "startAt": "2026-09-07T07:00:00",
+                          "endAt": "2026-09-07T08:00:00",
+                          "category": "육체",
+                          "recurrence": {
+                            "freq": "WEEKLY",
+                            "byWeekday": ["MONDAY", "WEDNESDAY", "FRIDAY"]
+                          }
+                        }"""))
                 .andExpect(status().isCreated())
                 // 반복이든 아니든 id 가 있다. 회차 식별자는 id + instanceDate 다
                 .andExpect(jsonPath("$.id").isNumber())
@@ -117,9 +118,9 @@ class RecurringScheduleApiTest extends IntegrationTest {
         // 규칙은 월요일뿐이라 수요일(10/7)에는 이 회차만 잡힌다.
         // onDate 는 9/7 그대로여서 첫 루프가 아니라 두 번째 루프가 넣는다
         mvc.perform(put(BASE + "/" + id + "/instances/2026-09-07")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "startAt": "2026-10-07T07:00:00" }"""))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        { "startAt": "2026-10-07T07:00:00" }"""))
                 .andExpect(status().isOk());
 
         assertThat(instancesOf(id, "2026-10-06T00:00:00", "2026-10-08T23:59:59"))
@@ -236,9 +237,9 @@ class RecurringScheduleApiTest extends IntegrationTest {
                   "recurrence": { "freq": "DAILY", "endsOn": "2026-09-03" } }""");
 
         JsonNode found = json(mvc.perform(get(BASE)
-                        .param("from", "2026-09-01T00:00:00")
-                        .param("to", "2026-09-03T23:59:59")
-                        .param("category", "육체"))
+                .param("from", "2026-09-01T00:00:00")
+                .param("to", "2026-09-03T23:59:59")
+                .param("category", "육체"))
                 .andExpect(status().isOk()));
 
         assertThat(titlesOf(found)).contains("운동").doesNotContain("독서");
@@ -248,9 +249,9 @@ class RecurringScheduleApiTest extends IntegrationTest {
     @DisplayName("매주인데 요일을 안 고르면 400을 반환한다")
     void rejectsWeeklyWithoutWeekday() throws Exception {
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "title": "요일 없음", "startAt": "2026-09-07T09:00:00",
-                                  "recurrence": { "freq": "WEEKLY", "byWeekday": [] } }"""))
+                .content("""
+                        { "title": "요일 없음", "startAt": "2026-09-07T09:00:00",
+                          "recurrence": { "freq": "WEEKLY", "byWeekday": [] } }"""))
                 .andExpect(status().isBadRequest());
     }
 
@@ -258,9 +259,9 @@ class RecurringScheduleApiTest extends IntegrationTest {
     @DisplayName("freq가 없으면 400을 반환한다")
     void rejectsRecurrenceWithoutFreq() throws Exception {
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "title": "빈도 없음", "startAt": "2026-09-07T09:00:00",
-                                  "recurrence": { "endsOn": "2026-09-10" } }"""))
+                .content("""
+                        { "title": "빈도 없음", "startAt": "2026-09-07T09:00:00",
+                          "recurrence": { "endsOn": "2026-09-10" } }"""))
                 .andExpect(status().isBadRequest());
     }
 
@@ -268,9 +269,9 @@ class RecurringScheduleApiTest extends IntegrationTest {
     @DisplayName("종료일이 시작일보다 이르면 400을 반환한다")
     void rejectsInvertedRecurrenceRange() throws Exception {
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "title": "거꾸로", "startAt": "2026-09-10T09:00:00",
-                                  "recurrence": { "freq": "DAILY", "endsOn": "2026-09-01" } }"""))
+                .content("""
+                        { "title": "거꾸로", "startAt": "2026-09-10T09:00:00",
+                          "recurrence": { "freq": "DAILY", "endsOn": "2026-09-01" } }"""))
                 .andExpect(status().isBadRequest());
     }
 
@@ -278,10 +279,10 @@ class RecurringScheduleApiTest extends IntegrationTest {
     @DisplayName("자정을 넘겨도 다음 회차 전에 끝나면 반복할 수 있다")
     void overnightRecurringIsAllowed() throws Exception {
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "title": "야간 근무", "startAt": "2026-09-01T22:00:00",
-                                  "endAt": "2026-09-02T02:00:00",
-                                  "recurrence": { "freq": "DAILY" } }"""))
+                .content("""
+                        { "title": "야간 근무", "startAt": "2026-09-01T22:00:00",
+                          "endAt": "2026-09-02T02:00:00",
+                          "recurrence": { "freq": "DAILY" } }"""))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.endAt").value("2026-09-02T02:00:00"));
     }
@@ -290,10 +291,10 @@ class RecurringScheduleApiTest extends IntegrationTest {
     @DisplayName("매일 반복이 24시간을 넘으면 400을 반환한다")
     void dailyLongerThanADayIsRejected() throws Exception {
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "title": "겹치는 일정", "startAt": "2026-09-01T22:00:00",
-                                  "endAt": "2026-09-02T23:00:00",
-                                  "recurrence": { "freq": "DAILY" } }"""))
+                .content("""
+                        { "title": "겹치는 일정", "startAt": "2026-09-01T22:00:00",
+                          "endAt": "2026-09-02T23:00:00",
+                          "recurrence": { "freq": "DAILY" } }"""))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message")
                         .value(org.hamcrest.Matchers.containsString("다음 회차")));
@@ -303,19 +304,19 @@ class RecurringScheduleApiTest extends IntegrationTest {
     @DisplayName("매주 월수금은 회차 사이 간격인 48시간까지 이어질 수 있다")
     void weeklyGapAllowsUpToTheNextInstance() throws Exception {
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "title": "합숙", "startAt": "2026-09-07T09:00:00",
-                                  "endAt": "2026-09-09T09:00:00",
-                                  "recurrence": { "freq": "WEEKLY",
-                                                  "byWeekday": ["MONDAY", "WEDNESDAY", "FRIDAY"] } }"""))
+                .content("""
+                        { "title": "합숙", "startAt": "2026-09-07T09:00:00",
+                          "endAt": "2026-09-09T09:00:00",
+                          "recurrence": { "freq": "WEEKLY",
+                                          "byWeekday": ["MONDAY", "WEDNESDAY", "FRIDAY"] } }"""))
                 .andExpect(status().isCreated());
 
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                { "title": "너무 긴 합숙", "startAt": "2026-09-07T09:00:00",
-                                  "endAt": "2026-09-09T10:00:00",
-                                  "recurrence": { "freq": "WEEKLY",
-                                                  "byWeekday": ["MONDAY", "WEDNESDAY", "FRIDAY"] } }"""))
+                .content("""
+                        { "title": "너무 긴 합숙", "startAt": "2026-09-07T09:00:00",
+                          "endAt": "2026-09-09T10:00:00",
+                          "recurrence": { "freq": "WEEKLY",
+                                          "byWeekday": ["MONDAY", "WEDNESDAY", "FRIDAY"] } }"""))
                 .andExpect(status().isBadRequest());
     }
 
@@ -392,7 +393,7 @@ class RecurringScheduleApiTest extends IntegrationTest {
 
         JsonNode found = json(mvc.perform(get(BASE + "/recurring")).andExpect(status().isOk()));
 
-        assertThat(titlesOf(found)).contains("아침 운동").doesNotContain("치과 예약");
+        assertThat(recurringTitlesOf(found)).contains("아침 운동").doesNotContain("치과 예약");
     }
 
     @Test
@@ -406,8 +407,11 @@ class RecurringScheduleApiTest extends IntegrationTest {
         JsonNode found = json(mvc.perform(get(BASE + "/recurring")).andExpect(status().isOk()));
 
         assertThat(found).hasSize(1);
-        assertThat(found.get(0).get("recurrence").get("freq").asString()).isEqualTo("WEEKLY");
-        assertThat(found.get(0).get("recurrence").get("endsOn").asString()).isEqualTo("2026-12-31");
+        JsonNode schedule = found.get(0).get("schedule");
+        assertThat(schedule.get("recurrence").get("freq").asString()).isEqualTo("WEEKLY");
+        assertThat(schedule.get("recurrence").get("endsOn").asString()).isEqualTo("2026-12-31");
+        // 규칙과 성적이 나뉘어 있어 schedule 만 떼면 그대로 PUT 본문이 된다
+        assertThat(found.get(0).get("recent").get("weeks").asInt()).isEqualTo(4);
     }
 
     @Test
@@ -421,7 +425,43 @@ class RecurringScheduleApiTest extends IntegrationTest {
         JsonNode found = json(mvc.perform(get(BASE + "/recurring")).andExpect(status().isOk()));
 
         // 화면이 endsOn 을 보고 "끝난 습관" 으로 가른다. 서버가 미리 지우지 않는다
-        assertThat(titlesOf(found)).contains("지난 습관");
+        assertThat(recurringTitlesOf(found)).contains("지난 습관");
+    }
+
+    @Test
+    @DisplayName("수행률의 분모는 날짜가 지난 회차이고 미래는 안 센다")
+    void recurringListCountsOnlyPassedInstances() throws Exception {
+        LocalDate start = LocalDate.now().minusDays(3);
+        long id = createSchedule("""
+                { "title": "달리기", "startAt": "%sT07:00:00",
+                  "recurrence": { "freq": "DAILY" } }""".formatted(start));
+
+        markDone(id, start);
+        markDone(id, start.plusDays(1));
+
+        JsonNode recent = recentOf(id);
+
+        // 3일 전 · 2일 전 · 어제 = 셋. 오늘과 내일은 분모 밖이다
+        assertThat(recent.get("passed").asInt()).isEqualTo(3);
+        assertThat(recent.get("done").asInt()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("아직 오지 않은 날을 완료하면 조기 종료로 잡힌다")
+    void recurringListReportsEarlyCompletion() throws Exception {
+        LocalDate start = LocalDate.now().minusDays(2);
+        long id = createSchedule("""
+                { "title": "달리기", "startAt": "%sT07:00:00",
+                  "recurrence": { "freq": "DAILY" } }""".formatted(start));
+
+        markDone(id, LocalDate.now().plusDays(1));
+
+        JsonNode recent = recentOf(id);
+
+        // 분모에 안 들어가므로 수행률이 100%를 넘지 않는다
+        assertThat(recent.get("passed").asInt()).isEqualTo(2);
+        assertThat(recent.get("done").asInt()).isZero();
+        assertThat(recent.get("early").asInt()).isEqualTo(1);
     }
 
     @Test
@@ -430,11 +470,36 @@ class RecurringScheduleApiTest extends IntegrationTest {
         mvc.perform(get(BASE + "/recurring")).andExpect(status().isOk());
     }
 
+    /** 습관 목록의 제목들. 규칙이 schedule 안에 들어 있다 */
+    private List<String> recurringTitlesOf(JsonNode array) {
+        List<String> titles = new java.util.ArrayList<>();
+        array.forEach(node -> titles.add(node.get("schedule").get("title").asString()));
+        return titles;
+    }
+
+    /** 그 일정의 최근 성적 */
+    private JsonNode recentOf(long scheduleId) throws Exception {
+        JsonNode all = json(mvc.perform(get(BASE + "/recurring")).andExpect(status().isOk()));
+        for (JsonNode node : all) {
+            if (node.get("schedule").get("id").asLong() == scheduleId) {
+                return node.get("recent");
+            }
+        }
+        throw new AssertionError("목록에 없다. id=" + scheduleId);
+    }
+
+    /** 그 회차를 완료 처리한다 */
+    private void markDone(long id, LocalDate onDate) throws Exception {
+        mvc.perform(patch(BASE + "/" + id + "/instances/" + onDate + "/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"DONE\"}")).andExpect(status().isOk());
+    }
+
     // --- 헬퍼 -------------------------------------------------------------
 
     private long createSchedule(String body) throws Exception {
         JsonNode created = json(mvc.perform(post(BASE)
-                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isCreated()));
         return created.get("id").asLong();
     }

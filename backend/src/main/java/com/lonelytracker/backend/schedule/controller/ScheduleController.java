@@ -4,6 +4,7 @@ import com.lonelytracker.backend.schedule.dto.ScheduleInstanceUpdateRequest;
 import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleDetailResponse;
+import com.lonelytracker.backend.schedule.dto.ScheduleRecurringResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleParseRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleStatusRequest;
@@ -64,9 +65,9 @@ public class ScheduleController {
         return scheduleService.search(from, to, status, category);
     }
 
-    /** 반복 일정 목록. 회차가 아니라 규칙이라 습관 화면이 쓴다 */
+    /** 반복 일정 목록과 최근 성적. 회차가 아니라 규칙이라 습관 화면이 쓴다 */
     @GetMapping("/recurring")
-    public List<ScheduleDetailResponse> findRecurring() {
+    public List<ScheduleRecurringResponse> findRecurring() {
         return scheduleService.findRecurring();
     }
 
