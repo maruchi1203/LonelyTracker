@@ -152,13 +152,13 @@ describe('그 날짜에 걸쳐 있는지', () => {
     expect(coversDate(single, new Date(2026, 8, 1))).toBe(false)
   })
 
-  it('연기된 회차는 원래 날짜가 아니라 옮겨간 날에서 잡힌다', () => {
-    const postponed = instance(3, '2026-08-31', {
+  it('옮긴 회차는 원래 날짜가 아니라 옮겨간 날에서 잡힌다', () => {
+    const moved = instance(3, '2026-08-31', {
       startAt: '2026-09-01T07:00:00',
     })
 
-    expect(coversDate(postponed, new Date(2026, 7, 31))).toBe(false)
-    expect(coversDate(postponed, new Date(2026, 8, 1))).toBe(true)
+    expect(coversDate(moved, new Date(2026, 7, 31))).toBe(false)
+    expect(coversDate(moved, new Date(2026, 8, 1))).toBe(true)
   })
 
   it('달력이 칸에 놓는 기준과 같다', () => {
