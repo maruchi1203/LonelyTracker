@@ -38,4 +38,16 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
       @Param("to") LocalDateTime to,
       @Param("fromDate") LocalDate fromDate,
       @Param("toDate") LocalDate toDate);
+
+  /**
+   * 규칙이 붙은 일정을 전부 모은다. 끝난 반복도 함께 온다.
+   * 회차가 아니라 일정 자체라 조회 구간이 필요 없다.
+   */
+  @Query("""
+      select s from ScheduleEntity s
+      where s.user.id = :userId
+        and exists (select 1 from ScheduleRecurEntity r where r.scheduleId = s.id)
+      order by s.startAt desc
+      """)
+  List<ScheduleEntity> findRecurring(@Param("userId") Long userId);
 }

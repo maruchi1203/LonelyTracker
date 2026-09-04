@@ -91,6 +91,26 @@ public class ScheduleService {
                 .toList();
     }
 
+    /**
+     * 반복 일정 전부. 끝난 것도 함께 오므로 화면이 endsOn 으로 갈라 쓴다.
+     * 회차가 아니라 규칙 목록이라 조회 구간을 받지 않는다.
+     */
+    public List<ScheduleDetailResponse> findRecurring() {
+        List<ScheduleEntity> schedules = scheduleRepository.findRecurring(
+                currentUserProvider.get().getId());
+        if (schedules.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, ScheduleRecurEntity> recurs = new HashMap<>();
+        recurRepository.findByScheduleIds(schedules.stream().map(ScheduleEntity::getId).toList())
+                .forEach(r -> recurs.put(r.getScheduleId(), r));
+
+        return schedules.stream()
+                .map(s -> ScheduleDetailResponse.of(s, recurs.get(s.getId())))
+                .toList();
+    }
+
     /** 일정 자체를 돌려준다. 반복이면 규칙도 함께 실어 수정 폼이 읽을 수 있게 한다. */
     public ScheduleDetailResponse findById(Long id) {
         ScheduleEntity schedule = getOwnedOrThrow(id);

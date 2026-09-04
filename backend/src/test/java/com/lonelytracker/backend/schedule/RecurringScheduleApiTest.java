@@ -382,6 +382,55 @@ class RecurringScheduleApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.endAt").doesNotExist());
     }
 
+    @Test
+    @DisplayName("반복 일정만 목록에 나온다")
+    void recurringListExcludesSingleSchedules() throws Exception {
+        createSchedule("""
+                { "title": "아침 운동", "startAt": "2026-09-07T07:00:00",
+                  "recurrence": { "freq": "DAILY" } }""");
+        createSchedule("""
+                { "title": "치과 예약", "startAt": "2026-09-08T14:00:00" }""");
+
+        JsonNode found = json(mvc.perform(get(BASE + "/recurring")).andExpect(status().isOk()));
+
+        assertThat(titlesOf(found)).contains("아침 운동").doesNotContain("치과 예약");
+    }
+
+    @Test
+    @DisplayName("목록의 각 항목이 규칙을 싣고 온다")
+    void recurringListCarriesEachRule() throws Exception {
+        createSchedule("""
+                { "title": "운동", "startAt": "2026-09-07T07:00:00",
+                  "recurrence": { "freq": "WEEKLY", "byWeekday": ["MONDAY"],
+                                  "endsOn": "2026-12-31" } }""");
+
+        JsonNode found = json(mvc.perform(get(BASE + "/recurring")).andExpect(status().isOk()));
+
+        assertThat(found).hasSize(1);
+        assertThat(found.get(0).get("recurrence").get("freq").asString()).isEqualTo("WEEKLY");
+        assertThat(found.get(0).get("recurrence").get("endsOn").asString()).isEqualTo("2026-12-31");
+    }
+
+    @Test
+    @DisplayName("끝난 반복도 목록에 남는다")
+    void recurringListKeepsFinishedOnes() throws Exception {
+        createSchedule("""
+                { "title": "지난 습관", "startAt": "2020-01-06T07:00:00",
+                  "recurrence": { "freq": "WEEKLY", "byWeekday": ["MONDAY"],
+                                  "endsOn": "2020-03-01" } }""");
+
+        JsonNode found = json(mvc.perform(get(BASE + "/recurring")).andExpect(status().isOk()));
+
+        // 화면이 endsOn 을 보고 "끝난 습관" 으로 가른다. 서버가 미리 지우지 않는다
+        assertThat(titlesOf(found)).contains("지난 습관");
+    }
+
+    @Test
+    @DisplayName("/recurring 이 일정 ID 경로로 새지 않는다")
+    void recurringPathIsNotTreatedAsAnId() throws Exception {
+        mvc.perform(get(BASE + "/recurring")).andExpect(status().isOk());
+    }
+
     // --- 헬퍼 -------------------------------------------------------------
 
     private long createSchedule(String body) throws Exception {

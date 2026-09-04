@@ -65,6 +65,12 @@ public class ScheduleController {
         return scheduleService.search(from, to, status, category);
     }
 
+    /** 반복 일정 목록. 회차가 아니라 규칙이라 습관 화면이 쓴다 */
+    @GetMapping("/recurring")
+    public List<ScheduleDetailResponse> findRecurring() {
+        return scheduleService.findRecurring();
+    }
+
     /**
      * 일정 하나를 돌려준다. 반복 규칙이 함께 실려 수정 폼이 읽을 수 있다.
      *
