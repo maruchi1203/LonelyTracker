@@ -4,7 +4,7 @@ import {
   changeInstanceStatus,
   createSchedule,
   deleteSchedule,
-  postponeInstance,
+  updateInstance,
 } from "../api/schedules";
 import CalendarToolbar from "../components/calendar/CalendarToolbar";
 import ScheduleCalendar from "../components/layouts/Calendar/ScheduleCalendar";
@@ -91,16 +91,28 @@ export default function CalendarPage() {
     }
   };
 
-  const handlePostpone = async (instance: ScheduleResponse, to: string) => {
+  const handleMove = async (instance: ScheduleResponse, startAt: string) => {
+    setError(null);
+    try {
+      // 종료를 안 보내면 일정의 소요시간을 그대로 쓴다
+      patchOne(
+        await updateInstance(instance.id, instance.instanceDate, { startAt }),
+      );
+      // 창 밖으로 옮겼다면 목록에서 사라져야 하므로 다시 받는다
+      await reload();
+    } catch (e) {
+      fail(e, "일정을 옮기지 못했습니다");
+    }
+  };
+
+  const handleSkip = async (instance: ScheduleResponse) => {
     setError(null);
     try {
       patchOne(
-        await postponeInstance(instance.id, instance.instanceDate, to),
+        await changeInstanceStatus(instance.id, instance.instanceDate, "SKIPPED"),
       );
-      // 창 밖으로 미뤘다면 목록에서 사라져야 하므로 다시 받는다
-      await reload();
     } catch (e) {
-      fail(e, "일정을 미루지 못했습니다");
+      fail(e, "건너뛰지 못했습니다");
     }
   };
 
@@ -191,7 +203,8 @@ export default function CalendarPage() {
         <ScheduleList
           instances={forList}
           onToggleStatus={handleToggleStatus}
-          onPostpone={handlePostpone}
+          onMove={handleMove}
+          onSkip={handleSkip}
           onDelete={handleDelete}
           emptyReason={filtering ? "filtered-out" : "no-data"}
           onClearFilters={clearFilters}
