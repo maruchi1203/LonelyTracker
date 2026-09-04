@@ -130,7 +130,6 @@ public final class ScheduleInstanceExpander {
                 recurring,
                 (p == null) ? ScheduleStatus.PLANNED : p.getStatus(),
                 pick(p == null ? null : p.getCategory(), s.getCategory()),
-                (p == null) ? 0 : p.getPostponeCount(),
                 s.getCreatedAt(),
                 (p == null) ? s.getUpdatedAt() : p.getUpdatedAt());
     }

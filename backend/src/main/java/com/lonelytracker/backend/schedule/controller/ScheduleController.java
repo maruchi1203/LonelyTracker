@@ -1,7 +1,6 @@
 package com.lonelytracker.backend.schedule.controller;
 
 import com.lonelytracker.backend.schedule.dto.ScheduleInstanceUpdateRequest;
-import com.lonelytracker.backend.schedule.dto.SchedulePostponeRequest;
 import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleDetailResponse;
@@ -124,14 +123,6 @@ public class ScheduleController {
         return scheduleInstanceService.changeStatus(id, onDate, request.status());
     }
 
-    /** 연기. onDate 는 그대로 두고 startAt 만 옮긴다. */
-    @PatchMapping("/{id}/instances/{onDate}/postpone")
-    public ScheduleResponse postponeInstance(
-            @PathVariable Long id,
-            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate onDate,
-            @Valid @RequestBody SchedulePostponeRequest request) {
-        return scheduleInstanceService.postpone(id, onDate, request.to());
-    }
 
     /** 이 회차만 수정. null 을 준 필드는 일정 값으로 되돌아간다. */
     @PutMapping("/{id}/instances/{onDate}")

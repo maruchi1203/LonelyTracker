@@ -66,8 +66,7 @@ class RecurringScheduleApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.instanceDate").value("2026-09-07"))
                 .andExpect(jsonPath("$.title").value("운동"))
                 .andExpect(jsonPath("$.status").value("PLANNED"))
-                .andExpect(jsonPath("$.recurring").value(true))
-                .andExpect(jsonPath("$.postponeCount").value(0));
+                .andExpect(jsonPath("$.recurring").value(true));
     }
 
     @Test
@@ -106,8 +105,8 @@ class RecurringScheduleApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("범위 밖에서 미뤄져 들어온 회차도 반복 여부를 유지한다")
-    void keepsRecurringOnPostponedInstance() throws Exception {
+    @DisplayName("범위 밖에서 옮겨져 들어온 회차도 반복 여부를 유지한다")
+    void keepsRecurringOnMovedInstance() throws Exception {
         long id = createSchedule("""
                 {
                   "title": "운동",
@@ -117,10 +116,10 @@ class RecurringScheduleApiTest extends IntegrationTest {
 
         // 규칙은 월요일뿐이라 수요일(10/7)에는 이 회차만 잡힌다.
         // onDate 는 9/7 그대로여서 첫 루프가 아니라 두 번째 루프가 넣는다
-        mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-07/postpone")
+        mvc.perform(put(BASE + "/" + id + "/instances/2026-09-07")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                { "to": "2026-10-07T07:00:00" }"""))
+                                { "startAt": "2026-10-07T07:00:00" }"""))
                 .andExpect(status().isOk());
 
         assertThat(instancesOf(id, "2026-10-06T00:00:00", "2026-10-08T23:59:59"))

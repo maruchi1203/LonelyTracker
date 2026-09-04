@@ -43,19 +43,6 @@ public class ScheduleInstanceService {
         return toResponse(progressRepository.saveAndFlush(progress));
     }
 
-    @Transactional
-    public ScheduleResponse postpone(Long scheduleId, LocalDate onDate, LocalDateTime to) {
-        ScheduleProgressEntity progress = getOrCreate(scheduleId, onDate);
-        Integer minutes = progress.getSchedule().getDurationMinutes();
-
-        LocalDateTime instanceStart = (progress.getStartAt() != null)
-                ? progress.getStartAt()
-                : LocalDateTime.of(onDate, progress.getSchedule().getStartAt().toLocalTime());
-        ScheduleUtil.validatePostpone(instanceStart, to, LocalDateTime.now());
-
-        progress.postponeTo(to, (minutes == null) ? null : Duration.ofMinutes(minutes));
-        return toResponse(progressRepository.saveAndFlush(progress));
-    }
 
     /**
      * 이 회차만 수정한다.

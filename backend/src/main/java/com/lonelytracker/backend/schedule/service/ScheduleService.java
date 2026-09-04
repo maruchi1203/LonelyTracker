@@ -177,7 +177,6 @@ public class ScheduleService {
                                 .schedule(schedule)
                                 .onDate(newDate)
                                 .status(p.getStatus())
-                                .postponeCount(p.getPostponeCount())
                                 .build());
                     });
         }
