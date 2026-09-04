@@ -32,5 +32,5 @@ public record ScheduleCreateRequest(
                 // 목록에 없는 이름도 허용한다. 목록은 후보일 뿐이다
                 @Size(max = FieldLengths.CATEGORY_NAME, message = "category는 50자를 넘을 수 없습니다") String category,
 
-                @Valid RecurrenceRequest recurrence) {
+                @Valid ScheduleRecurrenceRequest recurrence) {
 }

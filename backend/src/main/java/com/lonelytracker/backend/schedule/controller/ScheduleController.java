@@ -4,6 +4,7 @@ import com.lonelytracker.backend.schedule.dto.ScheduleInstanceUpdateRequest;
 import com.lonelytracker.backend.schedule.dto.SchedulePostponeRequest;
 import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
+import com.lonelytracker.backend.schedule.dto.ScheduleDetailResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleParseRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleStatusRequest;
@@ -65,14 +66,13 @@ public class ScheduleController {
     }
 
     /**
-     * ID 기반 검색
-     * 단일 혹은 연속된 일정의 초회차 일정 검색 용도
-     * 
+     * 일정 하나를 돌려준다. 반복 규칙이 함께 실려 수정 폼이 읽을 수 있다.
+     *
      * @param id 일정 ID
-     * @return 일정 1개 정보 반환 {@link ScheduleResponse}
+     * @return 일정 자체의 값 {@link ScheduleDetailResponse}
      */
     @GetMapping("/{id}")
-    public ScheduleResponse findById(@PathVariable Long id) {
+    public ScheduleDetailResponse findById(@PathVariable Long id) {
         return scheduleService.findById(id);
     }
 

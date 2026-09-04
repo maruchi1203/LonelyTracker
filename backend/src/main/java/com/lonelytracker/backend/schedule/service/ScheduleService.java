@@ -1,8 +1,9 @@
 package com.lonelytracker.backend.schedule.service;
 
 import com.lonelytracker.backend.common.exception.NotFoundException;
-import com.lonelytracker.backend.schedule.dto.RecurrenceRequest;
+import com.lonelytracker.backend.schedule.dto.ScheduleRecurrenceRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
+import com.lonelytracker.backend.schedule.dto.ScheduleDetailResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleUpdateRequest;
 import com.lonelytracker.backend.user.service.UserProvider;
@@ -90,10 +91,10 @@ public class ScheduleService {
                 .toList();
     }
 
-    /** 그 일정의 첫 회차를 돌려준다. */
-    public ScheduleResponse findById(Long id) {
+    /** 일정 자체를 돌려준다. 반복이면 규칙도 함께 실어 수정 폼이 읽을 수 있게 한다. */
+    public ScheduleDetailResponse findById(Long id) {
         ScheduleEntity schedule = getOwnedOrThrow(id);
-        return firstInstanceOf(schedule);
+        return ScheduleDetailResponse.of(schedule, recurRepository.findById(id).orElse(null));
     }
 
     /**
@@ -233,7 +234,7 @@ public class ScheduleService {
                         "회차를 전개하지 못했습니다. scheduleId=" + schedule.getId()));
     }
 
-    private void applyRecurChange(ScheduleEntity schedule, RecurrenceRequest rule) {
+    private void applyRecurChange(ScheduleEntity schedule, ScheduleRecurrenceRequest rule) {
         ScheduleRecurEntity existing = recurRepository.findById(schedule.getId()).orElse(null);
 
         if (rule == null) {
@@ -251,7 +252,7 @@ public class ScheduleService {
         recurRepository.saveAndFlush(existing);
     }
 
-    private void saveRecur(ScheduleEntity schedule, RecurrenceRequest rule) {
+    private void saveRecur(ScheduleEntity schedule, ScheduleRecurrenceRequest rule) {
         ScheduleUtil.validateRule(schedule, rule);
         recurRepository.save(ScheduleRecurEntity.builder()
                 .schedule(schedule)
