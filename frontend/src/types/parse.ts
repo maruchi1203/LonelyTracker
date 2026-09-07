@@ -25,7 +25,6 @@ export interface ParsedSchedule {
   endAt?: string
   allDay: boolean
   category?: string
-  /** 아직 저장할 칸이 없다. 화면에 보여주기만 한다 */
   place?: string
   recurrence?: ParsedRecurringSchedule
   questions?: ParseQuestion[]

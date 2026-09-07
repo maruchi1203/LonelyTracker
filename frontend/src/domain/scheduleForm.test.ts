@@ -4,7 +4,6 @@ import type { Weekday } from '../types/schedule'
 import type { ScheduleForm } from './scheduleForm'
 import {
   draftFromParsed,
-  draftToCreateRequest,
   emptyForm,
   formToCreateRequest,
   formValidationError,
@@ -196,12 +195,20 @@ describe('생성 요청으로 바꾸기', () => {
     expect(body.endAt).toBeUndefined()
   })
 
-  it('장소는 체크했을 때만 메모로 넘어간다', () => {
-    const draft = draftFromParsed(PARSED, null)
+  it('장소와 2분 행동을 그대로 보낸다. 메모를 거치지 않는다', () => {
+    const body = formToCreateRequest(
+      form({ place: '헬스장', twoMinuteAction: '운동복 갈아입기' }),
+    )
 
-    expect(draftToCreateRequest(draft).description).toBeUndefined()
-    expect(
-      draftToCreateRequest({ ...draft, keepPlaceInDescription: true }).description,
-    ).toBe('장소: 헬스장')
+    expect(body.place).toBe('헬스장')
+    expect(body.twoMinuteAction).toBe('운동복 갈아입기')
+    expect(body.description).toBeUndefined()
+  })
+
+  it('장소와 2분 행동이 비면 아예 보내지 않는다', () => {
+    const body = formToCreateRequest(form({ place: '  ', twoMinuteAction: '' }))
+
+    expect(body.place).toBeUndefined()
+    expect(body.twoMinuteAction).toBeUndefined()
   })
 })

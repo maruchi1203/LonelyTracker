@@ -32,8 +32,7 @@ export interface UserCategoryResponse {
  * 식별자는 id 하나가 아니라 id + instanceDate 다.
  * 반복 일정 하나가 여러 줄로 펼쳐져 오므로 id 는 중복된다.
  *
- * 반복 규칙(recurrence)과 장소(place)는 이 응답에 없다.
- * 규칙은 요청·파싱 타입에만 있고, 장소는 백엔드에 아직 칸이 없다.
+ * 반복 규칙(recurrence)은 이 응답에 없다. 요청·파싱 타입에만 있다.
  */
 export interface ScheduleResponse {
   id: number
@@ -49,6 +48,10 @@ export interface ScheduleResponse {
   status: ScheduleStatus
   /** 분류 이름을 문자열로 기록한다. 목록에 없는 이름도 들어갈 수 있다 */
   category?: string
+  /** 일정 단위 값이라 어느 회차를 봐도 같다 */
+  place?: string
+  /** 시작에 필요한 2분 이내의 미니 행동. 이것도 일정 단위 값이다 */
+  twoMinuteAction?: string
   createdAt: string
   updatedAt: string
 }
@@ -69,6 +72,8 @@ export interface ScheduleCreateRequest {
   endAt?: string
   allDay?: boolean
   category?: string
+  place?: string
+  twoMinuteAction?: string
   recurrence?: RecurrenceRequest
 }
 
@@ -101,6 +106,12 @@ export interface UserResponse {
 export interface OpenAiKeyStatus {
   registered: boolean
   masked?: string
+}
+
+/** 사용자 설정 (GET/PUT /api/users/me/settings) */
+export interface UserSettings {
+  /** 2분 행동 칸을 폼에 띄울지 */
+  twoMinuteRule: boolean
 }
 
 /** 백엔드 GlobalExceptionHandler가 내려주는 에러 형태 */

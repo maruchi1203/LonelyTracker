@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { HttpError } from "../../api/http";
 import { parseSchedule } from "../../api/schedules";
-import { fetchOpenAiKeyStatus } from "../../api/users";
+import { fetchOpenAiKeyStatus, fetchSettings } from "../../api/users";
 import { knownQuestions } from "../../constants/parseQuestions";
-import type { ScheduleDraft } from "../../domain/scheduleForm";
-import { draftFromParsed, draftToCreateRequest } from "../../domain/scheduleForm";
+import type { ScheduleForm } from "../../domain/scheduleForm";
+import { draftFromParsed, formToCreateRequest } from "../../domain/scheduleForm";
 import type { ParseQuestion } from "../../types/parse";
 import type { ScheduleCreateRequest } from "../../types/schedule";
 import ScheduleInputForm from "../ScheduleInputForm";
@@ -23,8 +23,8 @@ interface Props {
 type State =
   | { mode: "idle" }
   | { mode: "parsing" }
-  | { mode: "draft"; draft: ScheduleDraft; questions: ParseQuestion[] }
-  | { mode: "saving"; draft: ScheduleDraft; questions: ParseQuestion[] }
+  | { mode: "draft"; draft: ScheduleForm; questions: ParseQuestion[] }
+  | { mode: "saving"; draft: ScheduleForm; questions: ParseQuestion[] }
   | { mode: "error"; message: string; needsKey: boolean };
 
 /** 서버 읽기 타임아웃이 30초라 그보다 조금 뒤에 포기한다 */
@@ -48,6 +48,14 @@ export default function QuickAddBar({
   const [manual, setManual] = useState(false);
   const [step, setStep] = useState(0);
   const abort = useRef<AbortController | null>(null);
+  // 못 읽으면 켬으로 본다. 설정을 못 불러왔다고 칸이 사라지면 안 된다
+  const [showTwoMinute, setShowTwoMinute] = useState(true);
+
+  useEffect(() => {
+    void fetchSettings()
+      .then((s) => setShowTwoMinute(s.twoMinuteRule))
+      .catch(() => {});
+  }, []);
 
   const parsing = state.mode === "parsing";
 
@@ -118,7 +126,7 @@ export default function QuickAddBar({
     const { draft, questions } = state;
     setState({ mode: "saving", draft, questions });
 
-    const created = await onCreate(draftToCreateRequest(draft));
+    const created = await onCreate(formToCreateRequest(draft));
     if (created) {
       setText("");
       setState({ mode: "idle" });
@@ -134,7 +142,7 @@ export default function QuickAddBar({
     return created;
   };
 
-  const patch = (changes: Partial<ScheduleDraft>) =>
+  const patch = (changes: Partial<ScheduleForm>) =>
     setState((prev) =>
       prev.mode === "draft" ? { ...prev, draft: { ...prev.draft, ...changes } } : prev,
     );
@@ -227,6 +235,7 @@ export default function QuickAddBar({
           knownCategories={knownCategories}
           saving={state.mode === "saving"}
           onChange={patch}
+          showTwoMinute={showTwoMinute}
           onSave={() => void save()}
           onDiscard={() => setState({ mode: "idle" })}
         />
@@ -237,6 +246,7 @@ export default function QuickAddBar({
           onSubmit={createManually}
           knownCategories={knownCategories}
           defaultDate={defaultDate}
+          showTwoMinute={showTwoMinute}
           // 문장을 못 읽었을 때 친 내용을 버리지 않는다
           initialTitle={state.mode === "error" ? text.trim() : undefined}
         />

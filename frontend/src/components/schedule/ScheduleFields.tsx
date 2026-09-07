@@ -17,6 +17,8 @@ interface Props {
   fieldRef?: (id: FormFieldId) => (el: HTMLElement | null) => void;
   /** 되물음이 가리키는 칸의 테두리 */
   decorate?: (id: FormFieldId) => string;
+  /** 2분 행동 칸을 띄울지. 설정에서 꺼도 이미 적어둔 값이 있으면 보인다 */
+  showTwoMinute?: boolean;
 }
 
 const INPUT =
@@ -51,6 +53,7 @@ export default function ScheduleFields({
   idPrefix,
   fieldRef,
   decorate,
+  showTwoMinute = true,
 }: Props) {
   const id = (name: string) => `${idPrefix}-${name}`;
   const ref = (name: FormFieldId) => fieldRef?.(name);
@@ -174,7 +177,24 @@ export default function ScheduleFields({
         </datalist>
       </div>
 
-      {/* 5. 시작 */}
+      {/* 5. 장소 */}
+      <div className="flex flex-col gap-1.5">
+        <label className={LABEL} htmlFor={id("place")}>
+          장소 (선택)
+        </label>
+        <input
+          id={id("place")}
+          ref={ref("place")}
+          className={box("place")}
+          value={form.place}
+          onChange={(e) => onChange({ place: e.target.value })}
+          placeholder="예: 헬스장"
+          maxLength={200}
+        />
+        <span className={HINT}>언제·어디서가 구체적일수록 실행될 확률이 높습니다.</span>
+      </div>
+
+      {/* 6. 시작 */}
       <div className="flex flex-wrap gap-3">
         <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
           <label className={LABEL} htmlFor={id("startDate")}>
@@ -206,7 +226,7 @@ export default function ScheduleFields({
         </div>
       </div>
 
-      {/* 6. 끝 — 한번만은 종료일시, 반복은 소요시간 + 반복 종료일 */}
+      {/* 7. 끝 — 한번만은 종료일시, 반복은 소요시간 + 반복 종료일 */}
       <div className="flex flex-wrap gap-3">
         <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
           <label className={LABEL} htmlFor={id("endDate")}>
@@ -276,7 +296,7 @@ export default function ScheduleFields({
         )}
       </div>
 
-      {/* 7. 매주 반복요일 */}
+      {/* 8. 매주 반복요일 */}
       {form.repeating && form.freq === "WEEKLY" && (
         <div className="flex flex-col gap-1.5">
           <span className={LABEL}>반복요일</span>
@@ -302,13 +322,32 @@ export default function ScheduleFields({
         </div>
       )}
 
-      {/* 8. 매월 반복일자 — 백엔드가 받기 전까지 자리만 */}
+      {/* 9. 매월 반복일자 — 백엔드가 받기 전까지 자리만 */}
       {form.repeating && form.freq === "MONTHLY" && (
         <div className="flex flex-col gap-1.5">
           <span className={LABEL}>반복일자</span>
           <p className="rounded-md border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-400">
             매월 반복은 준비 중입니다.
           </p>
+        </div>
+      )}
+
+      {/* 10. 2분 행동 */}
+      {(showTwoMinute || form.twoMinuteAction) && (
+        <div className="flex flex-col gap-1.5">
+          <label className={LABEL} htmlFor={id("twoMinuteAction")}>
+            2분 행동 (선택)
+          </label>
+          <input
+            id={id("twoMinuteAction")}
+            ref={ref("twoMinuteAction")}
+            className={box("twoMinuteAction")}
+            value={form.twoMinuteAction}
+            onChange={(e) => onChange({ twoMinuteAction: e.target.value })}
+            placeholder="예: 퇴근 후 운동복 갈아입기"
+            maxLength={200}
+          />
+          <span className={HINT}>시작에 필요한 2분 이내의 행동을 적습니다.</span>
         </div>
       )}
     </div>

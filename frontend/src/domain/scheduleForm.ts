@@ -21,6 +21,7 @@ export type FormFieldId =
   | 'byWeekday'
   | 'byMonthDay'
   | 'place'
+  | 'twoMinuteAction'
 
 /**
  * 입력 폼이 다루는 모델. 날짜와 시각을 따로 둔다.
@@ -45,13 +46,9 @@ export interface ScheduleForm {
   byWeekday: Weekday[]
   /** MONTHLY 용. 백엔드가 받기 전까지 쓰이지 않는다 */
   byMonthDay: number[]
-}
-
-/** AI 초안. 폼에 장소 두 칸이 더 붙는다 */
-export interface ScheduleDraft extends ScheduleForm {
-  /** 저장할 칸이 아직 없다. 화면 표시와 메모 덧붙이기에만 쓴다 */
   place: string
-  keepPlaceInDescription: boolean
+  /** 시작에 필요한 2분 이내의 미니 행동 */
+  twoMinuteAction: string
 }
 
 /** 지금 이후의 가장 가까운 정각 */
@@ -75,6 +72,8 @@ export function emptyForm(defaultDate?: Date | null): ScheduleForm {
     durationMins: '',
     byWeekday: [],
     byMonthDay: [],
+    place: '',
+    twoMinuteAction: '',
   }
 }
 
@@ -84,7 +83,7 @@ const splitDateTime = (value: string | undefined): [string, string] =>
 export function draftFromParsed(
   parsed: ParsedSchedule,
   fallbackDate: Date | null,
-): ScheduleDraft {
+): ScheduleForm {
   const base = emptyForm(fallbackDate)
   const [startDate, startTime] = splitDateTime(parsed.startAt)
   const [endDate, endTime] = splitDateTime(parsed.endAt)
@@ -106,7 +105,6 @@ export function draftFromParsed(
     freq: parsed.recurrence?.freq ?? base.freq,
     byWeekday: parsed.recurrence?.byWeekday ?? [],
     place: parsed.place ?? '',
-    keepPlaceInDescription: false,
   }
 }
 
@@ -195,6 +193,8 @@ export function formToCreateRequest(form: ScheduleForm): ScheduleCreateRequest {
     endAt: endAtOf(form),
     allDay,
     category: form.category.trim() || undefined,
+    place: form.place.trim() || undefined,
+    twoMinuteAction: form.twoMinuteAction.trim() || undefined,
     recurrence: form.repeating
       ? {
           // MONTHLY 는 검증에서 걸러진다
@@ -225,14 +225,3 @@ function endAtOf(form: ScheduleForm): string | undefined {
   return `${form.endDate || form.startDate}T${form.endTime || '23:59'}:00`
 }
 
-export function draftToCreateRequest(draft: ScheduleDraft): ScheduleCreateRequest {
-  const body = formToCreateRequest(draft)
-
-  return {
-    ...body,
-    description:
-      draft.keepPlaceInDescription && draft.place.trim()
-        ? `장소: ${draft.place.trim()}`
-        : undefined,
-  }
-}
