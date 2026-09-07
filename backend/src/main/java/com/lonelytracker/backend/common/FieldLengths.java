@@ -12,8 +12,8 @@ public final class FieldLengths {
     /** 마크다운 원문. 문서처럼 길어질 수 있다 */
     public static final int DESCRIPTION = 20000;
 
-    /** 카테고리 이름, 일정에 기록되는 분류 문자열 */
-    public static final int CATEGORY_NAME = 50;
+    /** 일정에 붙이는 태그 하나 */
+    public static final int TAG = 50;
 
     /** 일정을 수행할 장소 */
     public static final int PLACE = 200;

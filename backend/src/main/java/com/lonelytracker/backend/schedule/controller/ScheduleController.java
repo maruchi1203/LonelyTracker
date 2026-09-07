@@ -48,12 +48,12 @@ public class ScheduleController {
     private final ScheduleParseService scheduleParseService;
 
     /**
-     * 일자, 상태, 카테고리 기반 검색
+     * 일자, 상태, 태그 기반 검색
      * 
-     * @param from     시작일자
-     * @param to       종료일자
-     * @param status   일정 상태 {@link ScheduleStatus}
-     * @param category 일정 카테고리
+     * @param from   시작일자
+     * @param to     종료일자
+     * @param status 일정 상태 {@link ScheduleStatus}
+     * @param tag    태그 하나
      * @return 기간 안의 회차 목록 {@link ScheduleResponse}
      */
     @GetMapping
@@ -61,8 +61,17 @@ public class ScheduleController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @RequestParam(required = false) ScheduleStatus status,
-            @RequestParam(required = false) String category) {
-        return scheduleService.search(from, to, status, category);
+            @RequestParam(required = false) String tag) {
+        return scheduleService.search(from, to, status, tag);
+    }
+
+    /**
+     * 이미 쓴 적 있는 태그 이름
+     * 입력 자동완성이 쓴다
+     */
+    @GetMapping("/tags")
+    public List<String> findTagNames() {
+        return scheduleService.findTagNames();
     }
 
     /**

@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -306,6 +307,71 @@ class ScheduleApiTest extends IntegrationTest {
         mvc.perform(get(BASE + "/" + id))
                 .andExpect(jsonPath("$.place").value("헬스장"))
                 .andExpect(jsonPath("$.twoMinuteAction").value("운동복 갈아입기"));
+    }
+
+    @Test
+    @DisplayName("태그를 여러 개 붙일 수 있고 그중 하나로 걸러진다")
+    void tagsAreManyAndFilterable() throws Exception {
+        ObjectNode node = mapper.createObjectNode();
+        node.put("title", "운동");
+        node.put("startAt", inWindow(1, "07:00:00"));
+        node.putArray("tags").add("육체").add("아침");
+
+        mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(node)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.tags.length()").value(2));
+
+        createAndGetId("독서", inWindow(1, "21:00:00"));
+
+        JsonNode found = json(mvc.perform(get(BASE).param("tag", "아침"))
+                .andExpect(status().isOk()));
+
+        assertThat(found).hasSize(1);
+        assertThat(found.get(0).get("title").asString()).isEqualTo("운동");
+    }
+
+    @Test
+    @DisplayName("빈 태그와 앞뒤 공백은 버리고 중복은 하나로 합친다")
+    void tagsAreNormalized() throws Exception {
+        ObjectNode node = mapper.createObjectNode();
+        node.put("title", "운동");
+        node.put("startAt", inWindow(1, "07:00:00"));
+        node.putArray("tags").add("  육체  ").add("육체").add("   ");
+
+        JsonNode created = json(mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(node)))
+                .andExpect(status().isCreated()));
+
+        assertThat(created.get("tags")).hasSize(1);
+        assertThat(created.get("tags").get(0).asString()).isEqualTo("육체");
+    }
+
+    @Test
+    @DisplayName("태그 목록은 이미 쓴 이름만 중복 없이 정렬해 돌려준다")
+    void listsUsedTagNames() throws Exception {
+        ObjectNode first = mapper.createObjectNode();
+        first.put("title", "운동");
+        first.put("startAt", inWindow(1, "07:00:00"));
+        first.putArray("tags").add("육체").add("아침");
+
+        ObjectNode second = mapper.createObjectNode();
+        second.put("title", "달리기");
+        second.put("startAt", inWindow(2, "07:00:00"));
+        second.putArray("tags").add("육체");
+
+        for (ObjectNode body : List.of(first, second)) {
+            mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(body)))
+                    .andExpect(status().isCreated());
+        }
+
+        // 두 일정이 "육체"를 함께 쓰지만 후보로는 한 번만 나온다
+        mvc.perform(get(BASE + "/tags"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0]").value("아침"))
+                .andExpect(jsonPath("$[1]").value("육체"));
     }
 
     // --- 헬퍼 -------------------------------------------------------------

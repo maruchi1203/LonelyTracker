@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   durationMinutesOf,
   gapHours,
@@ -10,7 +11,7 @@ import type { Weekday } from "../../types/schedule";
 interface Props {
   value: ScheduleForm;
   onChange: (patch: Partial<ScheduleForm>) => void;
-  knownCategories: string[];
+  knownTags: string[];
   /** 두 폼이 한 화면에 뜰 수 있어 label 이 엉뚱한 칸을 가리키지 않게 한다 */
   idPrefix: string;
   /** AI 되물음이 칸을 짚을 수 있도록 */
@@ -49,7 +50,7 @@ const TOGGLE_OFF = "border-slate-200 text-slate-600 hover:bg-brand-50";
 export default function ScheduleFields({
   value: form,
   onChange,
-  knownCategories,
+  knownTags,
   idPrefix,
   fieldRef,
   decorate,
@@ -59,6 +60,16 @@ export default function ScheduleFields({
   const ref = (name: FormFieldId) => fieldRef?.(name);
   const box = (name: FormFieldId) =>
     `${INPUT} ${decorate?.(name) ?? "border-slate-200"}`;
+
+  const [tagDraft, setTagDraft] = useState("");
+
+  /** 같은 태그를 두 번 넣지 않는다 */
+  const addTag = (raw: string) => {
+    const name = raw.trim();
+    setTagDraft("");
+    if (!name || form.tags.includes(name)) return;
+    onChange({ tags: [...form.tags, name] });
+  };
 
   const maxHours = gapHours(form.freq, form.byWeekday);
 
@@ -153,27 +164,58 @@ export default function ScheduleFields({
         </div>
       )}
 
-      {/* 4. 카테고리 */}
+      {/* 4. 태그 */}
       <div className="flex flex-col gap-1.5">
-        <label className={LABEL} htmlFor={id("category")}>
-          카테고리 (선택)
+        <label className={LABEL} htmlFor={id("tags")}>
+          태그 (선택)
         </label>
-        {/* 자유 입력. 목록에 없는 이름도 쓸 수 있다 */}
+
+        {form.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {form.tags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => onChange({ tags: form.tags.filter((t) => t !== tag) })}
+                aria-label={`태그 ${tag} 빼기`}
+                className="rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs text-brand-700 hover:bg-brand-100"
+              >
+                {tag} ×
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* 자유 입력. 후보에 없는 이름도 쓸 수 있다 */}
         <input
-          id={id("category")}
-          ref={ref("category")}
-          className={box("category")}
-          list={id("category-options")}
-          value={form.category}
-          onChange={(e) => onChange({ category: e.target.value })}
-          placeholder="예: 능력"
+          id={id("tags")}
+          ref={ref("tags")}
+          className={box("tags")}
+          list={id("tag-options")}
+          value={tagDraft}
+          onChange={(e) => {
+            // 쉼표로 끝내면 그 자리에서 확정한다
+            if (e.target.value.endsWith(",")) addTag(e.target.value.slice(0, -1));
+            else setTagDraft(e.target.value);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              // 폼 전체가 제출되지 않게 막는다
+              e.preventDefault();
+              addTag(tagDraft);
+            }
+          }}
+          onBlur={() => addTag(tagDraft)}
+          placeholder="예: 육체 — Enter 로 추가"
           maxLength={50}
           autoComplete="off"
         />
-        <datalist id={id("category-options")}>
-          {knownCategories.map((c) => (
-            <option key={c} value={c} />
-          ))}
+        <datalist id={id("tag-options")}>
+          {knownTags
+            .filter((t) => !form.tags.includes(t))
+            .map((t) => (
+              <option key={t} value={t} />
+            ))}
         </datalist>
       </div>
 

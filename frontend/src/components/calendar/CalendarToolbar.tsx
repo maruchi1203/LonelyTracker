@@ -1,27 +1,26 @@
-import type { UserCategoryResponse } from "../../types/schedule";
-import CategoryChips from "./CategoryChips";
+import TagChips from "./TagChips";
 
 interface Props {
   query: string;
   onQueryChange: (query: string) => void;
-  categories: UserCategoryResponse[];
+  known: string[];
   usage: Map<string, number>;
   total: number;
   monthLabel: string;
-  selectedCategory: string | null;
-  onSelectCategory: (name: string | null) => void;
+  selectedTag: string | null;
+  onSelectTag: (name: string | null) => void;
 }
 
 /** 검색과 분류 칩. 넓은 필터를 왼쪽에 둔다 */
 export default function CalendarToolbar({
   query,
   onQueryChange,
-  categories,
+  known,
   usage,
   total,
   monthLabel,
-  selectedCategory,
-  onSelectCategory,
+  selectedTag,
+  onSelectTag,
 }: Props) {
   return (
     <div className="flex flex-wrap items-start gap-4">
@@ -46,13 +45,13 @@ export default function CalendarToolbar({
       </div>
 
       <div className="min-w-0 flex-1 basis-96">
-        <CategoryChips
-          categories={categories}
+        <TagChips
+          known={known}
           usage={usage}
           total={total}
           monthLabel={monthLabel}
-          selected={selectedCategory}
-          onSelect={onSelectCategory}
+          selected={selectedTag}
+          onSelect={onSelectTag}
         />
       </div>
     </div>

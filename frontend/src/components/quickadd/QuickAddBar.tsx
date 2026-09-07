@@ -13,7 +13,7 @@ import ParsedDraftCard from "./ParsedDraftCard";
 
 interface Props {
   defaultDate: Date | null;
-  knownCategories: string[];
+  knownTags: string[];
   onCreate: (body: ScheduleCreateRequest) => Promise<boolean>;
   /** 저장에 성공했을 때. 띄워둔 패널을 닫는 데 쓴다 */
   onDone?: () => void;
@@ -36,7 +36,7 @@ const DRAFT_TEXT_KEY = "quickadd-text";
 
 export default function QuickAddBar({
   defaultDate,
-  knownCategories,
+  knownTags,
   onCreate,
   onDone,
   autoFocus,
@@ -232,7 +232,7 @@ export default function QuickAddBar({
         <ParsedDraftCard
           draft={state.draft}
           questions={state.questions}
-          knownCategories={knownCategories}
+          knownTags={knownTags}
           saving={state.mode === "saving"}
           onChange={patch}
           showTwoMinute={showTwoMinute}
@@ -244,7 +244,7 @@ export default function QuickAddBar({
       {manual && (
         <ScheduleInputForm
           onSubmit={createManually}
-          knownCategories={knownCategories}
+          knownTags={knownTags}
           defaultDate={defaultDate}
           showTwoMinute={showTwoMinute}
           // 문장을 못 읽었을 때 친 내용을 버리지 않는다

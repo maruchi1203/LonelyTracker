@@ -53,18 +53,19 @@ public class ScheduleService {
     private final UserProvider currentUserProvider;
 
     /**
-     * 일자, 상태, 카테고리 기반 일정 검색
+     * 일자, 상태, 태그 기반 일정 검색
      * 
-     * @param from     시작일시. null이면 이번 주 월요일 0시
-     * @param to       종료일시. null이면 그로부터 4주째 일요일 끝
-     * @param status   일정 상태
-     * @param category 일정 카테고리
+     * @param from   시작일시. null이면 이번 주 월요일 0시
+     * @param to     종료일시. null이면 그로부터 4주째 일요일 끝
+     * @param status 일정 상태
+     * @param tag    태그 하나. 그 태그가 붙은 일정만 남는다
      * @return 일정목록 반환 List<ScheduleResponse>
      */
     public List<ScheduleResponse> search(LocalDateTime from, LocalDateTime to,
-            ScheduleStatus status, String category) {
+            ScheduleStatus status, String tag) {
         Long userId = currentUserProvider.get().getId();
 
+        // 검색 시 이번주 월요일~일요일까지 일정 검색
         LocalDate monday = LocalDate.now().with(DayOfWeek.MONDAY);
         LocalDateTime windowFrom = (from != null)
                 ? from
@@ -73,41 +74,52 @@ public class ScheduleService {
                 ? to
                 : monday.plusWeeks(DEFAULT_WEEKS).minusDays(1).atTime(LocalTime.MAX);
 
+        // 시작일시와 종료일시 규칙 체크
         ScheduleUtil.validateWindow(windowFrom, windowTo);
 
+        // 조건에 맞는 일정 후보 전체 검색
         List<ScheduleEntity> candidates = scheduleRepository.findCandidates(
                 userId, windowFrom, windowTo, windowFrom.toLocalDate(), windowTo.toLocalDate());
         if (candidates.isEmpty()) {
             return List.of();
         }
 
+        // 조건에 맞는 일정 후보 전체 검색
         List<Long> ids = candidates.stream().map(ScheduleEntity::getId).toList();
+        // 반복 일정 정보
         Map<Long, ScheduleRecurEntity> recurs = new HashMap<>();
         recurRepository.findByScheduleIds(ids)
                 .forEach(r -> recurs.put(r.getScheduleId(), r));
+        // 일정의 회차별 정보
         List<ScheduleProgressEntity> progresses = progressRepository.findInRange(
                 ids, windowFrom.toLocalDate(), windowTo.toLocalDate(), windowFrom, windowTo);
 
-        // 상태와 분류는 전개 후에 거른다. 회차 값이 일정 값을 덮을 수 있어 병합 뒤에야 정해진다
+        // 필터링 (일정 상태, 태그)
         return ScheduleInstanceExpander.expand(candidates, recurs, progresses, windowFrom, windowTo)
                 .stream()
                 .filter(r -> status == null || r.status() == status)
-                .filter(r -> category == null || category.isBlank()
-                        || category.strip().equals(r.category()))
+                .filter(r -> tag == null || tag.isBlank() || r.tags().contains(tag.strip()))
                 .toList();
     }
 
     /**
-     * 반복 일정 전부와 최근 성적. 끝난 것도 함께 오므로 화면이 endsOn 으로 갈라 쓴다.
-     * 회차가 아니라 규칙 목록이라 조회 구간을 받지 않는다.
+     * 반복 일정 전부와 최근 성적
      */
+    /** 이미 쓴 적 있는 태그 이름. 입력 자동완성이 쓴다 */
+    public List<String> findTagNames() {
+        return scheduleRepository.findTagNames(currentUserProvider.get().getId());
+    }
+
     public List<ScheduleRecurringResponse> findRecurring() {
         List<ScheduleEntity> schedules = scheduleRepository.findRecurring(
                 currentUserProvider.get().getId());
+
+        // 빈 리스트 return
         if (schedules.isEmpty()) {
             return List.of();
         }
 
+        //
         List<Long> ids = schedules.stream().map(ScheduleEntity::getId).toList();
         Map<Long, ScheduleRecurEntity> recurs = new HashMap<>();
         recurRepository.findByScheduleIds(ids).forEach(r -> recurs.put(r.getScheduleId(), r));
@@ -150,7 +162,7 @@ public class ScheduleService {
                 .startAt(request.startAt())
                 .durationMinutes(ScheduleUtil.toMinutes(request.startAt(), request.endAt()))
                 .allDay(Boolean.TRUE.equals(request.allDay()))
-                .category(ScheduleUtil.normalizeCategory(request.category()))
+                .tags(ScheduleUtil.normalizeTags(request.tags()))
                 .place(request.place())
                 .twoMinuteAction(request.twoMinuteAction())
                 .build());
@@ -180,7 +192,7 @@ public class ScheduleService {
                 request.startAt(),
                 ScheduleUtil.toMinutes(request.startAt(), request.endAt()),
                 Boolean.TRUE.equals(request.allDay()),
-                ScheduleUtil.normalizeCategory(request.category()),
+                ScheduleUtil.normalizeTags(request.tags()),
                 request.place(),
                 request.twoMinuteAction());
 

@@ -50,4 +50,16 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
       order by s.startAt desc
       """)
   List<ScheduleEntity> findRecurring(@Param("userId") Long userId);
+
+  /**
+   * 이미 쓴 적 있는 태그 이름. 자동완성 후보가 된다.
+   * 따로 목록을 관리하지 않아 후보와 실제가 어긋나지 않는다.
+   */
+  @Query("""
+      select distinct t from ScheduleEntity s
+      join s.tags t
+      where s.user.id = :userId
+      order by t
+      """)
+  List<String> findTagNames(@Param("userId") Long userId);
 }

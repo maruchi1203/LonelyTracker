@@ -4,6 +4,7 @@ import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Set;
 
 /**
  * 회차 하나. 1회성 일정도 같은 모양으로 나오고, 식별자는 id + instanceDate 다.
@@ -21,7 +22,7 @@ public record ScheduleResponse(
                 boolean allDay,
                 boolean recurring,
                 ScheduleStatus status,
-                String category,
+                Set<String> tags,
                 String place,
                 String twoMinuteAction,
                 LocalDateTime createdAt,

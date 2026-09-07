@@ -12,7 +12,7 @@ export type FormFreq = RecurrenceFreq | "MONTHLY";
 export type FormFieldId =
   | "title"
   | "freq"
-  | "category"
+  | "tags"
   | "startDate"
   | "startTime"
   | "endDate"
@@ -33,7 +33,7 @@ export interface ScheduleForm {
   title: string;
   repeating: boolean;
   freq: FormFreq;
-  category: string;
+  tags: string[];
   /** "YYYY-MM-DD" */
   startDate: string;
   /** "HH:mm". 비면 하루 종일 */
@@ -63,7 +63,7 @@ export function emptyForm(defaultDate?: Date | null): ScheduleForm {
     title: "",
     repeating: false,
     freq: "WEEKLY",
-    category: "",
+    tags: [],
     startDate: toLocalDate(defaultDate ?? new Date()),
     startTime: nextHourTime(),
     endDate: "",
@@ -93,7 +93,7 @@ export function draftFromParsed(
   return {
     ...base,
     title: parsed.title,
-    category: parsed.category ?? "",
+    tags: parsed.tags ?? [],
     // 시작일을 비워두지 않는다. 못 채운 칸은 되물음이 따로 알려준다
     startDate: startDate || base.startDate,
     startTime: parsed.allDay ? "" : startTime || base.startTime,
@@ -202,7 +202,7 @@ export function formToCreateRequest(form: ScheduleForm): ScheduleCreateRequest {
     startAt,
     endAt: endAtOf(form),
     allDay,
-    category: form.category.trim() || undefined,
+    tags: form.tags.length > 0 ? form.tags : undefined,
     place: form.place.trim() || undefined,
     twoMinuteAction: form.twoMinuteAction.trim() || undefined,
     recurrence: form.repeating

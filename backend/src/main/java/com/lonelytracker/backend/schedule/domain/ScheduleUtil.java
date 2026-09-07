@@ -10,7 +10,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 일정 계산에 쓰는 순수 함수 모음. DB와 스프링을 모른다.
@@ -54,15 +56,18 @@ public final class ScheduleUtil {
     }
 
     /**
-     * 분류 이름을 다듬는다. 빈 문자열은 미분류(null)로 통일한다.
+     * 태그를 다듬는다. 앞뒤 공백을 떼고 빈 것은 버린다.
      *
-     * @return 앞뒤 공백을 뗀 이름. 비어 있으면 null
+     * @return 중복 없는 태그 집합. 준 것이 없으면 빈 집합
      */
-    public static String normalizeCategory(String category) {
-        if (category == null || category.isBlank()) {
-            return null;
+    public static Set<String> normalizeTags(Set<String> tags) {
+        if (tags == null) {
+            return new HashSet<>();
         }
-        return category.strip();
+        return tags.stream()
+                .filter(t -> t != null && !t.isBlank())
+                .map(String::strip)
+                .collect(Collectors.toCollection(HashSet::new));
     }
 
     /**
@@ -91,15 +96,17 @@ public final class ScheduleUtil {
      * @throws IllegalArgumentException 뒤집혔거나 366일을 넘을 때
      */
     public static void validateWindow(LocalDateTime from, LocalDateTime to) {
+        // 종료일시는 시작일시보다 작게
         if (to.isBefore(from)) {
             throw new IllegalArgumentException("to는 from보다 이를 수 없습니다");
         }
+
+        // 조회 구간은 최대치(MAX_WINDOW)보다 작게
         if (Duration.between(from, to).compareTo(MAX_WINDOW) > 0) {
             throw new IllegalArgumentException(
                     "조회 구간은 " + MAX_WINDOW.toDays() + "일을 넘을 수 없습니다");
         }
     }
-
 
     /**
      * 회차가 자기 날짜에서 너무 멀어지지 않았는지 검사한다.
@@ -152,7 +159,7 @@ public final class ScheduleUtil {
         }
 
         List<Integer> days = byWeekday.stream().map(DayOfWeek::getValue).sorted().toList();
-        int min = 7 - days.get(days.size() - 1) + days.get(0);   // 마지막 요일에서 다음 주 첫 요일까지
+        int min = 7 - days.get(days.size() - 1) + days.get(0); // 마지막 요일에서 다음 주 첫 요일까지
         for (int i = 1; i < days.size(); i++) {
             min = Math.min(min, days.get(i) - days.get(i - 1));
         }

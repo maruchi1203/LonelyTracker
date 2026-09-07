@@ -14,6 +14,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -87,7 +88,8 @@ class ScheduleOwnershipTest extends IntegrationTest {
                 .user(other)
                 .title("남의 일정")
                 .startAt(LocalDateTime.parse("2026-10-01T10:00:00"))
-                .category("능력")
+                // 태그를 붙여야 "태그가 없어서 안 나온 것"과 구분된다
+                .tags(Set.of("능력"))
                 .build());
     }
 
@@ -105,12 +107,12 @@ class ScheduleOwnershipTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("분류로 걸러도 다른 사용자의 일정은 나오지 않는다")
-    void searchByCategoryExcludesOtherUsersSchedule() throws Exception {
+    @DisplayName("태그로 걸러도 다른 사용자의 일정은 나오지 않는다")
+    void searchByTagExcludesOtherUsersSchedule() throws Exception {
         givenOtherUsersSchedule();
 
         JsonNode found = mapper.readTree(
-                mvc.perform(get(BASE).param("category", "능력"))
+                mvc.perform(get(BASE).param("tag", "능력"))
                         .andExpect(status().isOk())
                         .andReturn().getResponse().getContentAsString());
 

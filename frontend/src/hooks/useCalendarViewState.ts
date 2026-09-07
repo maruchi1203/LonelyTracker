@@ -55,14 +55,14 @@ export function useCalendarViewState() {
     [update, selectedDate],
   )
 
-  const category = params.get('cat')
+  const tag = params.get('tag')
   const query = params.get('q') ?? ''
 
-  const setCategory = useCallback(
+  const setTag = useCallback(
     (name: string | null) => {
       update((p) => {
-        if (name) p.set('cat', name)
-        else p.delete('cat')
+        if (name) p.set('tag', name)
+        else p.delete('tag')
       })
     },
     [update],
@@ -81,7 +81,7 @@ export function useCalendarViewState() {
 
   const clearFilters = useCallback(() => {
     update((p) => {
-      p.delete('cat')
+      p.delete('tag')
       p.delete('q')
     })
   }, [update])
@@ -89,11 +89,11 @@ export function useCalendarViewState() {
   return {
     month,
     selectedDate,
-    category,
+    tag,
     query,
     setMonth,
     toggleDate,
-    setCategory,
+    setTag,
     setQuery,
     clearFilters,
   }

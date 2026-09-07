@@ -59,14 +59,14 @@ describe('되물음 칩', () => {
 
     render(
       <QuestionChips
-        questions={['CATEGORY']}
+        questions={['TAG']}
         onFocusField={vi.fn()}
         onDismiss={onDismiss}
       />,
     )
     fireEvent.click(screen.getByLabelText('이 질문 닫기'))
 
-    expect(onDismiss).toHaveBeenCalledWith('CATEGORY')
+    expect(onDismiss).toHaveBeenCalledWith('TAG')
   })
 
   it('질문이 없으면 아무것도 그리지 않는다', () => {

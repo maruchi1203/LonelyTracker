@@ -129,8 +129,8 @@ public final class ScheduleInstanceExpander {
                 s.isAllDay(),
                 recurring,
                 (p == null) ? ScheduleStatus.PLANNED : p.getStatus(),
-                pick(p == null ? null : p.getCategory(), s.getCategory()),
                 // 일정 단위 값이라 회차가 덮어쓰지 않는다
+                s.tagsCopy(),
                 s.getPlace(),
                 s.getTwoMinuteAction(),
                 s.getCreatedAt(),

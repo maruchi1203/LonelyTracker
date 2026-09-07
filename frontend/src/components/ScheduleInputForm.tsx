@@ -8,7 +8,7 @@ import ScheduleFields from "./schedule/ScheduleFields";
 interface Props {
   /** 저장에 성공했는지 돌려준다. 실패하면 입력값을 지우지 않는다 */
   onSubmit: (body: ScheduleCreateRequest) => Promise<boolean>;
-  knownCategories: string[];
+  knownTags: string[];
   /** 달력에서 날짜를 고른 상태면 시작일자를 그 날짜로 채워준다 */
   defaultDate?: Date | null;
   /** AI가 문장을 못 읽었을 때 친 문장을 제목으로 넘겨받는다 */
@@ -19,7 +19,7 @@ interface Props {
 
 export default function ScheduleInputForm({
   onSubmit,
-  knownCategories,
+  knownTags,
   defaultDate,
   initialTitle,
   showTwoMinute,
@@ -61,7 +61,7 @@ export default function ScheduleInputForm({
       <ScheduleFields
         value={form}
         onChange={change}
-        knownCategories={knownCategories}
+        knownTags={knownTags}
         idPrefix="manual"
         showTwoMinute={showTwoMinute}
       />

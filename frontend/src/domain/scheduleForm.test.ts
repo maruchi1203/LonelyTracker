@@ -189,10 +189,16 @@ describe('생성 요청으로 바꾸기', () => {
   })
 
   it('빈 칸은 undefined 로 보내 서버가 기본값을 쓰게 한다', () => {
-    const body = formToCreateRequest(form({ category: '  ' }))
+    const body = formToCreateRequest(form({ tags: [] }))
 
-    expect(body.category).toBeUndefined()
+    expect(body.tags).toBeUndefined()
     expect(body.endAt).toBeUndefined()
+  })
+
+  it('태그는 여러 개를 그대로 보낸다', () => {
+    const body = formToCreateRequest(form({ tags: ['육체', '아침'] }))
+
+    expect(body.tags).toEqual(['육체', '아침'])
   })
 
   it('장소와 2분 행동을 그대로 보낸다. 메모를 거치지 않는다', () => {

@@ -15,17 +15,6 @@ export type Weekday =
   | "SATURDAY"
   | "SUNDAY";
 
-/** 사용자가 고를 수 있는 카테고리 하나가 가지는 정보 (GET /api/categories) */
-export interface UserCategoryResponse {
-  id: number;
-  name: string;
-  color?: string;
-  displayOrder: number;
-  archived: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
 /**
  * 일정 조회 (회차 하나)
  *
@@ -45,8 +34,8 @@ export interface ScheduleResponse {
   endAt?: string;
   allDay: boolean;
   status: ScheduleStatus;
-  /** 분류 이름을 문자열로 기록한다. 목록에 없는 이름도 들어갈 수 있다 */
-  category?: string;
+  /** 태그도 장소처럼 일정 단위 값이라 어느 회차를 봐도 같다 */
+  tags?: string[];
   /** 일정 단위 값이라 어느 회차를 봐도 같다 */
   place?: string;
   /** 시작에 필요한 2분 이내의 미니 행동. 이것도 일정 단위 값이다 */
@@ -70,7 +59,7 @@ export interface ScheduleCreateRequest {
   startAt: string;
   endAt?: string;
   allDay?: boolean;
-  category?: string;
+  tags?: string[];
   place?: string;
   twoMinuteAction?: string;
   recurrence?: RecurrenceRequest;
@@ -82,7 +71,6 @@ export interface InstanceUpdateRequest {
   description?: string;
   startAt?: string;
   endAt?: string;
-  category?: string;
 }
 
 /** 목록 조회 조건. 준 것만 AND로 걸린다. */
@@ -90,8 +78,8 @@ export interface ScheduleQuery {
   from?: string;
   to?: string;
   status?: ScheduleStatus;
-  /** 이름이 정확히 일치하는 일정만 */
-  category?: string;
+  /** 이 태그가 붙은 일정만 */
+  tag?: string;
 }
 
 export interface UserResponse {

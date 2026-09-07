@@ -29,9 +29,8 @@ public record AppProperties(UserDefaults user, AiSetting ai, Security security) 
     }
 
     /**
-     * @param defaultUsername       인증이 붙기 전까지 현재 사용자로 취급할 계정
-     * @param recommendedCategories 가입 시 미리 넣어주는 카테고리
+     * @param defaultUsername 인증이 붙기 전까지 현재 사용자로 취급할 계정
      */
-    public record UserDefaults(String defaultUsername, List<String> recommendedCategories) {
+    public record UserDefaults(String defaultUsername) {
     }
 }

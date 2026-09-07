@@ -7,8 +7,6 @@ import com.lonelytracker.backend.common.exception.AiParseException;
 import com.lonelytracker.backend.common.exception.AiUnavailableException;
 import com.lonelytracker.backend.user.service.UserProvider;
 import com.lonelytracker.backend.user.entity.UserEntity;
-import com.lonelytracker.backend.user.service.UserCategoryService;
-import com.lonelytracker.backend.user.dto.UserCategoryResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +22,7 @@ import java.util.List;
 public class ScheduleParseService {
 
     private final ScheduleParser scheduleParser;
-    private final UserCategoryService userCategoryService;
+    private final ScheduleService scheduleService;
     private final UserProvider currentUserProvider;
 
     public ParsedSchedule parse(String text) {
@@ -37,25 +35,21 @@ public class ScheduleParseService {
         }
         String apiKey = user.getOpenAiApiKey();
 
-        List<String> categories = userCategoryService.findAll().stream()
-                .filter(c -> !c.archived())
-                .map(UserCategoryResponse::name)
-                .toList();
+        List<String> knownTags = scheduleService.findTagNames();
 
         // 트랜잭션 밖에서 호출
         ParsedSchedule parsed = scheduleParser.parse(
-                new AiParseCommand(text, LocalDateTime.now(), categories, apiKey));
+                new AiParseCommand(text, LocalDateTime.now(), knownTags, apiKey));
 
         // LLM 응답을 사용자 입력과 같은 등급으로 검증한다
-        return validate(parsed, categories);
+        return validate(parsed);
     }
 
     /**
      * 초안의 내용을 검사한다. 빈 칸은 잘못이 아니라 되물음의 대상이다.
-     *
-     * @param categories 사용자의 분류 목록. 여기 없는 이름은 버린다
+     * 태그는 자유 입력이라 후보에 없는 이름도 그대로 둔다.
      */
-    private ParsedSchedule validate(ParsedSchedule parsed, List<String> categories) {
+    private ParsedSchedule validate(ParsedSchedule parsed) {
         if (parsed.title() == null || parsed.title().isBlank()) {
             throw new AiParseException("일정으로 읽을 수 없는 문장입니다. 직접 입력해 주세요");
         }
@@ -64,17 +58,12 @@ public class ScheduleParseService {
             throw new AiParseException("AI 가 종료 시각을 시작보다 이르게 잡았습니다");
         }
 
-        // 목록에 없는 분류를 지어냈으면 버린다
-        String category = (parsed.category() != null && !categories.contains(parsed.category()))
-                ? null
-                : parsed.category();
-
         return new ParsedSchedule(
                 parsed.title().strip(),
                 parsed.startAt(),
                 parsed.endAt(),
                 parsed.allDay(),
-                category,
+                parsed.tags(),
                 parsed.place(),
                 parsed.recurrence(),
                 parsed.questions());

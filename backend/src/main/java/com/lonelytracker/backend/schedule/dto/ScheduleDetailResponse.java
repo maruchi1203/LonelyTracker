@@ -5,6 +5,7 @@ import com.lonelytracker.backend.schedule.entity.ScheduleRecurEntity;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Set;
 
 /**
  * 일정 하나. 회차가 아니라 일정 자체의 값이고, 수정 폼이 쓴다.
@@ -23,7 +24,7 @@ public record ScheduleDetailResponse(
         LocalDateTime startAt,
         LocalDateTime endAt,
         boolean allDay,
-        String category,
+        Set<String> tags,
         String place,
         String twoMinuteAction,
         ScheduleRecurrenceResponse recurrence,
@@ -41,7 +42,7 @@ public record ScheduleDetailResponse(
                 schedule.getStartAt(),
                 (minutes == null) ? null : schedule.getStartAt().plus(Duration.ofMinutes(minutes)),
                 schedule.isAllDay(),
-                schedule.getCategory(),
+                schedule.tagsCopy(),
                 schedule.getPlace(),
                 schedule.getTwoMinuteAction(),
                 (recur == null) ? null : ScheduleRecurrenceResponse.from(recur),

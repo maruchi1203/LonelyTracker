@@ -4,14 +4,14 @@ import QuickAddBar from "./QuickAddBar";
 
 interface Props {
   defaultDate: Date | null;
-  knownCategories: string[];
+  knownTags: string[];
   onCreate: (body: ScheduleCreateRequest) => Promise<boolean>;
 }
 
 /** 우하단에 떠 있는 일정 추가 입구. 자연어와 수동 입력이 모두 이 안에 있다 */
 export default function QuickAddLauncher({
   defaultDate,
-  knownCategories,
+  knownTags,
   onCreate,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -46,7 +46,7 @@ export default function QuickAddLauncher({
         >
           <QuickAddBar
             defaultDate={defaultDate}
-            knownCategories={knownCategories}
+            knownTags={knownTags}
             onCreate={onCreate}
             onDone={() => setOpen(false)}
             autoFocus

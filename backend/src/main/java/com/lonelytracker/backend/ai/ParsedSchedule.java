@@ -14,7 +14,7 @@ public record ParsedSchedule(
         LocalDateTime startAt,
         LocalDateTime endAt,
         boolean allDay,
-        String category,
+        List<String> tags,
         String place,
         ParsedRecurringSchedule recurrence,
         List<ParseQuestion> questions) {

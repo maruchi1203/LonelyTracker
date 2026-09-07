@@ -15,7 +15,5 @@ public record ScheduleInstanceUpdateRequest(
 
         LocalDateTime startAt,
 
-        LocalDateTime endAt,
-
-        @Size(max = FieldLengths.CATEGORY_NAME, message = "category는 50자를 넘을 수 없습니다") String category) {
+        LocalDateTime endAt) {
 }

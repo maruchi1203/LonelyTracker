@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import { rankCategories, TOP_CATEGORIES } from "../../domain/filter";
-import type { UserCategoryResponse } from "../../types/schedule";
+import { rankTags, TOP_TAGS } from "../../domain/filter";
 
 interface Props {
-  categories: UserCategoryResponse[];
+  /** 이미 쓴 적 있는 태그. 이번 달에 안 나온 것도 후보로 남긴다 */
+  known: string[];
   /** 필터 이전의 창 전체 기준 개수 */
   usage: Map<string, number>;
   total: number;
@@ -21,9 +21,9 @@ const CHIP_ON = "border-brand-500 bg-brand-500 text-white";
 const CHIP_OFF =
   "border-slate-200 bg-white text-slate-500 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700";
 
-/** 이 달에 많이 쓴 분류를 앞에 놓고, 고른 분류는 항상 보이게 한다 */
-export default function CategoryChips({
-  categories,
+/** 이 달에 많이 쓴 태그를 앞에 놓고, 고른 분류는 항상 보이게 한다 */
+export default function TagChips({
+  known,
   usage,
   total,
   monthLabel,
@@ -33,20 +33,20 @@ export default function CategoryChips({
   const [expanded, setExpanded] = useState(false);
 
   const ranked = useMemo(
-    () => rankCategories(usage, categories),
-    [usage, categories],
+    () => rankTags(usage, known),
+    [usage, known],
   );
 
-  const top = ranked.slice(0, TOP_CATEGORIES);
-  const rest = ranked.slice(TOP_CATEGORIES);
+  const top = ranked.slice(0, TOP_TAGS);
+  const rest = ranked.slice(TOP_TAGS);
 
-  // 고른 분류가 상위권 밖이면 줄 끝에 붙인다. 활성 필터가 더보기 뒤에 숨으면 안 된다
+  // 고른 태그가 상위권 밖이면 줄 끝에 붙인다. 활성 필터가 더보기 뒤에 숨으면 안 된다
   const pinned = selected && !top.includes(selected) ? selected : null;
 
   return (
     <div className="flex flex-col gap-1.5">
       <p className="text-xs font-semibold tracking-wide text-slate-400">
-        이 달에 많이 쓴 분류
+        이 달에 많이 쓴 태그
       </p>
 
       {/* 넘쳐도 줄바꿈하지 않고 가로로 흐른다. py-1 은 포커스 링이 잘리지 않게 둔 자리다 */}

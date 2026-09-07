@@ -23,8 +23,7 @@ export async function fetchSchedules(
   if (params?.from) query.set('from', params.from)
   if (params?.to) query.set('to', params.to)
   if (params?.status) query.set('status', params.status)
-  // URLSearchParams가 역슬래시를 알아서 인코딩한다
-  if (params?.category) query.set('category', params.category)
+  if (params?.tag) query.set('tag', params.tag)
 
   const suffix = query.toString() ? `?${query}` : ''
   return handle<ScheduleResponse[]>(await fetch(`${BASE}${suffix}`, { signal }))
@@ -67,6 +66,11 @@ export async function updateInstance(
     body: JSON.stringify(body),
   })
   return handle<ScheduleResponse>(res)
+}
+
+/** 이미 쓴 적 있는 태그 이름. 입력 자동완성이 쓴다 */
+export async function fetchTagNames(): Promise<string[]> {
+  return handle<string[]>(await fetch(`${BASE}/tags`))
 }
 
 /** 문장을 일정 초안으로 바꾼다. 저장하지는 않는다 */
