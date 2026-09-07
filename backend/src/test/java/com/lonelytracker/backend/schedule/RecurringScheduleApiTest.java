@@ -227,19 +227,19 @@ class RecurringScheduleApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("분류로 거르면 반복 회차도 함께 걸린다")
-    void filtersByCategory() throws Exception {
+    @DisplayName("태그로 거르면 반복 회차도 함께 걸린다")
+    void filtersByTag() throws Exception {
         createSchedule("""
-                { "title": "운동", "startAt": "2026-09-01T07:00:00", "category": "육체",
+                { "title": "운동", "startAt": "2026-09-01T07:00:00", "tags": ["육체"],
                   "recurrence": { "freq": "DAILY", "endsOn": "2026-09-03" } }""");
         createSchedule("""
-                { "title": "독서", "startAt": "2026-09-01T21:00:00", "category": "정신",
+                { "title": "독서", "startAt": "2026-09-01T21:00:00", "tags": ["정신"],
                   "recurrence": { "freq": "DAILY", "endsOn": "2026-09-03" } }""");
 
         JsonNode found = json(mvc.perform(get(BASE)
                 .param("from", "2026-09-01T00:00:00")
                 .param("to", "2026-09-03T23:59:59")
-                .param("category", "육체"))
+                .param("tag", "육체"))
                 .andExpect(status().isOk()));
 
         assertThat(titlesOf(found)).contains("운동").doesNotContain("독서");

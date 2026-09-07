@@ -154,60 +154,6 @@ class UserCategoryApiTest extends IntegrationTest {
 
     // --- 설계 검증: 목록을 바꿔도 기록은 남는다 -----------------------------
 
-    @Test
-    @DisplayName("카테고리를 목록에서 지워도 그 분류를 쓰던 일정은 그대로 남는다")
-    void deletingCategoryKeepsScheduleRecords() throws Exception {
-        JsonNode created = mapper.readTree(
-                mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"name\":\"독서\"}"))
-                        .andExpect(status().isCreated())
-                        .andReturn().getResponse().getContentAsString());
-
-        ScheduleEntity schedule = scheduleRepository.save(ScheduleEntity.builder()
-                .user(userRepository.findByUsername(appProperties.user().defaultUsername()).orElseThrow())
-                .title("책 읽기")
-                .startAt(LocalDateTime.parse("2026-10-05T20:00:00"))
-                .category("독서")
-                .build());
-
-        mvc.perform(delete(BASE + "/" + created.get("id").asLong()))
-                .andExpect(status().isNoContent());
-
-        // FK가 아니라 문자열이라 제약 위반도 없고, 기록도 지워지지 않는다
-        ScheduleEntity reloaded = scheduleRepository.findById(schedule.getId()).orElseThrow();
-        assertThat(reloaded.getCategory())
-                .as("목록에서 지웠다고 과거 일정의 분류까지 사라지면 안 된다")
-                .isEqualTo("독서");
-    }
-
-    @Test
-    @DisplayName("카테고리 이름을 바꿔도 이미 기록된 일정의 분류는 바뀌지 않는다")
-    void renamingCategoryDoesNotTouchScheduleRecords() throws Exception {
-        JsonNode created = mapper.readTree(
-                mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                                .content("{\"name\":\"독서\"}"))
-                        .andExpect(status().isCreated())
-                        .andReturn().getResponse().getContentAsString());
-
-        ScheduleEntity schedule = scheduleRepository.save(ScheduleEntity.builder()
-                .user(userRepository.findByUsername(appProperties.user().defaultUsername()).orElseThrow())
-                .title("책 읽기")
-                .startAt(LocalDateTime.parse("2026-10-05T20:00:00"))
-                .category("독서")
-                .build());
-
-        mvc.perform(patch(BASE + "/" + created.get("id").asLong() + "/name")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"자기계발\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.name").value("자기계발"));
-
-        ScheduleEntity reloaded = scheduleRepository.findById(schedule.getId()).orElseThrow();
-        assertThat(reloaded.getCategory())
-                .as("목록의 이름 변경이 과거 기록을 덮어쓰면 안 된다")
-                .isEqualTo("독서");
-    }
-
     // --- 헬퍼 -------------------------------------------------------------
 
     private List<String> namesOf(org.springframework.test.web.servlet.ResultActions actions) throws Exception {

@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 /**
  * 일정 생성.
@@ -30,8 +31,7 @@ public record ScheduleCreateRequest(
                 // 선택 필드다. 원시 boolean이면 JSON에서 생략됐을 때 Jackson이 실패한다
                 Boolean allDay,
 
-                // 목록에 없는 이름도 허용한다. 목록은 후보일 뿐이다
-                @Size(max = FieldLengths.CATEGORY_NAME, message = "category는 50자를 넘을 수 없습니다") String category,
+                Set<@Size(max = FieldLengths.TAG, message = "태그 하나는 50자를 넘을 수 없습니다") String> tags,
 
                 @Size(max = FieldLengths.PLACE, message = "place는 200자를 넘을 수 없습니다") String place,
 

@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 /**
  * 앞으로의 회차를 전부 수정한다. 이미 손댄 회차는 그쪽 값이 이겨 영향받지 않는다.
@@ -24,7 +25,7 @@ public record ScheduleUpdateRequest(
 
                 Boolean allDay,
 
-                @Size(max = FieldLengths.CATEGORY_NAME, message = "category는 50자를 넘을 수 없습니다") String category,
+                Set<@Size(max = FieldLengths.TAG, message = "태그 하나는 50자를 넘을 수 없습니다") String> tags,
 
                 @Size(max = FieldLengths.PLACE, message = "place는 200자를 넘을 수 없습니다") String place,
 

@@ -2,7 +2,9 @@ package com.lonelytracker.backend.schedule.entity;
 
 import com.lonelytracker.backend.common.FieldLengths;
 import com.lonelytracker.backend.user.entity.UserEntity;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
@@ -23,6 +25,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * 단일·반복 일정의 공통 정보.
@@ -32,7 +36,6 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "schedule", indexes = {
         @Index(name = "idx_schedule_start_at", columnList = "start_at"),
-        @Index(name = "idx_schedule_category", columnList = "category"),
         @Index(name = "idx_schedule_user_id", columnList = "user_id")
 })
 @EntityListeners(AuditingEntityListener.class)
@@ -86,11 +89,14 @@ public class ScheduleEntity {
     private UserEntity user;
 
     /**
-     * 일정 카테고리
-     * 목록과 FK로 묶지 않아 분류를 지워도 기록은 남는다
+     * 태그
+     * 일정 단위라 회차마다 달라지지 않는다
      */
-    @Column(length = FieldLengths.CATEGORY_NAME)
-    private String category;
+    @ElementCollection
+    @CollectionTable(name = "schedule_tag", joinColumns = @JoinColumn(name = "schedule_id"))
+    @Column(name = "name", length = FieldLengths.TAG)
+    @Builder.Default
+    private Set<String> tags = new HashSet<>();
 
     /**
      * 수행 장소
@@ -127,19 +133,19 @@ public class ScheduleEntity {
      * @param startAt         시작일시
      * @param durationMinutes 소요시간(분)
      * @param allDay          하루 종일 여부
-     * @param category        일정 카테고리
+     * @param tags            태그
      * @param place           수행 장소
      * @param twoMinuteAction 2분 행동
      */
     public void update(String title, String description, LocalDateTime startAt,
-            Integer durationMinutes, boolean allDay, String category,
+            Integer durationMinutes, boolean allDay, Set<String> tags,
             String place, String twoMinuteAction) {
         this.title = title;
         this.description = description;
         this.startAt = startAt;
         this.durationMinutes = durationMinutes;
         this.allDay = allDay;
-        this.category = category;
+        this.tags = (tags == null) ? new HashSet<>() : new HashSet<>(tags);
         this.place = place;
         this.twoMinuteAction = twoMinuteAction;
     }

@@ -58,7 +58,7 @@ public class ScheduleInstanceService {
         ScheduleProgressEntity progress = getOrCreate(scheduleId, onDate);
         progress.overrideFields(
                 request.title(), request.description(),
-                request.startAt(), request.endAt(), request.category());
+                request.startAt(), request.endAt());
         return toResponse(progressRepository.saveAndFlush(progress));
     }
 

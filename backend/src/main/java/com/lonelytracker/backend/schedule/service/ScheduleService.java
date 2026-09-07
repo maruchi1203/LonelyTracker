@@ -53,16 +53,16 @@ public class ScheduleService {
     private final UserProvider currentUserProvider;
 
     /**
-     * 일자, 상태, 카테고리 기반 일정 검색
+     * 일자, 상태, 태그 기반 일정 검색
      * 
-     * @param from     시작일시. null이면 이번 주 월요일 0시
-     * @param to       종료일시. null이면 그로부터 4주째 일요일 끝
-     * @param status   일정 상태
-     * @param category 일정 카테고리
+     * @param from   시작일시. null이면 이번 주 월요일 0시
+     * @param to     종료일시. null이면 그로부터 4주째 일요일 끝
+     * @param status 일정 상태
+     * @param tag    태그 하나. 그 태그가 붙은 일정만 남는다
      * @return 일정목록 반환 List<ScheduleResponse>
      */
     public List<ScheduleResponse> search(LocalDateTime from, LocalDateTime to,
-            ScheduleStatus status, String category) {
+            ScheduleStatus status, String tag) {
         Long userId = currentUserProvider.get().getId();
 
         LocalDate monday = LocalDate.now().with(DayOfWeek.MONDAY);
@@ -88,12 +88,11 @@ public class ScheduleService {
         List<ScheduleProgressEntity> progresses = progressRepository.findInRange(
                 ids, windowFrom.toLocalDate(), windowTo.toLocalDate(), windowFrom, windowTo);
 
-        // 상태와 분류는 전개 후에 거른다. 회차 값이 일정 값을 덮을 수 있어 병합 뒤에야 정해진다
+        // 상태는 전개 후에 거른다. 회차 값이 일정 값을 덮을 수 있어 병합 뒤에야 정해진다
         return ScheduleInstanceExpander.expand(candidates, recurs, progresses, windowFrom, windowTo)
                 .stream()
                 .filter(r -> status == null || r.status() == status)
-                .filter(r -> category == null || category.isBlank()
-                        || category.strip().equals(r.category()))
+                .filter(r -> tag == null || tag.isBlank() || r.tags().contains(tag.strip()))
                 .toList();
     }
 
@@ -150,7 +149,7 @@ public class ScheduleService {
                 .startAt(request.startAt())
                 .durationMinutes(ScheduleUtil.toMinutes(request.startAt(), request.endAt()))
                 .allDay(Boolean.TRUE.equals(request.allDay()))
-                .category(ScheduleUtil.normalizeCategory(request.category()))
+                .tags(ScheduleUtil.normalizeTags(request.tags()))
                 .place(request.place())
                 .twoMinuteAction(request.twoMinuteAction())
                 .build());
@@ -180,7 +179,7 @@ public class ScheduleService {
                 request.startAt(),
                 ScheduleUtil.toMinutes(request.startAt(), request.endAt()),
                 Boolean.TRUE.equals(request.allDay()),
-                ScheduleUtil.normalizeCategory(request.category()),
+                ScheduleUtil.normalizeTags(request.tags()),
                 request.place(),
                 request.twoMinuteAction());
 

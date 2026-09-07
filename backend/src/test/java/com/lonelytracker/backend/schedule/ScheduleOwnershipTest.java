@@ -87,7 +87,6 @@ class ScheduleOwnershipTest extends IntegrationTest {
                 .user(other)
                 .title("남의 일정")
                 .startAt(LocalDateTime.parse("2026-10-01T10:00:00"))
-                .category("능력")
                 .build());
     }
 

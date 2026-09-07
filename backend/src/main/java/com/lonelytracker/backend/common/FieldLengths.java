@@ -15,6 +15,9 @@ public final class FieldLengths {
     /** 카테고리 이름, 일정에 기록되는 분류 문자열 */
     public static final int CATEGORY_NAME = 50;
 
+    /** 일정에 붙이는 태그 하나 */
+    public static final int TAG = 50;
+
     /** 일정을 수행할 장소 */
     public static final int PLACE = 200;
 

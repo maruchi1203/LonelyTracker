@@ -308,6 +308,44 @@ class ScheduleApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.twoMinuteAction").value("운동복 갈아입기"));
     }
 
+    @Test
+    @DisplayName("태그를 여러 개 붙일 수 있고 그중 하나로 걸러진다")
+    void tagsAreManyAndFilterable() throws Exception {
+        ObjectNode node = mapper.createObjectNode();
+        node.put("title", "운동");
+        node.put("startAt", inWindow(1, "07:00:00"));
+        node.putArray("tags").add("육체").add("아침");
+
+        mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(node)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.tags.length()").value(2));
+
+        createAndGetId("독서", inWindow(1, "21:00:00"));
+
+        JsonNode found = json(mvc.perform(get(BASE).param("tag", "아침"))
+                .andExpect(status().isOk()));
+
+        assertThat(found).hasSize(1);
+        assertThat(found.get(0).get("title").asString()).isEqualTo("운동");
+    }
+
+    @Test
+    @DisplayName("빈 태그와 앞뒤 공백은 버리고 중복은 하나로 합친다")
+    void tagsAreNormalized() throws Exception {
+        ObjectNode node = mapper.createObjectNode();
+        node.put("title", "운동");
+        node.put("startAt", inWindow(1, "07:00:00"));
+        node.putArray("tags").add("  육체  ").add("육체").add("   ");
+
+        JsonNode created = json(mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(node)))
+                .andExpect(status().isCreated()));
+
+        assertThat(created.get("tags")).hasSize(1);
+        assertThat(created.get("tags").get(0).asString()).isEqualTo("육체");
+    }
+
     // --- 헬퍼 -------------------------------------------------------------
 
     /** 이번 주 월요일로부터 며칠 뒤의 시각을 요청용 문자열로 만든다. */

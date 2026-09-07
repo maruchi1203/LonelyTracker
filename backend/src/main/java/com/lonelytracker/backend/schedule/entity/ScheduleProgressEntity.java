@@ -99,12 +99,6 @@ public class ScheduleProgressEntity {
         private LocalDateTime endAt;
 
         /**
-         * 일정 카테고리
-         */
-        @Column(length = FieldLengths.CATEGORY_NAME)
-        private String category;
-
-        /**
          * 등록일시
          */
         @CreatedDate
@@ -134,14 +128,12 @@ public class ScheduleProgressEntity {
          * @param description 설명
          * @param startAt     시작일시
          * @param endAt       종료일시
-         * @param category    일정 카테고리
          */
         public void overrideFields(String title, String description, LocalDateTime startAt,
-                        LocalDateTime endAt, String category) {
+                        LocalDateTime endAt) {
                 this.title = title;
                 this.description = description;
                 this.startAt = startAt;
                 this.endAt = endAt;
-                this.category = category;
         }
 }
