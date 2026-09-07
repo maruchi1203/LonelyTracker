@@ -143,7 +143,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
                 "model", setting.model(),
                 "input", List.of(
                         Map.of("role", "system", "content",
-                                systemPrompt(command.now(), command.categories())),
+                                systemPrompt(command.now(), command.knownTags())),
                         Map.of("role", "user", "content", command.text())),
                 "text", Map.of("format", Map.of(
                         "type", "json_schema",
@@ -153,8 +153,8 @@ public class OpenAiScheduleParser implements ScheduleParser {
     }
 
     /** 규칙과 예시를 담은 system 메시지를 만든다. 칸별 규칙은 {@link ParsedScheduleSchema} 에 있다. */
-    private String systemPrompt(LocalDateTime now, List<String> categories) {
-        String categoryList = categories.isEmpty() ? "(없음)" : String.join(", ", categories);
+    private String systemPrompt(LocalDateTime now, List<String> knownTags) {
+        String tagList = knownTags.isEmpty() ? "(없음)" : String.join(", ", knownTags);
 
         return """
                 너는 한국어 일정 문장을 구조화된 JSON으로 바꾸는 도구다.
@@ -163,9 +163,9 @@ public class OpenAiScheduleParser implements ScheduleParser {
                 - 모르는 값은 지어내지 말고 null로 두고, 그 칸의 ID를 questions에 넣는다.
                 - 행동이 막연하면(예: "열심히 하기") TOO_VAGUE를 넣거나 질문을 요청한다.
 
-                예시 — 현재 시각이 2026-08-27T13:00:00 목요일, 분류 목록이 [육체] 일 때:
+                예시 — 현재 시각이 2026-08-27T13:00:00 목요일, 태그 후보가 [육체] 일 때:
                 "내일 3시 헬스장에서 운동"
-                  title=운동 startAt=2026-08-28T15:00:00 category=육체 place=헬스장
+                  title=운동 startAt=2026-08-28T15:00:00 tags=["육체"] place=헬스장
                 "매주 월수금 아침 7시 헬스장에서 운동"
                   startAt=2026-08-31T07:00:00
                   recurrence={"freq":"WEEKLY","byWeekday":["MONDAY","WEDNESDAY","FRIDAY"],"endsOn":null}
@@ -176,9 +176,9 @@ public class OpenAiScheduleParser implements ScheduleParser {
                   title=회의 startAt=null questions=["DATE","START_TIME","PLACE"]
 
                 현재 시각: %s (%s) — 상대 날짜는 이 시각 기준으로 푼다.
-                분류 목록: %s
+                태그 후보: %s — 맞는 것이 있으면 쓰고, 없으면 새로 지어도 된다.
                 """
-                .formatted(now, koreanDayOfWeek(now.getDayOfWeek()), categoryList);
+                .formatted(now, koreanDayOfWeek(now.getDayOfWeek()), tagList);
     }
 
     private String koreanDayOfWeek(DayOfWeek day) {
@@ -209,10 +209,25 @@ public class OpenAiScheduleParser implements ScheduleParser {
                 dateTimeOrNull(node, "startAt"),
                 dateTimeOrNull(node, "endAt"),
                 node.path("allDay").asBoolean(false),
-                textOrNull(node, "category"),
+                tagsOf(node.path("tags")),
                 textOrNull(node, "place"),
                 recurringOf(node.path("recurrence")),
                 questionsOf(node.path("questions")));
+    }
+
+    /** 초안의 태그. 빈 것과 공백은 버린다 */
+    private List<String> tagsOf(JsonNode node) {
+        if (!node.isArray()) {
+            return List.of();
+        }
+        List<String> tags = new ArrayList<>();
+        for (JsonNode t : node) {
+            String name = t.asString();
+            if (name != null && !name.isBlank()) {
+                tags.add(name.strip());
+            }
+        }
+        return tags;
     }
 
     /** 초안의 반복 규칙. 없으면 null */

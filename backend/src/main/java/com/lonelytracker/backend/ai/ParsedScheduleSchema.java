@@ -24,12 +24,15 @@ final class ParsedScheduleSchema {
                         "startAt", nullableString("2026-08-25T14:30:00 형식. 타임존 없음"),
                         "endAt", nullableString("종료 시각. 없으면 null"),
                         "allDay", Map.of("type", "boolean"),
-                        "category", nullableString("사용자 분류 목록에 있는 이름만. 없으면 null"),
+                        "tags", Map.of(
+                                "type", "array",
+                                "description", "일정의 분류. 후보에 없는 태그도 만들 수 있다. 없으면 빈 배열",
+                                "items", Map.of("type", "string")),
                         "place", nullableString("어디서 하는지. 문장에 없으면 null"),
                         "recurrence", getRecurringSchedule(),
                         "questions", questions()),
                 List.of("title", "startAt", "endAt", "allDay",
-                        "category", "place", "recurrence", "questions"));
+                        "tags", "place", "recurrence", "questions"));
     }
 
     // 반복 스케줄

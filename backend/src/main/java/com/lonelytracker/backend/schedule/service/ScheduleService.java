@@ -105,6 +105,11 @@ public class ScheduleService {
     /**
      * 반복 일정 전부와 최근 성적
      */
+    /** 이미 쓴 적 있는 태그 이름. 입력 자동완성이 쓴다 */
+    public List<String> findTagNames() {
+        return scheduleRepository.findTagNames(currentUserProvider.get().getId());
+    }
+
     public List<ScheduleRecurringResponse> findRecurring() {
         List<ScheduleEntity> schedules = scheduleRepository.findRecurring(
                 currentUserProvider.get().getId());

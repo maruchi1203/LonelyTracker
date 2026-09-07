@@ -73,9 +73,7 @@ class ScheduleParseApiTest extends IntegrationTest {
     @Test
     @DisplayName("파싱 결과를 초안으로 돌려주고 저장하지는 않는다")
     void returnsDraftWithoutSaving() throws Exception {
-        mvc.perform(post("/api/categories").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"육체\"}")).andExpect(status().isCreated());
-        parser.willReturn(draft("헬스장 운동", "2026-09-08T15:00:00", "헬스장", "육체"));
+        parser.willReturn(draft("헬스장 운동", "2026-09-08T15:00:00", "헬스장", List.of("육체")));
 
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"내일 3시 헬스장에서 운동\"}"))
@@ -83,7 +81,7 @@ class ScheduleParseApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.title").value("헬스장 운동"))
                 .andExpect(jsonPath("$.startAt").value("2026-09-08T15:00:00"))
                 .andExpect(jsonPath("$.place").value("헬스장"))
-                .andExpect(jsonPath("$.category").value("육체"));
+                .andExpect(jsonPath("$.tags[0]").value("육체"));
 
         // 저장되지 않았다 - 목록이 비어 있어야 한다
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -108,39 +106,36 @@ class ScheduleParseApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("사용자의 카테고리 목록이 파서에 전달된다")
-    void passesCategoriesToParser() throws Exception {
-        parser.willReturn(draft("운동", "2026-09-08T15:00:00", null, null));
-
-        mvc.perform(post("/api/categories").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"육체\"}")).andExpect(status().isCreated());
+    @DisplayName("이미 쓴 태그가 후보로 파서에 전달된다")
+    void passesKnownTagsToParser() throws Exception {
+        createScheduleTagged("육체");
+        parser.willReturn(draft("운동", "2026-09-08T15:00:00", null, List.of()));
 
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"운동\"}")).andExpect(status().isOk());
 
-        // 목록을 안 주면 모델이 없는 분류를 만들어 낸다
-        assertThat(parser.lastCategories).contains("육체");
+        // 후보를 안 주면 모델이 매번 다른 이름을 지어낸다
+        assertThat(parser.lastKnownTags).contains("육체");
     }
 
     @Test
-    @DisplayName("목록에 없는 분류를 지어내면 버린다")
-    void dropsInventedCategory() throws Exception {
-        mvc.perform(post("/api/categories").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"육체\"}")).andExpect(status().isCreated());
-        parser.willReturn(draft("운동", "2026-09-08T15:00:00", null, "존재하지않는분류"));
+    @DisplayName("후보에 없는 태그를 지어내도 그대로 남는다")
+    void keepsInventedTag() throws Exception {
+        createScheduleTagged("육체");
+        parser.willReturn(draft("운동", "2026-09-08T15:00:00", null, List.of("처음쓰는태그")));
 
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"운동\"}"))
                 .andExpect(status().isOk())
-                // non_null 직렬화라 버려진 값은 필드째 빠진다
-                .andExpect(jsonPath("$.category").doesNotExist());
+                // 태그는 자유 입력이라 후보 밖의 이름도 버리지 않는다
+                .andExpect(jsonPath("$.tags[0]").value("처음쓰는태그"));
     }
 
     @Test
     @DisplayName("반복 규칙도 초안에 실린다")
     void returnsRecurrence() throws Exception {
         parser.willReturn(new ParsedSchedule(
-                "운동", LocalDateTime.parse("2026-09-07T07:00:00"), null, false, "육체", "헬스장",
+                "운동", LocalDateTime.parse("2026-09-07T07:00:00"), null, false, List.of("육체"), "헬스장",
                 new ParsedRecurringSchedule(ScheduleRecurrenceFreq.WEEKLY,
                         EnumSet.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY), null),
                 List.of()));
@@ -262,9 +257,17 @@ class ScheduleParseApiTest extends IntegrationTest {
 
     // --- 가짜 파서 ---------------------------------------------------------
 
-    private ParsedSchedule draft(String title, String startAt, String place, String category) {
+    private ParsedSchedule draft(String title, String startAt, String place, List<String> tags) {
         return new ParsedSchedule(title, LocalDateTime.parse(startAt), null, false,
-                category, place, null, List.of());
+                tags, place, null, List.of());
+    }
+
+    /** 태그를 후보로 만들려면 그 태그를 쓴 일정이 하나 있어야 한다 */
+    private void createScheduleTagged(String tag) throws Exception {
+        mvc.perform(post("/api/schedules").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"기존 일정\",\"startAt\":\"2026-09-01T09:00:00\","
+                        + "\"tags\":[\"" + tag + "\"]}"))
+                .andExpect(status().isCreated());
     }
 
     /** 정해진 답을 돌려주는 가짜. 실제 API 를 부르지 않는다. */
@@ -272,13 +275,13 @@ class ScheduleParseApiTest extends IntegrationTest {
 
         private Function<String, ParsedSchedule> behavior;
         LocalDateTime lastNow;
-        List<String> lastCategories;
+        List<String> lastKnownTags;
         String lastApiKey;
 
         void reset() {
             behavior = null;
             lastNow = null;
-            lastCategories = null;
+            lastKnownTags = null;
             lastApiKey = null;
         }
 
@@ -295,7 +298,7 @@ class ScheduleParseApiTest extends IntegrationTest {
         @Override
         public ParsedSchedule parse(AiParseCommand command) {
             this.lastNow = command.now();
-            this.lastCategories = command.categories();
+            this.lastKnownTags = command.knownTags();
             this.lastApiKey = command.apiKey();
             return behavior.apply(command.text());
         }

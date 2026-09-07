@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -344,6 +345,33 @@ class ScheduleApiTest extends IntegrationTest {
 
         assertThat(created.get("tags")).hasSize(1);
         assertThat(created.get("tags").get(0).asString()).isEqualTo("육체");
+    }
+
+    @Test
+    @DisplayName("태그 목록은 이미 쓴 이름만 중복 없이 정렬해 돌려준다")
+    void listsUsedTagNames() throws Exception {
+        ObjectNode first = mapper.createObjectNode();
+        first.put("title", "운동");
+        first.put("startAt", inWindow(1, "07:00:00"));
+        first.putArray("tags").add("육체").add("아침");
+
+        ObjectNode second = mapper.createObjectNode();
+        second.put("title", "달리기");
+        second.put("startAt", inWindow(2, "07:00:00"));
+        second.putArray("tags").add("육체");
+
+        for (ObjectNode body : List.of(first, second)) {
+            mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(body)))
+                    .andExpect(status().isCreated());
+        }
+
+        // 두 일정이 "육체"를 함께 쓰지만 후보로는 한 번만 나온다
+        mvc.perform(get(BASE + "/tags"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0]").value("아침"))
+                .andExpect(jsonPath("$[1]").value("육체"));
     }
 
     // --- 헬퍼 -------------------------------------------------------------

@@ -66,6 +66,15 @@ public class ScheduleController {
     }
 
     /**
+     * 이미 쓴 적 있는 태그 이름
+     * 입력 자동완성이 쓴다
+     */
+    @GetMapping("/tags")
+    public List<String> findTagNames() {
+        return scheduleService.findTagNames();
+    }
+
+    /**
      * 반복 일정의 목록과 달성률
      */
     @GetMapping("/recurring")

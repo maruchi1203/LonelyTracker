@@ -13,7 +13,7 @@ public enum ParseQuestion {
     WEEKDAY("무슨 요일에 반복할까요?"),
     RECUR_END("언제까지 이어갈까요? 정하지 않으면 계속됩니다."),
     TOO_VAGUE("2분 안에 시작할 수 있는 행동으로 쪼개볼까요?"),
-    CATEGORY("어느 분류에 넣을까요?");
+    TAG("어떤 태그를 붙일까요?");
 
     private final String text;
 
