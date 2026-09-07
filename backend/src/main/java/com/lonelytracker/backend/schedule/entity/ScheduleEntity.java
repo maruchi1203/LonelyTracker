@@ -99,6 +99,14 @@ public class ScheduleEntity {
     private Set<String> tags = new HashSet<>();
 
     /**
+     * 태그 사본
+     * 지연 로딩 컬렉션을 그대로 내보내면 세션이 닫힌 뒤 직렬화가 깨진다
+     */
+    public Set<String> tagsCopy() {
+        return Set.copyOf(tags);
+    }
+
+    /**
      * 수행 장소
      */
     @Column(length = FieldLengths.PLACE)

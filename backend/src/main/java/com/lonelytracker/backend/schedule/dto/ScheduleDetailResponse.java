@@ -42,7 +42,7 @@ public record ScheduleDetailResponse(
                 schedule.getStartAt(),
                 (minutes == null) ? null : schedule.getStartAt().plus(Duration.ofMinutes(minutes)),
                 schedule.isAllDay(),
-                schedule.getTags(),
+                schedule.tagsCopy(),
                 schedule.getPlace(),
                 schedule.getTwoMinuteAction(),
                 (recur == null) ? null : ScheduleRecurrenceResponse.from(recur),
