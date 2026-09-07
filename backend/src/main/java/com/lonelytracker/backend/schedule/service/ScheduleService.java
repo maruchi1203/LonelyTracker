@@ -105,6 +105,24 @@ public class ScheduleService {
     /**
      * 반복 일정 전부와 최근 성적
      */
+    /**
+     * 1회성 일정을 완료하거나 되돌린다.
+     *
+     * @throws IllegalArgumentException 습관이면. 습관은 회차마다 상태를 갖는다
+     */
+    @Transactional
+    public ScheduleResponse changeCompletion(Long id, boolean completed) {
+        ScheduleEntity schedule = getOwnedOrThrow(id);
+        if (recurRepository.existsById(id)) {
+            throw new IllegalArgumentException(
+                    "습관은 회차마다 상태를 바꿔 주세요");
+        }
+
+        schedule.changeCompletion(completed);
+        scheduleRepository.saveAndFlush(schedule);
+        return firstInstanceOf(schedule);
+    }
+
     /** 이미 쓴 적 있는 태그 이름. 입력 자동완성이 쓴다 */
     public List<String> findTagNames() {
         return scheduleRepository.findTagNames(currentUserProvider.get().getId());
@@ -184,7 +202,9 @@ public class ScheduleService {
         ScheduleUtil.validatePeriod(request.startAt(), request.endAt());
 
         ScheduleEntity schedule = getOwnedOrThrow(id);
-        LocalDate oldDate = schedule.getStartAt().toLocalDate();
+        LocalDate oldDate = (schedule.getStartAt() == null)
+                ? null
+                : schedule.getStartAt().toLocalDate();
 
         schedule.update(
                 request.title(),
@@ -199,8 +219,11 @@ public class ScheduleService {
         applyRecurChange(schedule, request.recurrence());
 
         // 1회성 일정의 날짜를 옮기면 회차 기록의 onDate도 따라가야 한다
-        LocalDate newDate = request.startAt().toLocalDate();
-        if (!recurRepository.existsById(id) && !oldDate.equals(newDate)) {
+        LocalDate newDate = (request.startAt() == null)
+                ? null
+                : request.startAt().toLocalDate();
+        if (!recurRepository.existsById(id) && oldDate != null && newDate != null
+                && !oldDate.equals(newDate)) {
             progressRepository.findByScheduleIdAndOnDate(id, oldDate)
                     .ifPresent(p -> {
                         progressRepository.delete(p);
@@ -263,6 +286,11 @@ public class ScheduleService {
 
     /** 규칙이 있으면 첫 회차, 없으면 그 일정 자신. */
     private ScheduleResponse firstInstanceOf(ScheduleEntity schedule) {
+        // 날짜를 안 정한 항목은 회차가 없다. 리스트에만 남는다
+        if (schedule.getStartAt() == null) {
+            return ScheduleInstanceExpander.withoutInstance(schedule);
+        }
+
         ScheduleRecurEntity recur = recurRepository.findById(schedule.getId()).orElse(null);
         LocalDate first = ScheduleUtil.firstDateOf(schedule, recur);
 

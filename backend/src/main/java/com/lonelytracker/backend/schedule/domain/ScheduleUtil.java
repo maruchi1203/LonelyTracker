@@ -38,7 +38,9 @@ public final class ScheduleUtil {
      * @return 분 단위 소요시간. endAt이 null이면 null
      */
     public static Integer toMinutes(LocalDateTime startAt, LocalDateTime endAt) {
-        return (endAt == null) ? null : (int) Duration.between(startAt, endAt).toMinutes();
+        return (startAt == null || endAt == null)
+                ? null
+                : (int) Duration.between(startAt, endAt).toMinutes();
     }
 
     /**
@@ -79,6 +81,10 @@ public final class ScheduleUtil {
     public static void validatePeriod(LocalDateTime startAt, LocalDateTime endAt) {
         if (endAt == null) {
             return;
+        }
+        // 시작이 없으면 끝을 잴 기준이 없다
+        if (startAt == null) {
+            throw new IllegalArgumentException("시작일시 없이 종료일시만 줄 수 없습니다");
         }
         if (endAt.isBefore(startAt)) {
             throw new IllegalArgumentException("endAt은 startAt보다 이를 수 없습니다");
@@ -128,6 +134,10 @@ public final class ScheduleUtil {
      * @throws IllegalArgumentException 회차가 하나도 안 생길 때
      */
     public static void validateRule(ScheduleEntity schedule, ScheduleRecurrenceRequest rule) {
+        // 반복은 첫 회차를 기준으로 펼치므로 시작일시가 있어야 한다
+        if (schedule.getStartAt() == null) {
+            throw new IllegalArgumentException("반복 일정은 시작일시가 필요합니다");
+        }
         LocalDate start = schedule.getStartAt().toLocalDate();
         Set<DayOfWeek> weekdays = toWeekdaySet(rule.byWeekday());
         if (expandForCheck(rule.freq(), weekdays, start, rule.endsOn()).isEmpty()) {

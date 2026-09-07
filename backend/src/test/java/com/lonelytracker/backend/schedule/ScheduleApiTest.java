@@ -109,16 +109,48 @@ class ScheduleApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("상태만 변경할 수 있다")
-    void changeStatus() throws Exception {
+    @DisplayName("1회성 일정은 완료와 되돌리기를 일정 자체에 적는다")
+    void changeCompletion() throws Exception {
         long id = createAndGetId("완료할 일", "2026-09-02T10:00:00");
 
-        // 상태는 회차의 것이다. 단일 일정도 "1회짜리 일정" 이라 회차 경로를 쓴다.
+        mvc.perform(patch(BASE + "/" + id + "/completion")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"completed\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DONE"));
+
+        mvc.perform(patch(BASE + "/" + id + "/completion")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"completed\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PLANNED"));
+    }
+
+    @Test
+    @DisplayName("1회성 일정에 회차 상태를 바꾸려 하면 400을 반환한다")
+    void rejectsInstanceStatusOnAOneOff() throws Exception {
+        long id = createAndGetId("완료할 일", "2026-09-02T10:00:00");
+
         mvc.perform(patch(BASE + "/" + id + "/instances/2026-09-02/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"DONE\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("날짜 없는 항목도 완료할 수 있다")
+    void completesAnItemWithoutStartAt() throws Exception {
+        long id = json(mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"책 사기\"}"))
+                .andExpect(status().isCreated()))
+                .get("id").asLong();
+
+        mvc.perform(patch(BASE + "/" + id + "/completion")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"completed\":true}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("DONE"));
+                .andExpect(jsonPath("$.status").value("DONE"))
+                .andExpect(jsonPath("$.instanceDate").doesNotExist());
     }
 
     @Test
@@ -181,9 +213,9 @@ class ScheduleApiTest extends IntegrationTest {
         long done = createAndGetId("끝낸 일정", inWindow(2, "09:00:00"));
         createAndGetId("남은 일정", inWindow(2, "10:00:00"));
 
-        mvc.perform(patch(BASE + "/" + done + "/instances/" + MONDAY.plusDays(2) + "/status")
+        mvc.perform(patch(BASE + "/" + done + "/completion")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"status\":\"DONE\"}"));
+                .content("{\"completed\":true}"));
 
         JsonNode found = json(mvc.perform(get(BASE).param("status", "DONE")).andExpect(status().isOk()));
 
@@ -372,6 +404,66 @@ class ScheduleApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0]").value("아침"))
                 .andExpect(jsonPath("$[1]").value("육체"));
+    }
+
+    @Test
+    @DisplayName("시작일시 없이 만들면 회차가 없는 항목이 된다")
+    void createsWithoutStartAt() throws Exception {
+        mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"책 사기\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value("책 사기"))
+                .andExpect(jsonPath("$.instanceDate").doesNotExist())
+                .andExpect(jsonPath("$.startAt").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("시작일시가 없으면 달력 조회에 걸리지 않는다")
+    void withoutStartAtStaysOutOfTheCalendar() throws Exception {
+        mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"책 사기\"}"))
+                .andExpect(status().isCreated());
+        createAndGetId("회의", inWindow(1, "10:00:00"));
+
+        JsonNode found = json(mvc.perform(get(BASE)).andExpect(status().isOk()));
+
+        assertThat(found).hasSize(1);
+        assertThat(found.get(0).get("title").asString()).isEqualTo("회의");
+    }
+
+    @Test
+    @DisplayName("날짜를 채우면 그때부터 달력에 나온다")
+    void fillingTheStartAtPutsItOnTheCalendar() throws Exception {
+        long id = json(mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"책 사기\"}"))
+                .andExpect(status().isCreated()))
+                .get("id").asLong();
+
+        mvc.perform(put(BASE + "/" + id).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"책 사기\",\"startAt\":\"" + inWindow(1, "10:00:00") + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.instanceDate").value(MONDAY.plusDays(1).toString()));
+
+        JsonNode found = json(mvc.perform(get(BASE)).andExpect(status().isOk()));
+        assertThat(found).hasSize(1);
+    }
+
+    @Test
+    @DisplayName("시작일시 없이 종료일시만 주면 400을 반환한다")
+    void rejectsEndAtWithoutStartAt() throws Exception {
+        mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"책 사기\",\"endAt\":\"" + inWindow(1, "10:00:00") + "\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("시작일시 없이 반복을 걸면 400을 반환한다")
+    void rejectsRecurrenceWithoutStartAt() throws Exception {
+        mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "title": "운동",
+                                  "recurrence": { "freq": "DAILY" } }"""))
+                .andExpect(status().isBadRequest());
     }
 
     // --- 헬퍼 -------------------------------------------------------------

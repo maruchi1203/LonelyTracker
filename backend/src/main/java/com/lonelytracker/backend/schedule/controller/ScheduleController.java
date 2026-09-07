@@ -2,6 +2,7 @@ package com.lonelytracker.backend.schedule.controller;
 
 import com.lonelytracker.backend.schedule.dto.ScheduleInstanceUpdateRequest;
 import com.lonelytracker.backend.ai.ParsedSchedule;
+import com.lonelytracker.backend.schedule.dto.ScheduleCompletionRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleDetailResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleRecurringResponse;
@@ -140,6 +141,17 @@ public class ScheduleController {
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate onDate,
             @Valid @RequestBody ScheduleStatusRequest request) {
         return scheduleInstanceService.changeStatus(id, onDate, request.status());
+    }
+
+    /**
+     * 1회성 일정을 완료하거나 되돌린다
+     * 습관은 회차마다 상태를 갖는다
+     */
+    @PatchMapping("/{id}/completion")
+    public ScheduleResponse changeCompletion(
+            @PathVariable Long id,
+            @Valid @RequestBody ScheduleCompletionRequest request) {
+        return scheduleService.changeCompletion(id, request.completed());
     }
 
     /** 이 회차만 수정. null 을 준 필드는 일정 값으로 되돌아간다. */

@@ -34,13 +34,16 @@ public record ScheduleDetailResponse(
     /** @param recur null이면 1회성 일정 */
     public static ScheduleDetailResponse of(ScheduleEntity schedule, ScheduleRecurEntity recur) {
         Integer minutes = schedule.getDurationMinutes();
+        LocalDateTime startAt = schedule.getStartAt();
 
         return new ScheduleDetailResponse(
                 schedule.getId(),
                 schedule.getTitle(),
                 schedule.getDescription(),
-                schedule.getStartAt(),
-                (minutes == null) ? null : schedule.getStartAt().plus(Duration.ofMinutes(minutes)),
+                startAt,
+                (startAt == null || minutes == null)
+                        ? null
+                        : startAt.plus(Duration.ofMinutes(minutes)),
                 schedule.isAllDay(),
                 schedule.tagsCopy(),
                 schedule.getPlace(),

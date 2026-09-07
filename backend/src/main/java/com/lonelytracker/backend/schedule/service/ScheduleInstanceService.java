@@ -37,6 +37,15 @@ public class ScheduleInstanceService {
 
     @Transactional
     public ScheduleResponse changeStatus(Long scheduleId, LocalDate onDate, ScheduleStatus status) {
+        // 소유권을 먼저 본다. 순서를 바꾸면 남의 일정이 반복인지 아닌지가 새어 나간다
+        scheduleService.getOwnedOrThrow(scheduleId);
+
+        // 1회성의 완료는 일정 자체가 갖는다. 여기 두면 두 값이 어긋난다
+        if (!recurRepository.existsById(scheduleId)) {
+            throw new IllegalArgumentException(
+                    "1회성 일정은 PATCH /api/schedules/{id}/completion 을 쓰세요");
+        }
+
         ScheduleProgressEntity progress = getOrCreate(scheduleId, onDate);
         progress.changeStatus(status);
         return toResponse(progressRepository.saveAndFlush(progress));

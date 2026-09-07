@@ -81,6 +81,10 @@ public final class ScheduleInstanceExpander {
      */
     private static List<LocalDate> instanceDatesOf(ScheduleEntity s, ScheduleRecurEntity recur,
             LocalDateTime from, LocalDateTime to) {
+        // 시작일시가 없으면 펼칠 기준이 없다
+        if (s.getStartAt() == null) {
+            return List.of();
+        }
         LocalDate firstDate = s.getStartAt().toLocalDate();
 
         if (recur == null) {
@@ -97,6 +101,28 @@ public final class ScheduleInstanceExpander {
             return List.of();
         }
         return ScheduleInstanceDates.generate(recur.getFreq(), recur.getByWeekday(), windowStart, windowEnd);
+    }
+
+    /**
+     * 회차가 없는 항목의 응답
+     * 날짜를 안 정해 펼칠 것이 없을 때 일정 값을 그대로 담는다.
+     */
+    public static ScheduleResponse withoutInstance(ScheduleEntity s) {
+        return new ScheduleResponse(
+                s.getId(),
+                null,
+                s.getTitle(),
+                s.getDescription(),
+                null,
+                null,
+                s.isAllDay(),
+                false,
+                statusOf(s),
+                s.tagsCopy(),
+                s.getPlace(),
+                s.getTwoMinuteAction(),
+                s.getCreatedAt(),
+                s.getUpdatedAt());
     }
 
     /**
@@ -128,13 +154,21 @@ public final class ScheduleInstanceExpander {
                 endAt,
                 s.isAllDay(),
                 recurring,
-                (p == null) ? ScheduleStatus.PLANNED : p.getStatus(),
+                // 1회성의 완료는 일정 자체가 갖는다. 회차 상태는 습관 전용이다
+                recurring
+                        ? ((p == null) ? ScheduleStatus.PLANNED : p.getStatus())
+                        : statusOf(s),
                 // 일정 단위 값이라 회차가 덮어쓰지 않는다
                 s.tagsCopy(),
                 s.getPlace(),
                 s.getTwoMinuteAction(),
                 s.getCreatedAt(),
                 (p == null) ? s.getUpdatedAt() : p.getUpdatedAt());
+    }
+
+    /** 1회성 일정의 상태. 완료 시각의 유무로 정해진다 */
+    private static ScheduleStatus statusOf(ScheduleEntity s) {
+        return (s.getCompletedAt() == null) ? ScheduleStatus.PLANNED : ScheduleStatus.DONE;
     }
 
     /** 회차 값이 있으면 그것을, 없으면 일정 값을 쓴다 */

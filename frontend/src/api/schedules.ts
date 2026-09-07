@@ -40,7 +40,7 @@ export async function createSchedule(
   return handle<ScheduleResponse>(res)
 }
 
-/** 회차 하나의 상태를 바꾼다 */
+/** 회차 하나의 상태를 바꾼다. 습관 전용이다 */
 export async function changeInstanceStatus(
   id: number,
   onDate: string,
@@ -64,6 +64,19 @@ export async function updateInstance(
     method: 'PUT',
     headers: JSON_HEADERS,
     body: JSON.stringify(body),
+  })
+  return handle<ScheduleResponse>(res)
+}
+
+/** 1회성 일정을 완료하거나 되돌린다. 습관은 회차 상태를 쓴다 */
+export async function changeCompletion(
+  id: number,
+  completed: boolean,
+): Promise<ScheduleResponse> {
+  const res = await fetch(`${BASE}/${id}/completion`, {
+    method: 'PATCH',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ completed }),
   })
   return handle<ScheduleResponse>(res)
 }
