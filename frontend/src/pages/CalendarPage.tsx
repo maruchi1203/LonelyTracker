@@ -1,21 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { fetchCategories } from "../api/categories";
 import {
   changeInstanceStatus,
   createSchedule,
   deleteSchedule,
+  fetchTagNames,
   updateInstance,
 } from "../api/schedules";
 import CalendarToolbar from "../components/calendar/CalendarToolbar";
 import ScheduleCalendar from "../components/layouts/Calendar/ScheduleCalendar";
 import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
 import ScheduleList from "../components/ScheduleList";
-import { applyFilters, countByCategory } from "../domain/filter";
+import { applyFilters, countByTag } from "../domain/filter";
 import { coversDate } from "../domain/instance";
 import { useCalendarViewState } from "../hooks/useCalendarViewState";
 import { useMonthInstances } from "../hooks/useMonthInstances";
 import type {
-  UserCategoryResponse,
   DeleteScope,
   ScheduleCreateRequest,
   ScheduleResponse,
@@ -25,33 +24,33 @@ export default function CalendarPage() {
   const {
     month,
     selectedDate,
-    category,
+    tag,
     query,
     setMonth,
     toggleDate,
-    setCategory,
+    setTag,
     setQuery,
     clearFilters,
   } = useCalendarViewState();
   const { instances, loading, error, reload, patchOne, setError } =
     useMonthInstances(month);
 
-  const [categories, setCategories] = useState<UserCategoryResponse[]>([]);
+  const [knownTags, setKnownTags] = useState<string[]>([]);
 
   const fail = (e: unknown, fallback: string) =>
     setError(e instanceof Error ? e.message : fallback);
 
-  const loadCategories = useCallback(async () => {
+  const loadTags = useCallback(async () => {
     try {
-      setCategories(await fetchCategories());
+      setKnownTags(await fetchTagNames());
     } catch {
       // 목록 조회 쪽에서 이미 에러를 보여주므로 여기서는 조용히 넘어간다
     }
   }, []);
 
   useEffect(() => {
-    void loadCategories();
-  }, [loadCategories]);
+    void loadTags();
+  }, [loadTags]);
 
   /** 성공 여부를 돌려준다. 실패했는데 폼이 닫히거나 입력이 지워지면 곤란하다. */
   const handleCreate = async (body: ScheduleCreateRequest): Promise<boolean> => {
@@ -68,7 +67,7 @@ export default function CalendarPage() {
         setMonth(new Date(created.getFullYear(), created.getMonth(), 1));
       }
 
-      await Promise.all([reload(), loadCategories()]);
+      await Promise.all([reload(), loadTags()]);
       return true;
     } catch (e) {
       fail(e, "일정을 추가하지 못했습니다");
@@ -124,19 +123,19 @@ export default function CalendarPage() {
     setError(null);
     try {
       await deleteSchedule(instance.id, scope);
-      await Promise.all([reload(), loadCategories()]);
+      await Promise.all([reload(), loadTags()]);
     } catch (e) {
       fail(e, "일정을 삭제하지 못했습니다");
     }
   };
 
   // 칩 개수는 필터를 걸기 전의 창 전체로 센다
-  const usage = useMemo(() => countByCategory(instances), [instances]);
+  const usage = useMemo(() => countByTag(instances), [instances]);
 
   // 달력에 그릴 것 — 분류와 검색만 반영한다
   const forCalendar = useMemo(
-    () => applyFilters(instances, { category, query }),
-    [instances, category, query],
+    () => applyFilters(instances, { tag, query }),
+    [instances, tag, query],
   );
 
   // 아래 목록에 그릴 것 — 고른 날짜까지 좁힌다.
@@ -150,7 +149,7 @@ export default function CalendarPage() {
   );
 
   const doneCount = forList.filter((o) => o.status === "DONE").length;
-  const filtering = Boolean(category) || query.trim().length > 0;
+  const filtering = Boolean(tag) || query.trim().length > 0;
   const monthLabel = `${month.getFullYear()}년 ${month.getMonth() + 1}월`;
 
   return (
@@ -158,19 +157,19 @@ export default function CalendarPage() {
       <QuickAddLauncher
         // 날짜를 골라둔 상태면 그 날짜로 시작값을 채워준다
         defaultDate={selectedDate}
-        knownCategories={categories.map((c) => c.name)}
+        knownTags={knownTags}
         onCreate={handleCreate}
       />
 
       <CalendarToolbar
         query={query}
         onQueryChange={setQuery}
-        categories={categories}
+        known={knownTags}
         usage={usage}
         total={instances.length}
         monthLabel={monthLabel}
-        selectedCategory={category}
-        onSelectCategory={setCategory}
+        selectedTag={tag}
+        onSelectTag={setTag}
       />
 
       <ScheduleCalendar

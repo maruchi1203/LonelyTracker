@@ -155,11 +155,14 @@ function ScheduleListItem({
           <span className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
             {formatInstanceRange(instance)}
 
-            {instance.category && (
-              <span className="rounded-full border border-brand-100 bg-brand-50 px-2 py-0.5 font-medium text-brand-700">
-                {instance.category}
+            {(instance.tags ?? []).map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full border border-brand-100 bg-brand-50 px-2 py-0.5 font-medium text-brand-700"
+              >
+                {tag}
               </span>
-            )}
+            ))}
 
             <span
               className={`rounded-full border px-2 py-0.5 ${

@@ -9,7 +9,7 @@ import QuestionChips from "./QuestionChips";
 interface Props {
   draft: ScheduleForm;
   questions: ParseQuestion[];
-  knownCategories: string[];
+  knownTags: string[];
   saving: boolean;
   showTwoMinute?: boolean;
   onChange: (patch: Partial<ScheduleForm>) => void;
@@ -23,7 +23,7 @@ const HIGHLIGHT_MS = 1200;
 export default function ParsedDraftCard({
   draft,
   questions,
-  knownCategories,
+  knownTags,
   saving,
   showTwoMinute,
   onChange,
@@ -84,7 +84,7 @@ export default function ParsedDraftCard({
       <ScheduleFields
         value={draft}
         onChange={change}
-        knownCategories={knownCategories}
+        knownTags={knownTags}
         idPrefix="draft"
         fieldRef={fieldRef}
         decorate={decorate}

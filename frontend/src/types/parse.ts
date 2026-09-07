@@ -10,7 +10,7 @@ export type ParseQuestion =
   | "WEEKDAY"
   | "RECUR_END"
   | "TOO_VAGUE"
-  | "CATEGORY";
+  | "TAG";
 
 export interface ParsedRecurringSchedule {
   freq: RecurrenceFreq;
@@ -24,7 +24,7 @@ export interface ParsedSchedule {
   startAt?: string;
   endAt?: string;
   allDay: boolean;
-  category?: string;
+  tags?: string[];
   place?: string;
   recurrence?: ParsedRecurringSchedule;
   questions?: ParseQuestion[];
