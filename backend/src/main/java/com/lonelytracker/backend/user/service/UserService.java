@@ -9,14 +9,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.lonelytracker.backend.user.entity.UserEntity;
-import com.lonelytracker.backend.user.entity.UserCategoryEntity;
-import com.lonelytracker.backend.user.repository.UserCategoryRepository;
 import com.lonelytracker.backend.user.repository.UserRepository;
 
 
 /**
  * 사용자 계정과 설정, OpenAI API 키를 다룬다.
- * 카테고리 목록은 {@link UserCategoryService} 가 맡는다.
  */
 @Service
 @RequiredArgsConstructor
@@ -24,8 +21,6 @@ import com.lonelytracker.backend.user.repository.UserRepository;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final UserCategoryRepository userCategoryRepository;
-    private final AppProperties appProperties;
     private final UserProvider currentUserProvider;
 
     public UserResponse findById(Long id) {
@@ -61,7 +56,7 @@ public class UserService {
         return UserSettingsResponse.from(user);
     }
 
-    /** 사용자를 만들고 추천 카테고리를 함께 넣는다. */
+    /** 사용자를 만든다. */
     @Transactional
     public UserResponse create(String username, String displayName) {
         String name = username == null ? "" : username.strip();
@@ -79,20 +74,6 @@ public class UserService {
                 .displayName(displayName == null || displayName.isBlank() ? name : displayName.strip())
                 .build());
 
-        seedRecommendedCategories(user);
-
         return UserResponse.from(user);
-    }
-
-    /** 추천 목록은 application.yml 의 lonelytracker.user.recommended-categories 에 있다. */
-    private void seedRecommendedCategories(UserEntity user) {
-        int order = 0;
-        for (String categoryName : appProperties.user().recommendedCategories()) {
-            userCategoryRepository.save(UserCategoryEntity.builder()
-                    .user(user)
-                    .name(categoryName)
-                    .displayOrder(order++)
-                    .build());
-        }
     }
 }

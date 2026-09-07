@@ -141,7 +141,7 @@ class OpenAiRetryTest {
     /** 주어진 재시도 횟수로 파서를 만든다. 백오프가 실제로 잠들므로 횟수를 작게 잡는다. */
     private OpenAiScheduleParser parserWith(RestClient.Builder builder, int maxRetries) {
         AppProperties properties = new AppProperties(
-                new AppProperties.UserDefaults("default", List.of()),
+                new AppProperties.UserDefaults("default"),
                 new AppProperties.AiSetting("http://ai.test", "test-model",
                         Duration.ofSeconds(5), Duration.ofSeconds(30), maxRetries),
                 new AppProperties.Security("test-key"));

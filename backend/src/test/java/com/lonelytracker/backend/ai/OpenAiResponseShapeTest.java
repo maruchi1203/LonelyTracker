@@ -90,7 +90,7 @@ class OpenAiResponseShapeTest {
 
     private AppProperties properties() {
         return new AppProperties(
-                new AppProperties.UserDefaults("default", List.of()),
+                new AppProperties.UserDefaults("default"),
                 new AppProperties.AiSetting("http://localhost", "test-model",
                         Duration.ofSeconds(5), Duration.ofSeconds(30), 2),
                 new AppProperties.Security("test-key"));

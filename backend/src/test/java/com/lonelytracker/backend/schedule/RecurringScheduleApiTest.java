@@ -55,7 +55,7 @@ class RecurringScheduleApiTest extends IntegrationTest {
                           "title": "운동",
                           "startAt": "2026-09-07T07:00:00",
                           "endAt": "2026-09-07T08:00:00",
-                          "category": "육체",
+                          "tags": ["육체"],
                           "recurrence": {
                             "freq": "WEEKLY",
                             "byWeekday": ["MONDAY", "WEDNESDAY", "FRIDAY"]
@@ -346,7 +346,7 @@ class RecurringScheduleApiTest extends IntegrationTest {
     void detailCanBeSentBackUnchanged() throws Exception {
         long id = createSchedule("""
                 { "title": "운동", "startAt": "2026-09-07T07:00:00",
-                  "endAt": "2026-09-07T08:00:00", "category": "육체",
+                  "endAt": "2026-09-07T08:00:00", "tags": ["육체"],
                   "recurrence": { "freq": "WEEKLY",
                                   "byWeekday": ["MONDAY", "FRIDAY"],
                                   "endsOn": "2026-12-31" } }""");
@@ -365,7 +365,7 @@ class RecurringScheduleApiTest extends IntegrationTest {
 
         assertThat(after.get("startAt")).isEqualTo(before.get("startAt"));
         assertThat(after.get("endAt")).isEqualTo(before.get("endAt"));
-        assertThat(after.get("category")).isEqualTo(before.get("category"));
+        assertThat(after.get("tags")).isEqualTo(before.get("tags"));
         assertThat(after.get("recurrence")).as("반복이 사라지면 안 된다")
                 .isEqualTo(before.get("recurrence"));
     }

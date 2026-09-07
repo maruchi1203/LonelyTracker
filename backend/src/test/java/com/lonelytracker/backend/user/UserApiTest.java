@@ -18,14 +18,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import com.lonelytracker.backend.user.entity.UserCategoryEntity;
-import com.lonelytracker.backend.user.repository.UserCategoryRepository;
 
 /**
- * 사용자 API. 가입 시 추천 카테고리가 함께 만들어지는지가 핵심이다.
- * <p>
- * 이 시딩은 지금 어디에서도 호출되지 않아, 테스트가 없으면 한 번도 실행되지 않은 채
- * 방치된다. 나중에 회원가입을 붙이는 순간 처음 돌아가게 되는데 그때 깨져 있으면 곤란하다.
+ * 사용자 API
+ * 가입은 지금 어디에서도 호출되지 않아, 테스트가 없으면 한 번도 실행되지 않은 채 방치된다
  */
 @AutoConfigureMockMvc
 @Transactional
@@ -40,9 +36,6 @@ class UserApiTest extends IntegrationTest {
     ObjectMapper mapper;
 
     @Autowired
-    UserCategoryRepository userCategoryRepository;
-
-    @Autowired
     AppProperties appProperties;
 
     @Test
@@ -54,24 +47,13 @@ class UserApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("사용자를 만들면 추천 카테고리가 함께 생성된다")
-    void createSeedsRecommendedCategories() throws Exception {
-        JsonNode created = mapper.readTree(
-                mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"newbie\",\"displayName\":\"새 사용자\"}"))
-                        .andExpect(status().isCreated())
-                        .andExpect(jsonPath("$.username").value("newbie"))
-                        .andReturn().getResponse().getContentAsString());
-
-        var seeded = userCategoryRepository
-                .findByUserIdOrderByDisplayOrderAscNameAsc(created.get("id").asLong())
-                .stream()
-                .map(UserCategoryEntity::getName)
-                .toList();
-
-        assertThat(seeded)
-                .as("가입 직후 사이드바가 비어 있으면 무엇부터 적어야 할지 막막하다")
-                .containsExactlyElementsOf(appProperties.user().recommendedCategories());
+    @DisplayName("사용자를 만들면 201과 함께 계정이 생긴다")
+    void createsUser() throws Exception {
+        mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"username\":\"newbie\",\"displayName\":\"새 사용자\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.username").value("newbie"))
+                .andExpect(jsonPath("$.displayName").value("새 사용자"));
     }
 
     @Test
