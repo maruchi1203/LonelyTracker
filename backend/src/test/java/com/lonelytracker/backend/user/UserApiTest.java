@@ -15,6 +15,7 @@ import tools.jackson.databind.ObjectMapper;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import com.lonelytracker.backend.user.entity.UserCategoryEntity;
@@ -99,6 +100,30 @@ class UserApiTest extends IntegrationTest {
                 .content("{\"username\":\"someone@example.com\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username").value("someone@example.com"));
+    }
+
+    @Test
+    @DisplayName("2분 법칙은 기본으로 켜져 있고 끄면 그대로 남는다")
+    void twoMinuteRuleDefaultsOnAndCanBeTurnedOff() throws Exception {
+        mvc.perform(get(BASE + "/me/settings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.twoMinuteRule").value(true));
+
+        mvc.perform(put(BASE + "/me/settings").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"twoMinuteRule\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.twoMinuteRule").value(false));
+
+        mvc.perform(get(BASE + "/me/settings"))
+                .andExpect(jsonPath("$.twoMinuteRule").value(false));
+    }
+
+    @Test
+    @DisplayName("twoMinuteRule을 빼고 보내면 400을 반환한다")
+    void changeSettingsRejectsMissingField() throws Exception {
+        mvc.perform(put(BASE + "/me/settings").contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
