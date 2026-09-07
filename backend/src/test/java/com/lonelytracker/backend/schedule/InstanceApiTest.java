@@ -139,7 +139,7 @@ class InstanceApiTest extends IntegrationTest {
 
                 moveInstance(id, day(2), day(3) + "T07:00:00").andExpect(status().isOk());
 
-                // 결국 해냈다. 수행률에는 DONE으로 잡히고 "원래 날이 아니었다"는 사실은 따로 남는다
+                // 수행률에는 DONE으로 잡히고 "원래 날이 아니었다"는 사실은 따로 남는다
                 mvc.perform(patch(BASE + "/" + id + "/instances/" + day(2) + "/status")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content("{\"status\":\"DONE\"}"))

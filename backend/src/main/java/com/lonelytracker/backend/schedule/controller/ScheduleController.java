@@ -65,14 +65,17 @@ public class ScheduleController {
         return scheduleService.search(from, to, status, category);
     }
 
-    /** 반복 일정 목록과 최근 성적. 회차가 아니라 규칙이라 습관 화면이 쓴다 */
+    /**
+     * 반복 일정의 목록과 달성률
+     */
     @GetMapping("/recurring")
     public List<ScheduleRecurringResponse> findRecurring() {
         return scheduleService.findRecurring();
     }
 
     /**
-     * 일정 하나를 돌려준다. 반복 규칙이 함께 실려 수정 폼이 읽을 수 있다.
+     * 일정 하나를 돌려줌
+     * 반복 규칙이 함께 실려 수정 폼이 읽을 수 있음
      *
      * @param id 일정 ID
      * @return 일정 자체의 값 {@link ScheduleDetailResponse}
@@ -82,7 +85,13 @@ public class ScheduleController {
         return scheduleService.findById(id);
     }
 
-    /** 자연어를 일정 초안으로 바꾼다. 저장은 사용자가 확인한 뒤 POST /api/schedules 로 한다 */
+    /**
+     * 자연어를 일정 초안으로 바꿈
+     * 저장은 사용자가 확인한 뒤 POST /api/schedules로 함
+     * 
+     * @param request
+     * @return
+     */
     @PostMapping("/parse")
     public ParsedSchedule parse(@Valid @RequestBody ScheduleParseRequest request) {
         return scheduleParseService.parse(request.text());
@@ -123,7 +132,6 @@ public class ScheduleController {
             @Valid @RequestBody ScheduleStatusRequest request) {
         return scheduleInstanceService.changeStatus(id, onDate, request.status());
     }
-
 
     /** 이 회차만 수정. null 을 준 필드는 일정 값으로 되돌아간다. */
     @PutMapping("/{id}/instances/{onDate}")
