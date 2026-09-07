@@ -96,15 +96,17 @@ public final class ScheduleUtil {
      * @throws IllegalArgumentException 뒤집혔거나 366일을 넘을 때
      */
     public static void validateWindow(LocalDateTime from, LocalDateTime to) {
+        // 종료일시는 시작일시보다 작게
         if (to.isBefore(from)) {
             throw new IllegalArgumentException("to는 from보다 이를 수 없습니다");
         }
+
+        // 조회 구간은 최대치(MAX_WINDOW)보다 작게
         if (Duration.between(from, to).compareTo(MAX_WINDOW) > 0) {
             throw new IllegalArgumentException(
                     "조회 구간은 " + MAX_WINDOW.toDays() + "일을 넘을 수 없습니다");
         }
     }
-
 
     /**
      * 회차가 자기 날짜에서 너무 멀어지지 않았는지 검사한다.
@@ -157,7 +159,7 @@ public final class ScheduleUtil {
         }
 
         List<Integer> days = byWeekday.stream().map(DayOfWeek::getValue).sorted().toList();
-        int min = 7 - days.get(days.size() - 1) + days.get(0);   // 마지막 요일에서 다음 주 첫 요일까지
+        int min = 7 - days.get(days.size() - 1) + days.get(0); // 마지막 요일에서 다음 주 첫 요일까지
         for (int i = 1; i < days.size(); i++) {
             min = Math.min(min, days.get(i) - days.get(i - 1));
         }
