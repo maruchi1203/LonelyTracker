@@ -24,15 +24,20 @@ export type Weekday =
  */
 export interface ScheduleResponse {
   id: number;
-  /** "YYYY-MM-DD". 규칙이 만든 원래 날짜라 옮겨도 바뀌지 않는다 */
-  instanceDate: string;
+  /**
+   * "YYYY-MM-DD". 규칙이 만든 원래 날짜라 옮겨도 바뀌지 않는다
+   * 없으면 날짜를 안 정한 항목이라 회차가 없다
+   */
+  instanceDate?: string;
   title: string;
   /** 마크다운 원문 */
   description?: string;
-  /** "YYYY-MM-DDTHH:mm:ss". 타임존 표기가 없다 */
-  startAt: string;
+  /** "YYYY-MM-DDTHH:mm:ss". 타임존 표기가 없다. 없으면 리스트에만 있는 항목이다 */
+  startAt?: string;
   endAt?: string;
   allDay: boolean;
+  /** 습관(반복)의 회차인지. 완료를 어느 경로로 보낼지가 여기서 갈린다 */
+  recurring: boolean;
   status: ScheduleStatus;
   /** 태그도 장소처럼 일정 단위 값이라 어느 회차를 봐도 같다 */
   tags?: string[];
@@ -56,7 +61,7 @@ export interface RecurrenceRequest {
 export interface ScheduleCreateRequest {
   title: string;
   description?: string;
-  startAt: string;
+  startAt?: string;
   endAt?: string;
   allDay?: boolean;
   tags?: string[];

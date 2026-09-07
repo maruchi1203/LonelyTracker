@@ -23,6 +23,7 @@ export function sameInstance(
  * 날짜만 보므로 같은 날 안에서 시각만 옮긴 것은 해당하지 않는다.
  */
 export function isMoved(instance: ScheduleResponse): boolean {
+  if (!instance.startAt || !instance.instanceDate) return false
   return instance.instanceDate !== toLocalDate(new Date(instance.startAt))
 }
 
@@ -35,6 +36,7 @@ export function isEarlyDone(
   instance: ScheduleResponse,
   today: string = toLocalDate(new Date()),
 ): boolean {
+  if (!instance.instanceDate) return false
   return instance.status === 'DONE' && instance.instanceDate > today
 }
 
@@ -69,6 +71,8 @@ export function coversDate(instance: ScheduleResponse, date: Date): boolean {
 
 /** 회차가 걸치는 날짜들. 시작일은 언제나 하나 들어간다 */
 export function instanceDateKeys(instance: ScheduleResponse): string[] {
+  // 날짜를 안 정한 항목은 달력의 어느 칸에도 놓이지 않는다
+  if (!instance.startAt) return []
   const start = new Date(instance.startAt)
   const finish = instance.endAt ? new Date(instance.endAt) : start
 
@@ -91,6 +95,7 @@ function midnight(date: Date): Date {
 
 /** 목록에 보여줄 기간 문구. 날짜가 넘어가면 종료일자도 함께 적는다 */
 export function formatInstanceRange(instance: ScheduleResponse): string {
+  if (!instance.startAt) return '날짜 없음'
   const start = new Date(instance.startAt)
   const end = instance.endAt ? new Date(instance.endAt) : null
   const sameDay = end !== null && isSameDay(start, end)

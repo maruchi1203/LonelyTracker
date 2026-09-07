@@ -23,6 +23,7 @@ function instance(
     title: '운동',
     startAt: `${instanceDate}T07:00:00`,
     allDay: false,
+    recurring: false,
     status: 'PLANNED',
       createdAt: '2026-08-01T00:00:00',
     updatedAt: '2026-08-01T00:00:00',

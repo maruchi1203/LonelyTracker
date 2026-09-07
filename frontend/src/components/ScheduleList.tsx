@@ -94,7 +94,7 @@ function ScheduleListItem({
 }: ItemProps) {
   const [pane, setPane] = useState<"none" | "menu" | "move">("none");
   const [moveTo, setMoveTo] = useState(() =>
-    toLocalInputValue(new Date(instance.startAt)),
+    toLocalInputValue(new Date(instance.startAt ?? Date.now())),
   );
   const row = useRef<HTMLLIElement>(null);
 
@@ -221,18 +221,23 @@ function ScheduleListItem({
             다른 날로 옮기기
           </button>
 
-          {/* 안 한 것을 안 했다고 남긴다. 수행률의 분모에 그대로 남는다 */}
-          <button
-            type="button"
-            role="menuitem"
-            className={`${MENU_ITEM} text-slate-700 hover:bg-slate-100`}
-            onClick={() => {
-              setPane("none");
-              onSkip(instance);
-            }}
-          >
-            건너뛰기
-          </button>
+          {/*
+            안 한 것을 안 했다고 남긴다. 달성률의 분모에 그대로 남는다.
+            지키기로 한 규칙이 있어야 안 지킨 것도 성립하므로 습관에만 둔다
+          */}
+          {instance.recurring && (
+            <button
+              type="button"
+              role="menuitem"
+              className={`${MENU_ITEM} text-slate-700 hover:bg-slate-100`}
+              onClick={() => {
+                setPane("none");
+                onSkip(instance);
+              }}
+            >
+              건너뛰기
+            </button>
+          )}
 
           {/* 범위를 버튼 하나로 넘겨짚지 않는다 */}
           <button

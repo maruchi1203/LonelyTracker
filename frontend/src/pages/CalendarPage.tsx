@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  changeCompletion,
   changeInstanceStatus,
   createSchedule,
   deleteSchedule,
@@ -59,12 +60,14 @@ export default function CalendarPage() {
       await createSchedule(body);
 
       // 저장한 일정이 보고 있는 달 밖이면 그 달로 옮긴다. 저장했는데 아무것도 안 보이면 안 된다
-      const created = new Date(body.startAt);
-      if (
-        created.getFullYear() !== month.getFullYear() ||
-        created.getMonth() !== month.getMonth()
-      ) {
-        setMonth(new Date(created.getFullYear(), created.getMonth(), 1));
+      if (body.startAt) {
+        const created = new Date(body.startAt);
+        if (
+          created.getFullYear() !== month.getFullYear() ||
+          created.getMonth() !== month.getMonth()
+        ) {
+          setMonth(new Date(created.getFullYear(), created.getMonth(), 1));
+        }
       }
 
       await Promise.all([reload(), loadTags()]);
@@ -77,13 +80,17 @@ export default function CalendarPage() {
 
   const handleToggleStatus = async (instance: ScheduleResponse) => {
     setError(null);
+    const done = instance.status === "DONE";
     try {
+      // 1회성의 완료는 일정 자체가, 습관의 완료는 회차가 갖는다
       patchOne(
-        await changeInstanceStatus(
-          instance.id,
-          instance.instanceDate,
-          instance.status === "DONE" ? "PLANNED" : "DONE",
-        ),
+        instance.recurring && instance.instanceDate
+          ? await changeInstanceStatus(
+              instance.id,
+              instance.instanceDate,
+              done ? "PLANNED" : "DONE",
+            )
+          : await changeCompletion(instance.id, !done),
       );
     } catch (e) {
       fail(e, "상태를 변경하지 못했습니다");
@@ -93,6 +100,7 @@ export default function CalendarPage() {
   const handleMove = async (instance: ScheduleResponse, startAt: string) => {
     setError(null);
     try {
+      if (!instance.instanceDate) return;
       // 종료를 안 보내면 일정의 소요시간을 그대로 쓴다
       patchOne(
         await updateInstance(instance.id, instance.instanceDate, { startAt }),
@@ -104,8 +112,10 @@ export default function CalendarPage() {
     }
   };
 
+  /** 건너뛰기는 습관에만 있다. 지키기로 한 규칙이 있어야 안 지킨 것도 성립한다 */
   const handleSkip = async (instance: ScheduleResponse) => {
     setError(null);
+    if (!instance.recurring || !instance.instanceDate) return;
     try {
       patchOne(
         await changeInstanceStatus(instance.id, instance.instanceDate, "SKIPPED"),

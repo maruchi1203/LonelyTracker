@@ -19,6 +19,7 @@ function span(
     startAt: `${startDate}T09:00:00`,
     endAt: endDate ? `${endDate}T18:00:00` : undefined,
     allDay: false,
+    recurring: false,
     status: 'PLANNED',
       createdAt: '2026-08-01T00:00:00',
     updatedAt: '2026-08-01T00:00:00',
