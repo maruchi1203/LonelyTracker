@@ -13,6 +13,7 @@ interface Props {
   defaultDate?: Date | null;
   /** AI가 문장을 못 읽었을 때 친 문장을 제목으로 넘겨받는다 */
   initialTitle?: string;
+  showTwoMinute?: boolean;
   disabled?: boolean;
 }
 
@@ -21,6 +22,7 @@ export default function ScheduleInputForm({
   knownCategories,
   defaultDate,
   initialTitle,
+  showTwoMinute,
   disabled,
 }: Props) {
   const [form, setForm] = useState<ScheduleForm>(() => ({
@@ -61,6 +63,7 @@ export default function ScheduleInputForm({
         onChange={change}
         knownCategories={knownCategories}
         idPrefix="manual"
+        showTwoMinute={showTwoMinute}
       />
 
       {problem && <p className="text-sm text-red-600">{problem}</p>}

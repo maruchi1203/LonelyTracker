@@ -250,6 +250,64 @@ class ScheduleApiTest extends IntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    @DisplayName("장소와 2분 행동은 일정 단위 값이라 어느 회차를 봐도 같다")
+    void placeAndTwoMinuteActionAreTheSameOnEveryInstance() throws Exception {
+        ObjectNode node = mapper.createObjectNode();
+        node.put("title", "운동");
+        node.put("startAt", inWindow(1, "07:00:00"));
+        node.put("place", "헬스장");
+        node.put("twoMinuteAction", "운동복 갈아입기");
+        node.putObject("recurrence").put("freq", "DAILY");
+
+        mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(node)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.place").value("헬스장"))
+                .andExpect(jsonPath("$.twoMinuteAction").value("운동복 갈아입기"));
+
+        JsonNode instances = json(mvc.perform(get(BASE)).andExpect(status().isOk()));
+
+        assertThat(instances).hasSizeGreaterThan(1);
+        assertThat(instances).allSatisfy(instance -> {
+            assertThat(instance.get("place").asString()).isEqualTo("헬스장");
+            assertThat(instance.get("twoMinuteAction").asString()).isEqualTo("운동복 갈아입기");
+        });
+    }
+
+    @Test
+    @DisplayName("단건 조회 응답을 그대로 되돌려 보내도 장소와 2분 행동이 남는다")
+    void detailResponseRoundTripsPlaceAndTwoMinuteAction() throws Exception {
+        ObjectNode node = mapper.createObjectNode();
+        node.put("title", "운동");
+        node.put("startAt", inWindow(1, "07:00:00"));
+        node.put("place", "헬스장");
+        node.put("twoMinuteAction", "운동복 갈아입기");
+
+        long id = json(mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(node)))
+                .andExpect(status().isCreated()))
+                .get("id").asLong();
+
+        ObjectNode detail = (ObjectNode) json(mvc.perform(get(BASE + "/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.place").value("헬스장"))
+                .andExpect(jsonPath("$.twoMinuteAction").value("운동복 갈아입기")));
+
+        // 읽기 전용 셋만 떼면 그대로 수정 요청 본문이 된다
+        detail.remove("id");
+        detail.remove("createdAt");
+        detail.remove("updatedAt");
+
+        mvc.perform(put(BASE + "/" + id).contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(detail)))
+                .andExpect(status().isOk());
+
+        mvc.perform(get(BASE + "/" + id))
+                .andExpect(jsonPath("$.place").value("헬스장"))
+                .andExpect(jsonPath("$.twoMinuteAction").value("운동복 갈아입기"));
+    }
+
     // --- 헬퍼 -------------------------------------------------------------
 
     /** 이번 주 월요일로부터 며칠 뒤의 시각을 요청용 문자열로 만든다. */

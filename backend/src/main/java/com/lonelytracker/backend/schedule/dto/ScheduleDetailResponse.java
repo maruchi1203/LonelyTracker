@@ -24,6 +24,8 @@ public record ScheduleDetailResponse(
         LocalDateTime endAt,
         boolean allDay,
         String category,
+        String place,
+        String twoMinuteAction,
         ScheduleRecurrenceResponse recurrence,
         LocalDateTime createdAt,
         LocalDateTime updatedAt) {
@@ -40,6 +42,8 @@ public record ScheduleDetailResponse(
                 (minutes == null) ? null : schedule.getStartAt().plus(Duration.ofMinutes(minutes)),
                 schedule.isAllDay(),
                 schedule.getCategory(),
+                schedule.getPlace(),
+                schedule.getTwoMinuteAction(),
                 (recur == null) ? null : ScheduleRecurrenceResponse.from(recur),
                 schedule.getCreatedAt(),
                 schedule.getUpdatedAt());

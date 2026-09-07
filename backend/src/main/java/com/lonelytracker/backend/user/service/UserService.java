@@ -4,6 +4,7 @@ import com.lonelytracker.backend.common.exception.UserNotFoundException;
 import com.lonelytracker.backend.common.AppProperties;
 import com.lonelytracker.backend.user.dto.OpenAiKeyStatus;
 import com.lonelytracker.backend.user.dto.UserResponse;
+import com.lonelytracker.backend.user.dto.UserSettingsResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,7 +15,7 @@ import com.lonelytracker.backend.user.repository.UserRepository;
 
 
 /**
- * 사용자 계정과 OpenAI API 키를 다룬다.
+ * 사용자 계정과 설정, OpenAI API 키를 다룬다.
  * 카테고리 목록은 {@link UserCategoryService} 가 맡는다.
  */
 @Service
@@ -44,6 +45,20 @@ public class UserService {
         user.changeOpenAiApiKey(apiKey);
         userRepository.saveAndFlush(user);
         return OpenAiKeyStatus.of(user.getOpenAiApiKey());
+    }
+
+    /** 사용자 설정을 돌려준다. */
+    public UserSettingsResponse settings() {
+        return UserSettingsResponse.from(currentUserProvider.get());
+    }
+
+    /** 사용자 설정을 바꾼다. */
+    @Transactional
+    public UserSettingsResponse changeSettings(boolean twoMinuteRule) {
+        UserEntity user = currentUserProvider.get();
+        user.changeTwoMinuteRule(twoMinuteRule);
+        userRepository.saveAndFlush(user);
+        return UserSettingsResponse.from(user);
     }
 
     /** 사용자를 만들고 추천 카테고리를 함께 넣는다. */

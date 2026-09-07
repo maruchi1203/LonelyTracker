@@ -55,20 +55,6 @@ export async function changeInstanceStatus(
   return handle<ScheduleResponse>(res)
 }
 
-/** 회차 하나를 다른 시각으로 미룬다. onDate 는 그대로 남는다 */
-export async function postponeInstance(
-  id: number,
-  onDate: string,
-  to: string,
-): Promise<ScheduleResponse> {
-  const res = await fetch(`${BASE}/${id}/instances/${onDate}/postpone`, {
-    method: 'PATCH',
-    headers: JSON_HEADERS,
-    body: JSON.stringify({ to }),
-  })
-  return handle<ScheduleResponse>(res)
-}
-
 /** 회차 하나만 고친다. 생략한 칸은 일정의 값으로 되돌아간다 */
 export async function updateInstance(
   id: number,

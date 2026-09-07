@@ -18,9 +18,24 @@ export function sameInstance(
   return a.id === b.id && a.instanceDate === b.instanceDate
 }
 
-/** 원래 날짜와 실제 시작일이 다르면 연기된 회차다 */
-export function isPostponed(instance: ScheduleResponse): boolean {
+/**
+ * 원래 날짜가 아닌 날에 놓인 회차인지. 서버가 세지 않고 두 값의 차이로 안다.
+ * 날짜만 보므로 같은 날 안에서 시각만 옮긴 것은 해당하지 않는다.
+ */
+export function isMoved(instance: ScheduleResponse): boolean {
   return instance.instanceDate !== toLocalDate(new Date(instance.startAt))
+}
+
+/**
+ * 아직 오지 않은 날을 미리 완료한 회차인지. 수행률의 분모에 들어가지 않는다.
+ *
+ * @param today 기본값은 오늘. 테스트가 고정 날짜를 넣는다
+ */
+export function isEarlyDone(
+  instance: ScheduleResponse,
+  today: string = toLocalDate(new Date()),
+): boolean {
+  return instance.status === 'DONE' && instance.instanceDate > today
 }
 
 /** 한 회차가 걸칠 수 있는 날짜 수의 상한. 잘못된 기간이 달력을 망가뜨리지 않게 한다 */

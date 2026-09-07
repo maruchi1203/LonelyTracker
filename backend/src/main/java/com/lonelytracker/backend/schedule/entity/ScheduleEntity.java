@@ -93,6 +93,19 @@ public class ScheduleEntity {
     private String category;
 
     /**
+     * 수행 장소
+     */
+    @Column(length = FieldLengths.PLACE)
+    private String place;
+
+    /**
+     * 2분 행동
+     * 시작에 필요한 2분 이내의 미니 행동이다
+     */
+    @Column(name = "two_minute_action", length = FieldLengths.TWO_MINUTE_ACTION)
+    private String twoMinuteAction;
+
+    /**
      * 등록일시
      */
     @CreatedDate
@@ -115,14 +128,19 @@ public class ScheduleEntity {
      * @param durationMinutes 소요시간(분)
      * @param allDay          하루 종일 여부
      * @param category        일정 카테고리
+     * @param place           수행 장소
+     * @param twoMinuteAction 2분 행동
      */
     public void update(String title, String description, LocalDateTime startAt,
-            Integer durationMinutes, boolean allDay, String category) {
+            Integer durationMinutes, boolean allDay, String category,
+            String place, String twoMinuteAction) {
         this.title = title;
         this.description = description;
         this.startAt = startAt;
         this.durationMinutes = durationMinutes;
         this.allDay = allDay;
         this.category = category;
+        this.place = place;
+        this.twoMinuteAction = twoMinuteAction;
     }
 }

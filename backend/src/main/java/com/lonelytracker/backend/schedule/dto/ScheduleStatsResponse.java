@@ -1,7 +1,8 @@
 package com.lonelytracker.backend.schedule.dto;
 
 /**
- * 최근 몇 주의 성적. 날짜 기준이라 시각은 보지 않는다.
+ * 최근 몇 주의 성적
+ * 날짜 기준이라 시각은 보지 않음
  *
  * @param weeks   집계한 주 수
  * @param passed  날짜가 지난 회차 수. 수행률의 분모다
@@ -11,10 +12,10 @@ package com.lonelytracker.backend.schedule.dto;
  * @param early   아직 오지 않은 날인데 완료한 수. 분모 밖이다
  */
 public record ScheduleStatsResponse(
-        int weeks,
-        int passed,
-        int done,
-        int skipped,
-        int moved,
-        int early) {
+                int weeks,
+                int passed,
+                int done,
+                int skipped,
+                int moved,
+                int early) {
 }

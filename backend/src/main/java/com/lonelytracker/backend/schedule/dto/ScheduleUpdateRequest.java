@@ -26,5 +26,9 @@ public record ScheduleUpdateRequest(
 
                 @Size(max = FieldLengths.CATEGORY_NAME, message = "category는 50자를 넘을 수 없습니다") String category,
 
+                @Size(max = FieldLengths.PLACE, message = "place는 200자를 넘을 수 없습니다") String place,
+
+                @Size(max = FieldLengths.TWO_MINUTE_ACTION, message = "twoMinuteAction은 200자를 넘을 수 없습니다") String twoMinuteAction,
+
                 @Valid ScheduleRecurrenceRequest recurrence) {
 }

@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router";
 import { fetchMe } from "../api/users";
 import CategorySection from "../components/settings/CategorySection";
 import OpenAiKeySection from "../components/settings/OpenAiKeySection";
+import TwoMinuteRuleSection from "../components/settings/TwoMinuteRuleSection";
 import type { UserResponse } from "../types/schedule";
 
 export default function SettingsPage() {
@@ -35,12 +36,7 @@ export default function SettingsPage() {
 
       <CategorySection />
 
-      <section className="flex flex-col gap-2 rounded-2xl border border-dashed border-slate-300 bg-white p-5">
-        <h3 className="font-semibold text-slate-500">추가 기능</h3>
-        <p className="text-sm text-slate-400">
-          습관일지처럼 앞으로 만들 기능을 여기서 켜고 끕니다.
-        </p>
-      </section>
+      <TwoMinuteRuleSection />
     </div>
   );
 }

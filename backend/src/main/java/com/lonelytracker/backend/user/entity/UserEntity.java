@@ -62,6 +62,14 @@ public class UserEntity {
     @Column(name = "openai_api_key", length = 500)
     private String openAiApiKey;
 
+    /**
+     * 2분 행동 칸을 폼에 띄울지
+     * 습관 도구라 기본은 켬이다
+     */
+    @Builder.Default
+    @Column(name = "two_minute_rule", nullable = false)
+    private boolean twoMinuteRule = true;
+
     public boolean hasOpenAiApiKey() {
         return openAiApiKey != null && !openAiApiKey.isBlank();
     }
@@ -73,6 +81,10 @@ public class UserEntity {
      */
     public void changeOpenAiApiKey(String apiKey) {
         this.openAiApiKey = (apiKey == null || apiKey.isBlank()) ? null : apiKey.strip();
+    }
+
+    public void changeTwoMinuteRule(boolean twoMinuteRule) {
+        this.twoMinuteRule = twoMinuteRule;
     }
 
     public void changeDisplayName(String displayName) {

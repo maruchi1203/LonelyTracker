@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { formatInstanceRange, instanceKey } from "../domain/instance";
+import {
+  formatInstanceRange,
+  instanceKey,
+  isEarlyDone,
+  isMoved,
+} from "../domain/instance";
 import type {
   DeleteScope,
   ScheduleResponse,
@@ -10,7 +15,8 @@ import { toLocalInputValue } from "../utils/datetime";
 interface Props {
   instances: ScheduleResponse[];
   onToggleStatus: (instance: ScheduleResponse) => void;
-  onPostpone: (instance: ScheduleResponse, to: string) => void;
+  onMove: (instance: ScheduleResponse, startAt: string) => void;
+  onSkip: (instance: ScheduleResponse) => void;
   onDelete: (instance: ScheduleResponse, scope: DeleteScope) => void;
   /** 비어 있는 이유. 일정이 없는 것과 필터에 걸린 것은 다르다 */
   emptyReason?: "no-data" | "filtered-out";
@@ -29,7 +35,8 @@ const MENU_ITEM =
 export default function ScheduleList({
   instances,
   onToggleStatus,
-  onPostpone,
+  onMove,
+  onSkip,
   onDelete,
   emptyReason = "no-data",
   onClearFilters,
@@ -64,7 +71,8 @@ export default function ScheduleList({
           key={instanceKey(instance)}
           instance={instance}
           onToggleStatus={onToggleStatus}
-          onPostpone={onPostpone}
+          onMove={onMove}
+          onSkip={onSkip}
           onDelete={onDelete}
         />
       ))}
@@ -74,16 +82,17 @@ export default function ScheduleList({
 
 type ItemProps = Pick<
   Props,
-  "onToggleStatus" | "onPostpone" | "onDelete"
+  "onToggleStatus" | "onMove" | "onSkip" | "onDelete"
 > & { instance: ScheduleResponse };
 
 function ScheduleListItem({
   instance,
   onToggleStatus,
-  onPostpone,
+  onMove,
+  onSkip,
   onDelete,
 }: ItemProps) {
-  const [pane, setPane] = useState<"none" | "menu" | "postpone">("none");
+  const [pane, setPane] = useState<"none" | "menu" | "move">("none");
   const [moveTo, setMoveTo] = useState(() =>
     toLocalInputValue(new Date(instance.startAt)),
   );
@@ -162,13 +171,23 @@ function ScheduleListItem({
               {STATUS_LABEL[instance.status]}
             </span>
 
-            {/* 수행률만 보면 미루는 사람과 계획대로 하는 사람이 같아 보인다 */}
-            {instance.postponeCount > 0 && (
+            {/* 수행률만 보면 원래 날에 한 사람과 옮겨서 한 사람이 같아 보인다 */}
+            {isMoved(instance) && (
               <span
                 className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-medium text-amber-700"
                 title={`원래 ${instance.instanceDate} 예정`}
               >
-                ↻ {instance.postponeCount}번 미룸
+                ↻ 옮김
+              </span>
+            )}
+
+            {/* 분모에 안 들어가므로 수행률에 잡히지 않는다는 것을 알려준다 */}
+            {isEarlyDone(instance) && (
+              <span
+                className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 font-medium text-sky-700"
+                title={`${instance.instanceDate} 이 오기 전에 완료했습니다`}
+              >
+                ⏱ 조기 종료
               </span>
             )}
           </span>
@@ -194,9 +213,22 @@ function ScheduleListItem({
             type="button"
             role="menuitem"
             className={`${MENU_ITEM} text-slate-700 hover:bg-amber-50 hover:text-amber-700`}
-            onClick={() => setPane("postpone")}
+            onClick={() => setPane("move")}
           >
-            연기
+            다른 날로 옮기기
+          </button>
+
+          {/* 안 한 것을 안 했다고 남긴다. 수행률의 분모에 그대로 남는다 */}
+          <button
+            type="button"
+            role="menuitem"
+            className={`${MENU_ITEM} text-slate-700 hover:bg-slate-100`}
+            onClick={() => {
+              setPane("none");
+              onSkip(instance);
+            }}
+          >
+            건너뛰기
           </button>
 
           {/* 범위를 버튼 하나로 넘겨짚지 않는다 */}
@@ -226,13 +258,13 @@ function ScheduleListItem({
         </div>
       )}
 
-      {pane === "postpone" && (
+      {pane === "move" && (
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 text-xs">
           <label
             className="text-slate-500"
             htmlFor={`to-${instanceKey(instance)}`}
           >
-            언제로 미룰까요?
+            언제로 옮길까요?
           </label>
           <input
             id={`to-${instanceKey(instance)}`}
@@ -245,11 +277,11 @@ function ScheduleListItem({
             type="button"
             className="rounded-md bg-amber-500 px-3 py-1 font-semibold text-white hover:bg-amber-600"
             onClick={() => {
-              onPostpone(instance, `${moveTo}:00`);
+              onMove(instance, `${moveTo}:00`);
               setPane("none");
             }}
           >
-            미루기
+            옮기기
           </button>
           <button
             type="button"

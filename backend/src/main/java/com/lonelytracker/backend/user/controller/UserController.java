@@ -4,6 +4,8 @@ import com.lonelytracker.backend.user.dto.OpenAiKeyRequest;
 import com.lonelytracker.backend.user.dto.OpenAiKeyStatus;
 import com.lonelytracker.backend.user.dto.UserCreateRequest;
 import com.lonelytracker.backend.user.dto.UserResponse;
+import com.lonelytracker.backend.user.dto.UserSettingsRequest;
+import com.lonelytracker.backend.user.dto.UserSettingsResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -43,6 +45,18 @@ public class UserController {
     @PutMapping("/me/openai-key")
     public OpenAiKeyStatus changeOpenAiKey(@Valid @RequestBody OpenAiKeyRequest request) {
         return userService.changeOpenAiKey(request.apiKey());
+    }
+
+    /** 사용자 설정 */
+    @GetMapping("/me/settings")
+    public UserSettingsResponse settings() {
+        return userService.settings();
+    }
+
+    /** 사용자 설정을 바꾼다. 바뀐 설정을 그대로 돌려준다 */
+    @PutMapping("/me/settings")
+    public UserSettingsResponse changeSettings(@Valid @RequestBody UserSettingsRequest request) {
+        return userService.changeSettings(request.twoMinuteRule());
     }
 
     /** 사용자 단건 조회. 없으면 404. */

@@ -1,5 +1,5 @@
 import type { DayLanes, LaneSlot } from "../../../domain/calendarLanes";
-import { instanceKey } from "../../../domain/instance";
+import { instanceKey, isMoved } from "../../../domain/instance";
 
 interface Props {
   date: Date;
@@ -84,8 +84,8 @@ function Bar({ slot }: { slot: LaneSlot }) {
     <li
       // 칸이 좁으므로 한 줄로 자르고, 전체 제목은 title 속성으로 보여준다
       title={
-        instance.postponeCount > 0
-          ? `${instance.title} · ${instance.postponeCount}번 미룸`
+        isMoved(instance)
+          ? `${instance.title} · 원래 ${instance.instanceDate} 예정`
           : instance.title
       }
       className={`${BAR} ${shape} ${
@@ -97,9 +97,7 @@ function Bar({ slot }: { slot: LaneSlot }) {
       {/* 제목은 띠가 시작하는 칸에만 적는다. 이어지는 칸은 띠만 보인다 */}
       {isStart && (
         <>
-          {instance.postponeCount > 0 && (
-            <span className="text-amber-600">↻ </span>
-          )}
+          {isMoved(instance) && <span className="text-amber-600">↻ </span>}
           {instance.title}
         </>
       )}

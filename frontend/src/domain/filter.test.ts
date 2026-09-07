@@ -13,8 +13,7 @@ function instance(
     startAt: '2026-08-31T07:00:00',
     allDay: false,
     status: 'PLANNED',
-    postponeCount: 0,
-    createdAt: '2026-08-01T00:00:00',
+      createdAt: '2026-08-01T00:00:00',
     updatedAt: '2026-08-01T00:00:00',
     ...overrides,
   }

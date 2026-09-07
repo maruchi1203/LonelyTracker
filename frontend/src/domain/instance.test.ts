@@ -4,7 +4,8 @@ import {
   coversDate,
   formatInstanceRange,
   groupByDate,
-  isPostponed,
+  isEarlyDone,
+  isMoved,
   instanceKey,
   replaceInstance,
   sameInstance,
@@ -23,8 +24,7 @@ function instance(
     startAt: `${instanceDate}T07:00:00`,
     allDay: false,
     status: 'PLANNED',
-    postponeCount: 0,
-    createdAt: '2026-08-01T00:00:00',
+      createdAt: '2026-08-01T00:00:00',
     updatedAt: '2026-08-01T00:00:00',
     ...overrides,
   }
@@ -69,13 +69,12 @@ describe('회차 하나만 갈아끼우기', () => {
 
 describe('달력 칸에 담기', () => {
   it('원래 날짜가 아니라 실제 시작일로 묶는다', () => {
-    // 8/31 예정이던 회차를 9/1 로 미뤘다. 칸은 9/1 에 놓여야 한다
-    const postponed = instance(1, '2026-08-31', {
+    // 8/31 예정이던 회차를 9/1 로 옮겼다. 칸은 9/1 에 놓여야 한다
+    const moved = instance(1, '2026-08-31', {
       startAt: '2026-09-01T07:00:00',
-      postponeCount: 1,
     })
 
-    const grouped = groupByDate([postponed])
+    const grouped = groupByDate([moved])
 
     expect(grouped.get('2026-09-01')).toHaveLength(1)
     expect(grouped.has('2026-08-31')).toBe(false)
@@ -153,13 +152,13 @@ describe('그 날짜에 걸쳐 있는지', () => {
     expect(coversDate(single, new Date(2026, 8, 1))).toBe(false)
   })
 
-  it('연기된 회차는 원래 날짜가 아니라 옮겨간 날에서 잡힌다', () => {
-    const postponed = instance(3, '2026-08-31', {
+  it('옮긴 회차는 원래 날짜가 아니라 옮겨간 날에서 잡힌다', () => {
+    const moved = instance(3, '2026-08-31', {
       startAt: '2026-09-01T07:00:00',
     })
 
-    expect(coversDate(postponed, new Date(2026, 7, 31))).toBe(false)
-    expect(coversDate(postponed, new Date(2026, 8, 1))).toBe(true)
+    expect(coversDate(moved, new Date(2026, 7, 31))).toBe(false)
+    expect(coversDate(moved, new Date(2026, 8, 1))).toBe(true)
   })
 
   it('달력이 칸에 놓는 기준과 같다', () => {
@@ -215,11 +214,39 @@ describe('기간 문구', () => {
   })
 })
 
-describe('연기 여부', () => {
-  it('원래 날짜와 시작일이 다르면 연기된 것이다', () => {
-    expect(isPostponed(instance(1, '2026-08-31'))).toBe(false)
+describe('옮긴 회차', () => {
+  it('원래 날짜와 시작일이 다르면 옮긴 것이다', () => {
+    expect(isMoved(instance(1, '2026-08-31'))).toBe(false)
     expect(
-      isPostponed(instance(1, '2026-08-31', { startAt: '2026-09-01T07:00:00' })),
+      isMoved(instance(1, '2026-08-31', { startAt: '2026-09-01T07:00:00' })),
     ).toBe(true)
+  })
+
+  it('같은 날 안에서 시각만 바뀐 것은 옮긴 게 아니다', () => {
+    expect(
+      isMoved(instance(1, '2026-08-31', { startAt: '2026-08-31T20:00:00' })),
+    ).toBe(false)
+  })
+})
+
+describe('조기 종료', () => {
+  const TODAY = '2026-08-31'
+
+  it('아직 오지 않은 날을 완료하면 조기 종료다', () => {
+    const future = instance(1, '2026-09-02', { status: 'DONE' })
+
+    expect(isEarlyDone(future, TODAY)).toBe(true)
+  })
+
+  it('오늘 것을 완료한 건 조기 종료가 아니다', () => {
+    const today = instance(1, TODAY, { status: 'DONE' })
+
+    expect(isEarlyDone(today, TODAY)).toBe(false)
+  })
+
+  it('완료하지 않았으면 조기 종료가 아니다', () => {
+    const future = instance(1, '2026-09-02')
+
+    expect(isEarlyDone(future, TODAY)).toBe(false)
   })
 })
