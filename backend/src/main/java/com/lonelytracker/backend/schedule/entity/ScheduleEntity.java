@@ -64,8 +64,9 @@ public class ScheduleEntity {
     /**
      * 시작일시
      * 반복 일정이면 첫 회차의 일시다
+     * 없으면 아직 언제 할지 안 정한 항목이라 회차가 생기지 않는다
      */
-    @Column(name = "start_at", nullable = false)
+    @Column(name = "start_at")
     private LocalDateTime startAt;
 
     /**
@@ -120,6 +121,13 @@ public class ScheduleEntity {
     private String twoMinuteAction;
 
     /**
+     * 1회성 일정의 완료 시각
+     * 값이 있으면 완료다. 습관은 회차마다 {@link ScheduleProgressEntity} 가 맡는다
+     */
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
+    /**
      * 등록일시
      */
     @CreatedDate
@@ -145,6 +153,15 @@ public class ScheduleEntity {
      * @param place           수행 장소
      * @param twoMinuteAction 2분 행동
      */
+    /**
+     * 완료 여부를 바꾼다.
+     *
+     * @param completed 풀면 완료 시각이 지워진다
+     */
+    public void changeCompletion(boolean completed) {
+        this.completedAt = completed ? LocalDateTime.now() : null;
+    }
+
     public void update(String title, String description, LocalDateTime startAt,
             Integer durationMinutes, boolean allDay, Set<String> tags,
             String place, String twoMinuteAction) {

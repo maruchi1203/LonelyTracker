@@ -139,8 +139,13 @@ class ScheduleOwnershipTest extends IntegrationTest {
         mvc.perform(put(BASE + "/" + id).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isNotFound());
 
-        // 회차 경로로 부른다. 옛 경로(/{id}/status)를 부르면 소유권이 아니라
-        // "그런 경로가 없다" 로 404 가 나서 아무것도 검증하지 못한다
+        // 1회성이라 완료 경로를 쓴다
+        mvc.perform(patch(BASE + "/" + id + "/completion")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"completed\":true}"))
+                .andExpect(status().isNotFound());
+
+        // 회차 경로도 소유권을 먼저 본다. 순서가 바뀌면 400 이 나 소유 여부가 새어 나간다
         mvc.perform(patch(BASE + "/" + id + "/instances/2026-10-02/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"DONE\"}"))

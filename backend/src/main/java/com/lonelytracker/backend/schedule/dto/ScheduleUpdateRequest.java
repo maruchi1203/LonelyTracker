@@ -19,7 +19,7 @@ public record ScheduleUpdateRequest(
 
                 @Size(max = FieldLengths.DESCRIPTION, message = "description은 20000자를 넘을 수 없습니다") String description,
 
-                @NotNull(message = "startAt은 필수입니다") LocalDateTime startAt,
+                LocalDateTime startAt,
 
                 LocalDateTime endAt,
 
