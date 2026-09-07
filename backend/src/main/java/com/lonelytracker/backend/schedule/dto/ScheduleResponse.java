@@ -22,6 +22,8 @@ public record ScheduleResponse(
                 boolean recurring,
                 ScheduleStatus status,
                 String category,
+                String place,
+                String twoMinuteAction,
                 LocalDateTime createdAt,
                 LocalDateTime updatedAt) {
 }

@@ -151,6 +151,8 @@ public class ScheduleService {
                 .durationMinutes(ScheduleUtil.toMinutes(request.startAt(), request.endAt()))
                 .allDay(Boolean.TRUE.equals(request.allDay()))
                 .category(ScheduleUtil.normalizeCategory(request.category()))
+                .place(request.place())
+                .twoMinuteAction(request.twoMinuteAction())
                 .build());
 
         if (request.recurrence() != null) {
@@ -178,7 +180,9 @@ public class ScheduleService {
                 request.startAt(),
                 ScheduleUtil.toMinutes(request.startAt(), request.endAt()),
                 Boolean.TRUE.equals(request.allDay()),
-                ScheduleUtil.normalizeCategory(request.category()));
+                ScheduleUtil.normalizeCategory(request.category()),
+                request.place(),
+                request.twoMinuteAction());
 
         applyRecurChange(schedule, request.recurrence());
 

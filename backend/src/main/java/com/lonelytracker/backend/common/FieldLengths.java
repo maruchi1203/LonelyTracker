@@ -1,8 +1,8 @@
 package com.lonelytracker.backend.common;
 
 /**
- * 필드 길이 제한을 한 곳에 모은 클래스.
- * 어노테이션 인자는 컴파일 상수여야 해서 yml로 뺄 수 없다.
+ * 필드 길이 제한을 한 곳에 모은 클래스
+ * 어노테이션 인자는 컴파일 상수여야 해서 yml로 뺄 수 없음
  */
 public final class FieldLengths {
 
@@ -14,6 +14,12 @@ public final class FieldLengths {
 
     /** 카테고리 이름, 일정에 기록되는 분류 문자열 */
     public static final int CATEGORY_NAME = 50;
+
+    /** 일정을 수행할 장소 */
+    public static final int PLACE = 200;
+
+    /** 시작에 필요한 2분 이내의 미니 행동 */
+    public static final int TWO_MINUTE_ACTION = 200;
 
     /** OAuth 로그인 식별자(이메일 등)가 들어온다 */
     public static final int USERNAME = 100;
