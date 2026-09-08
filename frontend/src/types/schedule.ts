@@ -49,6 +49,31 @@ export interface ScheduleResponse {
   updatedAt: string;
 }
 
+/**
+ * 리스트 탭의 한 줄. 회차가 아니라 일정 자체다.
+ * 습관은 이 목록에 오지 않아 회차도 상태도 없다.
+ */
+export interface ScheduleListItem {
+  id: number;
+  /** 상위 일정. 없으면 최상위다 */
+  parentId?: number;
+  /** 형제 사이의 순서. 아직 정한 적이 없으면 0이다 */
+  displayOrder: number;
+  title: string;
+  description?: string;
+  /** "YYYY-MM-DD". 언제까지 해내야 하나 */
+  dueOn?: string;
+  /** "YYYY-MM-DDTHH:mm:ss". 없으면 아직 언제 할지 안 정한 항목이다 */
+  startAt?: string;
+  /** 값이 있으면 완료다 */
+  completedAt?: string;
+  tags?: string[];
+  place?: string;
+  twoMinuteAction?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** 반복 규칙. 이 값이 있으면 반복 일정이 된다 */
 export interface RecurrenceRequest {
   freq: RecurrenceFreq;
@@ -67,6 +92,10 @@ export interface ScheduleCreateRequest {
   tags?: string[];
   place?: string;
   twoMinuteAction?: string;
+  /** 상위 일정. 3단을 넘기면 서버가 들어갈 수 있는 자리로 눌러 앉힌다 */
+  parentId?: number;
+  /** "YYYY-MM-DD" */
+  dueOn?: string;
   recurrence?: RecurrenceRequest;
 }
 

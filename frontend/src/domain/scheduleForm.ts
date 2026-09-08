@@ -6,6 +6,11 @@ import type {
 } from "../types/schedule";
 import { toLocalDate, toLocalDateTime } from "../utils/datetime";
 
+/**
+ * 탭마다 쓰는 칸이 달라 검증 절차와 화면이 이 값을 확인함
+ */
+export type FormVariant = "list" | "calendar" | "habit";
+
 /** 백엔드에 아직 MONTHLY 가 없다. 화면에서 자리만 잡아두고 보내지 않는다 */
 export type FormFreq = RecurrenceFreq | "MONTHLY";
 
@@ -21,7 +26,9 @@ export type FormFieldId =
   | "byWeekday"
   | "byMonthDay"
   | "place"
-  | "twoMinuteAction";
+  | "twoMinuteAction"
+  | "dueOn"
+  | "parentId";
 
 /**
  * 입력 폼이 다루는 모델. 날짜와 시각을 따로 둔다.
@@ -49,6 +56,10 @@ export interface ScheduleForm {
   place: string;
   /** 시작에 필요한 2분 이내의 미니 행동 */
   twoMinuteAction: string;
+  /** "YYYY-MM-DD". 언제까지 해내야 하나 */
+  dueOn: string;
+  /** 상위 일정 id. 빈 문자열이면 최상위 */
+  parentId: string;
 }
 
 /** 지금 이후의 가장 가까운 정각 */
@@ -74,6 +85,8 @@ export function emptyForm(defaultDate?: Date | null): ScheduleForm {
     byMonthDay: [],
     place: "",
     twoMinuteAction: "",
+    dueOn: "",
+    parentId: "",
   };
 }
 
@@ -154,10 +167,22 @@ function splitDuration(total: number | undefined) {
   };
 }
 
-/** Form 먼저 확인 후 에러 띄우기 */
-export function formValidationError(form: ScheduleForm): string | null {
+/**
+ * Form 먼저 확인 후 에러 띄우기
+ *
+ * @param variant 리스트만 날짜 없이 저장할 수 있다
+ */
+export function formValidationError(
+  form: ScheduleForm,
+  variant: FormVariant = "calendar",
+): string | null {
   if (!form.title.trim()) return "제목을 채워 주세요.";
-  if (!form.startDate) return "시작일자를 채워 주세요.";
+
+  // 달력은 날짜가 없으면 회차가 0개라 화면에서 사라진다
+  // 반복은 첫 회차를 기준으로 펼치므로 리스트에서도 날짜가 필요하다
+  if (!form.startDate && (variant !== "list" || form.repeating)) {
+    return "시작일자를 채워 주세요.";
+  }
 
   if (form.repeating) {
     if (form.freq === "MONTHLY") return "매월 반복은 아직 준비 중입니다.";
@@ -194,17 +219,22 @@ export function formValidationError(form: ScheduleForm): string | null {
 }
 
 export function formToCreateRequest(form: ScheduleForm): ScheduleCreateRequest {
-  const allDay = !form.startTime;
-  const startAt = `${form.startDate}T${form.startTime || "00:00"}:00`;
+  // 날짜를 안 정한 항목은 시작일시 없이 보낸다. 리스트에만 남는다
+  const dated = Boolean(form.startDate);
+  const allDay = dated && !form.startTime;
 
   return {
     title: form.title.trim(),
-    startAt,
+    startAt: dated
+      ? `${form.startDate}T${form.startTime || "00:00"}:00`
+      : undefined,
     endAt: endAtOf(form),
     allDay,
     tags: form.tags.length > 0 ? form.tags : undefined,
     place: form.place.trim() || undefined,
     twoMinuteAction: form.twoMinuteAction.trim() || undefined,
+    dueOn: form.dueOn || undefined,
+    parentId: form.parentId ? Number(form.parentId) : undefined,
     recurrence: form.repeating
       ? {
           // MONTHLY 는 검증에서 걸러진다
@@ -222,6 +252,9 @@ export function formToCreateRequest(form: ScheduleForm): ScheduleCreateRequest {
  * 백엔드가 이걸 duration_minutes 로 바꿔 저장하므로 자정을 넘어도 된다
  */
 function endAtOf(form: ScheduleForm): string | undefined {
+  // 시작이 없으면 끝을 잴 기준이 없다. 백엔드도 같은 이유로 거부한다
+  if (!form.startDate) return undefined;
+
   if (form.repeating) {
     const minutes = durationMinutesOf(form);
     if (minutes === undefined) return undefined;

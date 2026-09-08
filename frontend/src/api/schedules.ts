@@ -3,6 +3,7 @@ import type {
   DeleteScope,
   InstanceUpdateRequest,
   ScheduleCreateRequest,
+  ScheduleListItem,
   ScheduleQuery,
   ScheduleResponse,
   ScheduleStatus,
@@ -27,6 +28,16 @@ export async function fetchSchedules(
 
   const suffix = query.toString() ? `?${query}` : ''
   return handle<ScheduleResponse[]>(await fetch(`${BASE}${suffix}`, { signal }))
+}
+
+/**
+ * 리스트 탭이 보는 일정 전부
+ * 습관은 빠지고, 날짜를 안 정한 항목도 함께 온다
+ */
+export async function fetchScheduleList(
+  signal?: AbortSignal,
+): Promise<ScheduleListItem[]> {
+  return handle<ScheduleListItem[]>(await fetch(`${BASE}/list`, { signal }))
 }
 
 export async function createSchedule(

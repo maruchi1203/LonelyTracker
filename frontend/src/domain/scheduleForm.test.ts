@@ -218,3 +218,49 @@ describe('생성 요청으로 바꾸기', () => {
     expect(body.twoMinuteAction).toBeUndefined()
   })
 })
+
+describe('날짜 없는 리스트 항목', () => {
+  it('리스트는 시작일자 없이 통과한다', () => {
+    expect(formValidationError(form({ startDate: '' }), 'list')).toBeNull()
+  })
+
+  it('달력은 시작일자를 계속 요구한다', () => {
+    expect(formValidationError(form({ startDate: '' }), 'calendar')).toMatch(
+      '시작일자',
+    )
+  })
+
+  it('변형을 안 주면 달력으로 본다', () => {
+    expect(formValidationError(form({ startDate: '' }))).toMatch('시작일자')
+  })
+
+  it('리스트라도 반복이면 시작일자가 필요하다', () => {
+    const f = form({ startDate: '', repeating: true, freq: 'DAILY' })
+
+    expect(formValidationError(f, 'list')).toMatch('시작일자')
+  })
+
+  it('날짜를 비우면 startAt 도 endAt 도 보내지 않는다', () => {
+    const body = formToCreateRequest(form({ startDate: '', endDate: '2026-09-01' }))
+
+    expect(body.startAt).toBeUndefined()
+    expect(body.endAt).toBeUndefined()
+    expect(body.allDay).toBe(false)
+  })
+
+  it('기한과 상위를 그대로 보낸다', () => {
+    const body = formToCreateRequest(
+      form({ startDate: '', dueOn: '2026-10-01', parentId: '7' }),
+    )
+
+    expect(body.dueOn).toBe('2026-10-01')
+    expect(body.parentId).toBe(7)
+  })
+
+  it('기한과 상위가 비면 아예 보내지 않는다', () => {
+    const body = formToCreateRequest(form())
+
+    expect(body.dueOn).toBeUndefined()
+    expect(body.parentId).toBeUndefined()
+  })
+})

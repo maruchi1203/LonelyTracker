@@ -4,6 +4,7 @@ import {
   gapHours,
   type FormFieldId,
   type FormFreq,
+  type FormVariant,
   type ScheduleForm,
 } from "../../domain/scheduleForm";
 import type { Weekday } from "../../types/schedule";
@@ -20,6 +21,17 @@ interface Props {
   decorate?: (id: FormFieldId) => string;
   /** 2분 행동 칸을 띄울지. 설정에서 꺼도 이미 적어둔 값이 있으면 보인다 */
   showTwoMinute?: boolean;
+  /** 어느 탭의 얼굴로 설지. 탭마다 쓰는 칸이 다르다 */
+  variant?: FormVariant;
+  /** 상위로 고를 수 있는 일정. 자기 자신과 자기 자손은 빠진 목록 */
+  parentOptions?: ParentOption[];
+}
+
+/** 상위 일정 후보 한 줄. depth 는 들여쓰기에만 쓴다 */
+export interface ParentOption {
+  id: number;
+  title: string;
+  depth: number;
 }
 
 const INPUT =
@@ -55,7 +67,13 @@ export default function ScheduleFields({
   fieldRef,
   decorate,
   showTwoMinute = true,
+  variant = "calendar",
+  parentOptions = [],
 }: Props) {
+  // 리스트는 제목만으로 빨리 적는 곳이다. 나머지는 접어 둔다
+  const isList = variant === "list";
+  const [detailOpen, setDetailOpen] = useState(false);
+  const showDetails = !isList || detailOpen;
   const id = (name: string) => `${idPrefix}-${name}`;
   const ref = (name: FormFieldId) => fieldRef?.(name);
   const box = (name: FormFieldId) =>
@@ -116,7 +134,8 @@ export default function ScheduleFields({
         />
       </div>
 
-      {/* 2. 한번만 / 반복 */}
+      {/* 2. 한번만 / 반복 — 리스트는 습관을 담지 않는다 */}
+      {!isList && (
       <div className="flex flex-col gap-1.5">
         <span className={LABEL}>반복</span>
         <div className="flex items-center gap-1.5">
@@ -138,6 +157,7 @@ export default function ScheduleFields({
           </button>
         </div>
       </div>
+      )}
 
       {/* 3. 주기 */}
       {form.repeating && (
@@ -219,6 +239,62 @@ export default function ScheduleFields({
         </datalist>
       </div>
 
+      {/* 4-1. 기한 · 상위 — 리스트에서만 쓴다 */}
+      {isList && (
+        <div className="flex flex-wrap gap-3">
+          <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
+            <label className={LABEL} htmlFor={id("dueOn")}>
+              기한 (선택)
+            </label>
+            <input
+              id={id("dueOn")}
+              ref={ref("dueOn")}
+              type="date"
+              className={box("dueOn")}
+              value={form.dueOn}
+              onChange={(e) => onChange({ dueOn: e.target.value })}
+            />
+            <span className={HINT}>언제까지 해내야 하는지입니다.</span>
+          </div>
+
+          <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
+            <label className={LABEL} htmlFor={id("parentId")}>
+              상위 일정 (선택)
+            </label>
+            <select
+              id={id("parentId")}
+              ref={ref("parentId")}
+              className={box("parentId")}
+              value={form.parentId}
+              onChange={(e) => onChange({ parentId: e.target.value })}
+            >
+              <option value="">없음 (최상위)</option>
+              {parentOptions.map(({ id: optionId, title, depth }) => (
+                <option key={optionId} value={String(optionId)}>
+                  {" ".repeat(depth * 2)}
+                  {title}
+                </option>
+              ))}
+            </select>
+            <span className={HINT}>3단까지 묶을 수 있습니다.</span>
+          </div>
+        </div>
+      )}
+
+      {/* 4-2. 나머지를 펼치는 자리 */}
+      {isList && (
+        <button
+          type="button"
+          onClick={() => setDetailOpen((open) => !open)}
+          aria-expanded={detailOpen}
+          className="self-start text-xs font-semibold text-brand-600 hover:text-brand-700"
+        >
+          {detailOpen ? "자세히 접기" : "날짜 · 장소 자세히"}
+        </button>
+      )}
+
+      {showDetails && (
+      <>
       {/* 5. 장소 */}
       <div className="flex flex-col gap-1.5">
         <label className={LABEL} htmlFor={id("place")}>
@@ -337,6 +413,8 @@ export default function ScheduleFields({
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* 8. 매주 반복요일 */}
       {form.repeating && form.freq === "WEEKLY" && (
@@ -375,7 +453,7 @@ export default function ScheduleFields({
       )}
 
       {/* 10. 2분 행동 */}
-      {(showTwoMinute || form.twoMinuteAction) && (
+      {showDetails && (showTwoMinute || form.twoMinuteAction) && (
         <div className="flex flex-col gap-1.5">
           <label className={LABEL} htmlFor={id("twoMinuteAction")}>
             2분 행동 (선택)
