@@ -1,7 +1,6 @@
 package com.lonelytracker.backend.user.service;
 
 import com.lonelytracker.backend.common.exception.UserNotFoundException;
-import com.lonelytracker.backend.common.AppProperties;
 import com.lonelytracker.backend.user.dto.OpenAiKeyStatus;
 import com.lonelytracker.backend.user.dto.UserResponse;
 import com.lonelytracker.backend.user.dto.UserSettingsResponse;
@@ -10,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.lonelytracker.backend.user.entity.UserEntity;
 import com.lonelytracker.backend.user.repository.UserRepository;
-
 
 /**
  * 사용자 계정과 설정, OpenAI API 키를 다룬다.

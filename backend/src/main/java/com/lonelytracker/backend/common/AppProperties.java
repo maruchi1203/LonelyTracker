@@ -3,7 +3,6 @@ package com.lonelytracker.backend.common;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.time.Duration;
-import java.util.List;
 
 /**
  * application.yml 의 {@code lonelytracker.*} 설정.
