@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import com.lonelytracker.backend.schedule.domain.ScheduleDeleteScope;
 import com.lonelytracker.backend.schedule.domain.ScheduleInstanceExpander;
 import com.lonelytracker.backend.schedule.domain.ScheduleStatsCounter;
@@ -49,6 +50,9 @@ public class ScheduleService {
 
     /** 계층의 최대 깊이. 최상위부터 손자까지다 */
     private static final int MAX_DEPTH = 3;
+
+    /** 가장 깊이 앉을 수 있는 자리. 최상위를 0으로 센다 */
+    private static final int DEEPEST = MAX_DEPTH - 1;
 
     private final ScheduleRepository scheduleRepository;
     private final ScheduleRecurRepository recurRepository;
@@ -173,7 +177,7 @@ public class ScheduleService {
     @Transactional
     public ScheduleResponse create(ScheduleCreateRequest request) {
         ScheduleUtil.validatePeriod(request.startAt(), request.endAt());
-        validateParent(null, request.parentId(), request.recurrence() != null);
+        Long parentId = resolveParent(null, request.parentId(), request.recurrence() != null);
 
         ScheduleEntity schedule = scheduleRepository.save(ScheduleEntity.builder()
                 .user(currentUserProvider.get())
@@ -185,7 +189,7 @@ public class ScheduleService {
                 .tags(ScheduleUtil.normalizeTags(request.tags()))
                 .place(request.place())
                 .twoMinuteAction(request.twoMinuteAction())
-                .parentId(request.parentId())
+                .parentId(parentId)
                 .dueOn(request.dueOn())
                 .build());
 
@@ -207,7 +211,7 @@ public class ScheduleService {
 
         ScheduleEntity schedule = getOwnedOrThrow(id);
         // 거부될 요청이 다른 칸을 먼저 바꿔 놓지 않도록 손대기 전에 검사한다
-        validateParent(id, request.parentId(), request.recurrence() != null);
+        Long parentId = resolveParent(id, request.parentId(), request.recurrence() != null);
 
         LocalDate oldDate = (schedule.getStartAt() == null)
                 ? null
@@ -222,8 +226,11 @@ public class ScheduleService {
                 ScheduleUtil.normalizeTags(request.tags()),
                 request.place(),
                 request.twoMinuteAction(),
-                request.parentId(),
+                parentId,
                 request.dueOn());
+
+        // 딸린 자손이 함께 내려가 3단을 넘길 수 있다
+        flattenBelow(id, parentId);
 
         applyRecurChange(schedule, request.recurrence());
 
@@ -271,7 +278,7 @@ public class ScheduleService {
 
         // DB의 ON DELETE SET NULL을 Hibernate는 모른다. 딸린 일정을 먼저 최상위로 올린다
         scheduleRepository.findAllById(scheduleRepository.findIdsByParentIdIn(List.of(id)))
-                .forEach(ScheduleEntity::detachFromParent);
+                .forEach(child -> child.changeParent(null));
 
         // DB의 ON DELETE CASCADE를 Hibernate는 모른다. 자식을 먼저 지워야 flush에서 안 터진다
         progressRepository.deleteByScheduleId(id);
@@ -292,15 +299,16 @@ public class ScheduleService {
     }
 
     /**
-     * 상위 일정을 검사한다.
-     * 남의 일정, 자기 자신, 습관, 순환, 3단 초과를 막는다.
+     * 실제로 앉을 상위를 정한다.
+     * 깊이는 거부하지 않고 눌러 맞춘다. 나머지는 눌러도 말이 되지 않아 막는다.
      *
      * @param selfId        만드는 중이면 null
      * @param selfRecurring 이 요청이 끝난 뒤 습관이 되는지
+     * @return 3단 안으로 눌러 앉힌 상위. 최상위면 null
      */
-    private void validateParent(Long selfId, Long parentId, boolean selfRecurring) {
+    private Long resolveParent(Long selfId, Long parentId, boolean selfRecurring) {
         if (parentId == null) {
-            return;
+            return null;
         }
 
         // 리스트가 습관을 빼는데 습관이 계층에 끼면 그 자식만 떠 있게 된다
@@ -317,10 +325,55 @@ public class ScheduleService {
         if (recurRepository.existsById(parentId)) {
             throw new IllegalArgumentException("습관은 다른 일정을 거느릴 수 없습니다");
         }
-        if (depthOf(parentId, selfId) + 1 + heightOf(selfId) >= MAX_DEPTH) {
-            throw new IllegalArgumentException(
-                    "일정은 " + MAX_DEPTH + "단까지만 묶을 수 있습니다");
+
+        // 올라가다 자기를 만나면 순환이다. 이건 눌러서 풀 수 없다
+        depthOf(parentId, selfId);
+
+        return clampParent(parentId);
+    }
+
+    /**
+     * 3단 안으로 눌러 앉힌 상위.
+     * 지정한 자리가 너무 깊으면 그 위로 올라가 들어갈 수 있는 첫 자리를 쓴다.
+     */
+    private Long clampParent(Long parentId) {
+        Long cursor = parentId;
+        while (cursor != null && depthOf(cursor, null) >= DEEPEST) {
+            cursor = parentIdOf(cursor);
         }
+        return cursor;
+    }
+
+    /**
+     * 옮겨 간 자리에서 넘치는 자손을 끌어올린다.
+     * 넘친 것은 자기 위쪽에서 깊이 1인 조상의 자식이 된다.
+     *
+     * @param parentId 눌러 앉힌 뒤의 상위. null이면 최상위라 넘칠 일이 없다
+     */
+    private void flattenBelow(Long selfId, Long parentId) {
+        if (parentId == null) {
+            return;
+        }
+        int depth = depthOf(parentId, null) + 1;
+
+        List<Long> children = scheduleRepository.findIdsByParentIdIn(List.of(selfId));
+        if (children.isEmpty()) {
+            return;
+        }
+        List<Long> grandChildren = scheduleRepository.findIdsByParentIdIn(children);
+
+        // 1단에 앉으면 손자부터, 2단에 앉으면 자식부터 넘친다
+        List<Long> overflow = (depth < DEEPEST)
+                ? grandChildren
+                : Stream.concat(children.stream(), grandChildren.stream()).toList();
+        if (overflow.isEmpty()) {
+            return;
+        }
+
+        // 1단에 앉았으면 자기가, 2단에 앉았으면 자기 상위가 깊이 1이다
+        Long anchor = (depth < DEEPEST) ? selfId : parentId;
+        scheduleRepository.findAllById(overflow)
+                .forEach(descendant -> descendant.changeParent(anchor));
     }
 
     /**
@@ -342,18 +395,6 @@ public class ScheduleService {
             cursor = parentIdOf(cursor);
         }
         return depth;
-    }
-
-    /** 가장 깊은 자손까지의 거리. 자식이 없으면 0이다 */
-    private int heightOf(Long id) {
-        if (id == null) {
-            return 0;
-        }
-        List<Long> children = scheduleRepository.findIdsByParentIdIn(List.of(id));
-        if (children.isEmpty()) {
-            return 0;
-        }
-        return scheduleRepository.findIdsByParentIdIn(children).isEmpty() ? 1 : 2;
     }
 
     private Long parentIdOf(Long id) {

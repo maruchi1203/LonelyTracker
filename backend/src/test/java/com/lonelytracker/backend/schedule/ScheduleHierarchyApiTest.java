@@ -23,7 +23,8 @@ import com.lonelytracker.backend.schedule.repository.ScheduleRepository;
 /**
  * 일정을 다른 일정 밑에 거는 규칙을 검증한다.
  * <p>
- * 깊이는 3단까지고, 습관은 계층에 끼지 않으며, 부모를 지워도 자식은 남는다.
+ * 깊이는 3단까지다. 넘치면 거부하지 않고 들어갈 수 있는 자리로 눌러 앉힌다.
+ * 습관은 계층에 끼지 않고, 부모를 지워도 자식은 남는다.
  * 규칙을 서비스 계층이 지키므로 DB 제약으로는 증명할 수 없다.
  */
 @AutoConfigureMockMvc
@@ -66,29 +67,58 @@ class ScheduleHierarchyApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("3단을 넘겨 걸 수 없다")
-    void rejectsFourthLevel() throws Exception {
+    @DisplayName("3단 밑에 걸면 2단 자리로 눌러 앉는다")
+    void clampsWhenParentIsTooDeep() throws Exception {
         long root = create("{\"title\":\"1단\"}");
         long second = create("{\"title\":\"2단\",\"parentId\":" + root + "}");
         long third = create("{\"title\":\"3단\",\"parentId\":" + second + "}");
 
-        mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"4단\",\"parentId\":" + third + "}"))
-                .andExpect(status().isBadRequest());
+        // 3단 밑은 자리가 없다. 거부하지 않고 그 위의 2단 항목에 붙인다
+        long fourth = create("{\"title\":\"4단이 될 뻔\",\"parentId\":" + third + "}");
+
+        mvc.perform(get(BASE + "/" + fourth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.parentId").value(second));
     }
 
     @Test
-    @DisplayName("자손이 둘 달린 일정은 남의 밑으로 들어갈 수 없다")
-    void rejectsMoveThatWouldDeepenTheTree() throws Exception {
+    @DisplayName("옮기면서 넘친 손자가 끌어올려진다")
+    void pullsUpOverflowingGrandChildren() throws Exception {
         long other = create("{\"title\":\"다른 최상위\"}");
         long root = create("{\"title\":\"1단\"}");
         long second = create("{\"title\":\"2단\",\"parentId\":" + root + "}");
-        create("{\"title\":\"3단\",\"parentId\":" + second + "}");
+        long third = create("{\"title\":\"3단\",\"parentId\":" + second + "}");
 
-        // root 를 other 밑에 넣으면 3단이 4단이 된다
+        // root 가 1단으로 내려가면 third 는 3단이 된다
         mvc.perform(put(BASE + "/" + root).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"1단\",\"parentId\":" + other + "}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
+
+        // third 는 자기 위쪽에서 깊이 1인 root 의 자식이 된다
+        mvc.perform(get(BASE + "/" + third))
+                .andExpect(jsonPath("$.parentId").value(root));
+        mvc.perform(get(BASE + "/" + second))
+                .andExpect(jsonPath("$.parentId").value(root));
+    }
+
+    @Test
+    @DisplayName("2단으로 옮기면 자식까지 형제로 올라온다")
+    void pullsUpOverflowingChildren() throws Exception {
+        long a = create("{\"title\":\"A\"}");
+        long b = create("{\"title\":\"B\",\"parentId\":" + a + "}");
+        long x = create("{\"title\":\"X\"}");
+        long y = create("{\"title\":\"Y\",\"parentId\":" + x + "}");
+
+        // X 가 2단에 앉으면 Y 는 3단이 된다
+        mvc.perform(put(BASE + "/" + x).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"X\",\"parentId\":" + b + "}"))
+                .andExpect(status().isOk());
+
+        // Y 는 깊이 1인 B 의 자식, 곧 X 의 형제가 된다
+        mvc.perform(get(BASE + "/" + y))
+                .andExpect(jsonPath("$.parentId").value(b));
+        mvc.perform(get(BASE + "/" + x))
+                .andExpect(jsonPath("$.parentId").value(b));
     }
 
     @Test

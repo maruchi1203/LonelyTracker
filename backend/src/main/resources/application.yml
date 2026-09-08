@@ -57,6 +57,8 @@ spring:
       # dialect는 지정하지 않는다. JDBC 연결을 보고 Hibernate가 알아서 고르며,
       # 명시하면 HHH90000025 경고가 뜬다.
       "[hibernate.format_sql]": true
+    # 세션을 컨트롤러까지 끌고 가지 말고, 서비스 메소드가 끝나면 닫음
+    # (잘못 쓰면 프록시 오류 발생)
     open-in-view: false
 
   jackson:

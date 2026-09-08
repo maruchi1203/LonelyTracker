@@ -185,11 +185,12 @@ public class ScheduleEntity {
      * @param completed 풀면 완료 시각이 지워진다
      */
     /**
-     * 상위를 끊어 최상위로 올린다
-     * 부모가 지워질 때 딸린 일정이 함께 사라지지 않게 한다
+     * 상위를 바꾼다
+     *
+     * @param parentId null이면 최상위가 된다
      */
-    public void detachFromParent() {
-        this.parentId = null;
+    public void changeParent(Long parentId) {
+        this.parentId = parentId;
     }
 
     public void changeCompletion(boolean completed) {
