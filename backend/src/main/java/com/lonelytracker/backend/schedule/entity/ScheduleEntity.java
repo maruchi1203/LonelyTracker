@@ -24,6 +24,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -128,6 +129,29 @@ public class ScheduleEntity {
     private LocalDateTime completedAt;
 
     /**
+     * 상위 일정
+     * 연관이 아니라 id로 둔다. 응답이 id만 쓰고, 지연 로딩 사고를 만들지 않는다
+     * 부모가 지워지면 DB가 NULL로 되돌려 자식은 최상위가 된다
+     */
+    @Column(name = "parent_id")
+    private Long parentId;
+
+    /**
+     * 기한
+     * 언제까지 해내야 하는가. 언제 시작하는가({@code startAt})와는 다르다
+     */
+    @Column(name = "due_on")
+    private LocalDate dueOn;
+
+    /**
+     * 형제 사이의 순서
+     * 최상위끼리는 부모가 없는 한 무리로 본다
+     */
+    @Column(name = "display_order", nullable = false)
+    @Builder.Default
+    private int displayOrder = 0;
+
+    /**
      * 등록일시
      */
     @CreatedDate
@@ -152,19 +176,29 @@ public class ScheduleEntity {
      * @param tags            태그
      * @param place           수행 장소
      * @param twoMinuteAction 2분 행동
+     * @param parentId        상위 일정
+     * @param dueOn           기한
      */
     /**
      * 완료 여부를 바꾼다.
      *
      * @param completed 풀면 완료 시각이 지워진다
      */
+    /**
+     * 상위를 끊어 최상위로 올린다
+     * 부모가 지워질 때 딸린 일정이 함께 사라지지 않게 한다
+     */
+    public void detachFromParent() {
+        this.parentId = null;
+    }
+
     public void changeCompletion(boolean completed) {
         this.completedAt = completed ? LocalDateTime.now() : null;
     }
 
     public void update(String title, String description, LocalDateTime startAt,
             Integer durationMinutes, boolean allDay, Set<String> tags,
-            String place, String twoMinuteAction) {
+            String place, String twoMinuteAction, Long parentId, LocalDate dueOn) {
         this.title = title;
         this.description = description;
         this.startAt = startAt;
@@ -173,5 +207,7 @@ public class ScheduleEntity {
         this.tags = (tags == null) ? new HashSet<>() : new HashSet<>(tags);
         this.place = place;
         this.twoMinuteAction = twoMinuteAction;
+        this.parentId = parentId;
+        this.dueOn = dueOn;
     }
 }

@@ -5,12 +5,15 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
 
 /**
  * 앞으로의 회차를 전부 수정한다. 이미 손댄 회차는 그쪽 값이 이겨 영향받지 않는다.
  *
+ * @param parentId   상위 일정. 없으면 최상위로 올라간다
+ * @param dueOn      기한. 언제까지 해내야 하나
  * @param recurrence 주면 반복 규칙을 바꾸거나 새로 붙이고, 안 주면 반복을 없앤다
  */
 public record ScheduleUpdateRequest(
@@ -29,6 +32,10 @@ public record ScheduleUpdateRequest(
         @Size(max = FieldLengths.PLACE, message = "place는 200자를 넘을 수 없습니다") String place,
 
         @Size(max = FieldLengths.TWO_MINUTE_ACTION, message = "twoMinuteAction은 200자를 넘을 수 없습니다") String twoMinuteAction,
+
+        Long parentId,
+
+        LocalDate dueOn,
 
         @Valid ScheduleRecurrenceRequest recurrence) {
 }

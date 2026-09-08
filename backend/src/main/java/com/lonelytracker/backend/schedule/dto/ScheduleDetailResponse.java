@@ -4,6 +4,7 @@ import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
 import com.lonelytracker.backend.schedule.entity.ScheduleRecurEntity;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -27,6 +28,8 @@ public record ScheduleDetailResponse(
         Set<String> tags,
         String place,
         String twoMinuteAction,
+        Long parentId,
+        LocalDate dueOn,
         ScheduleRecurrenceResponse recurrence,
         LocalDateTime createdAt,
         LocalDateTime updatedAt) {
@@ -48,6 +51,8 @@ public record ScheduleDetailResponse(
                 schedule.tagsCopy(),
                 schedule.getPlace(),
                 schedule.getTwoMinuteAction(),
+                schedule.getParentId(),
+                schedule.getDueOn(),
                 (recur == null) ? null : ScheduleRecurrenceResponse.from(recur),
                 schedule.getCreatedAt(),
                 schedule.getUpdatedAt());

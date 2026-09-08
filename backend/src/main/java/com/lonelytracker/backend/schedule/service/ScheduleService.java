@@ -47,6 +47,9 @@ public class ScheduleService {
     /** 조회 조건이 없을 때 이번 주 월요일부터 볼 주 수 */
     private static final int DEFAULT_WEEKS = 4;
 
+    /** 계층의 최대 깊이. 최상위부터 손자까지다 */
+    private static final int MAX_DEPTH = 3;
+
     private final ScheduleRepository scheduleRepository;
     private final ScheduleRecurRepository recurRepository;
     private final ScheduleProgressRepository progressRepository;
@@ -103,15 +106,13 @@ public class ScheduleService {
     }
 
     /**
-     * 반복 일정 전부와 최근 성적
-     */
-    /**
      * 1회성 일정을 완료하거나 되돌린다.
      *
      * @throws IllegalArgumentException 습관이면. 습관은 회차마다 상태를 갖는다
      */
     @Transactional
     public ScheduleResponse changeCompletion(Long id, boolean completed) {
+        //
         ScheduleEntity schedule = getOwnedOrThrow(id);
         if (recurRepository.existsById(id)) {
             throw new IllegalArgumentException(
@@ -172,6 +173,7 @@ public class ScheduleService {
     @Transactional
     public ScheduleResponse create(ScheduleCreateRequest request) {
         ScheduleUtil.validatePeriod(request.startAt(), request.endAt());
+        validateParent(null, request.parentId(), request.recurrence() != null);
 
         ScheduleEntity schedule = scheduleRepository.save(ScheduleEntity.builder()
                 .user(currentUserProvider.get())
@@ -183,6 +185,8 @@ public class ScheduleService {
                 .tags(ScheduleUtil.normalizeTags(request.tags()))
                 .place(request.place())
                 .twoMinuteAction(request.twoMinuteAction())
+                .parentId(request.parentId())
+                .dueOn(request.dueOn())
                 .build());
 
         if (request.recurrence() != null) {
@@ -202,6 +206,9 @@ public class ScheduleService {
         ScheduleUtil.validatePeriod(request.startAt(), request.endAt());
 
         ScheduleEntity schedule = getOwnedOrThrow(id);
+        // 거부될 요청이 다른 칸을 먼저 바꿔 놓지 않도록 손대기 전에 검사한다
+        validateParent(id, request.parentId(), request.recurrence() != null);
+
         LocalDate oldDate = (schedule.getStartAt() == null)
                 ? null
                 : schedule.getStartAt().toLocalDate();
@@ -214,7 +221,9 @@ public class ScheduleService {
                 Boolean.TRUE.equals(request.allDay()),
                 ScheduleUtil.normalizeTags(request.tags()),
                 request.place(),
-                request.twoMinuteAction());
+                request.twoMinuteAction(),
+                request.parentId(),
+                request.dueOn());
 
         applyRecurChange(schedule, request.recurrence());
 
@@ -260,6 +269,10 @@ public class ScheduleService {
             return;
         }
 
+        // DB의 ON DELETE SET NULL을 Hibernate는 모른다. 딸린 일정을 먼저 최상위로 올린다
+        scheduleRepository.findAllById(scheduleRepository.findIdsByParentIdIn(List.of(id)))
+                .forEach(ScheduleEntity::detachFromParent);
+
         // DB의 ON DELETE CASCADE를 Hibernate는 모른다. 자식을 먼저 지워야 flush에서 안 터진다
         progressRepository.deleteByScheduleId(id);
         if (recur != null) {
@@ -276,6 +289,75 @@ public class ScheduleService {
         return scheduleRepository.findById(id)
                 .filter(s -> s.getUser().getId().equals(userId))
                 .orElseThrow(() -> new NotFoundException("일정을 찾을 수 없습니다. id=" + id));
+    }
+
+    /**
+     * 상위 일정을 검사한다.
+     * 남의 일정, 자기 자신, 습관, 순환, 3단 초과를 막는다.
+     *
+     * @param selfId        만드는 중이면 null
+     * @param selfRecurring 이 요청이 끝난 뒤 습관이 되는지
+     */
+    private void validateParent(Long selfId, Long parentId, boolean selfRecurring) {
+        if (parentId == null) {
+            return;
+        }
+
+        // 리스트가 습관을 빼는데 습관이 계층에 끼면 그 자식만 떠 있게 된다
+        if (selfRecurring) {
+            throw new IllegalArgumentException("습관은 상위 일정을 가질 수 없습니다");
+        }
+        if (parentId.equals(selfId)) {
+            throw new IllegalArgumentException("자기 자신을 상위 일정으로 둘 수 없습니다");
+        }
+
+        // 남의 일정은 없는 것으로 취급한다. 400을 내면 그 일정의 존재가 새어 나간다
+        getOwnedOrThrow(parentId);
+
+        if (recurRepository.existsById(parentId)) {
+            throw new IllegalArgumentException("습관은 다른 일정을 거느릴 수 없습니다");
+        }
+        if (depthOf(parentId, selfId) + 1 + heightOf(selfId) >= MAX_DEPTH) {
+            throw new IllegalArgumentException(
+                    "일정은 " + MAX_DEPTH + "단까지만 묶을 수 있습니다");
+        }
+    }
+
+    /**
+     * 최상위까지의 거리. 최상위 자신은 0이다.
+     *
+     * @param selfId 올라가다 이것을 만나면 순환이다
+     * @throws IllegalArgumentException 순환일 때
+     */
+    private int depthOf(Long id, Long selfId) {
+        int depth = 0;
+        Long cursor = parentIdOf(id);
+
+        // 3단을 넘는 사슬은 만들어질 수 없다. 상한을 두어 깨진 데이터에도 멈춘다
+        while (cursor != null && depth < MAX_DEPTH) {
+            if (cursor.equals(selfId)) {
+                throw new IllegalArgumentException("상위 일정이 서로를 가리킬 수 없습니다");
+            }
+            depth++;
+            cursor = parentIdOf(cursor);
+        }
+        return depth;
+    }
+
+    /** 가장 깊은 자손까지의 거리. 자식이 없으면 0이다 */
+    private int heightOf(Long id) {
+        if (id == null) {
+            return 0;
+        }
+        List<Long> children = scheduleRepository.findIdsByParentIdIn(List.of(id));
+        if (children.isEmpty()) {
+            return 0;
+        }
+        return scheduleRepository.findIdsByParentIdIn(children).isEmpty() ? 1 : 2;
+    }
+
+    private Long parentIdOf(Long id) {
+        return scheduleRepository.findById(id).map(ScheduleEntity::getParentId).orElse(null);
     }
 
     /** 그 일정이 그 날짜에 회차를 내는가. */

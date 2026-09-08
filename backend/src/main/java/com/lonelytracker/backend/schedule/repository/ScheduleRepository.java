@@ -6,6 +6,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
 
@@ -62,4 +63,11 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
       order by t
       """)
   List<String> findTagNames(@Param("userId") Long userId);
+
+  /**
+   * 주어진 일정들의 자식 id. 계층의 깊이를 잴 때 쓴다.
+   * 3단까지라 두 번 부르면 손자까지 닿는다.
+   */
+  @Query("select s.id from ScheduleEntity s where s.parentId in :parentIds")
+  List<Long> findIdsByParentIdIn(@Param("parentIds") Collection<Long> parentIds);
 }

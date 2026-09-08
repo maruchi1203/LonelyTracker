@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -15,6 +16,8 @@ import java.util.Set;
  * @param startAt         1회성이면 그 시각, 반복이면 첫 회차의 시각. 없으면 리스트에만 남는다
  * @param endAt           소요시간으로 환산해 저장한다. null이면 종료 시각 없음
  * @param twoMinuteAction 시작에 필요한 2분 이내의 미니 행동
+ * @param parentId        상위 일정. 없으면 최상위다
+ * @param dueOn           기한. 언제까지 해내야 하나
  * @param recurrence      주면 반복, 안 주면 1회성이다
  */
 public record ScheduleCreateRequest(
@@ -35,6 +38,10 @@ public record ScheduleCreateRequest(
         @Size(max = FieldLengths.PLACE, message = "place는 200자를 넘을 수 없습니다") String place,
 
         @Size(max = FieldLengths.TWO_MINUTE_ACTION, message = "twoMinuteAction은 200자를 넘을 수 없습니다") String twoMinuteAction,
+
+        Long parentId,
+
+        LocalDate dueOn,
 
         @Valid ScheduleRecurrenceRequest recurrence) {
 }
