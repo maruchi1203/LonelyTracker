@@ -4,6 +4,7 @@ import com.lonelytracker.backend.common.exception.NotFoundException;
 import com.lonelytracker.backend.schedule.dto.ScheduleRecurrenceRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleDetailResponse;
+import com.lonelytracker.backend.schedule.dto.ScheduleListItemResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleRecurringResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleUpdateRequest;
@@ -16,6 +17,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -128,6 +130,29 @@ public class ScheduleService {
         return firstInstanceOf(schedule);
     }
 
+    /**
+     * 리스트 탭이 보는 일정. 습관은 빠진다.
+     * 회차가 아니라 일정 자체라 날짜를 안 정한 항목도 함께 온다.
+     */
+    public List<ScheduleListItemResponse> findForList() {
+        return scheduleRepository.findForList(currentUserProvider.get().getId())
+                .stream()
+                .sorted(LIST_ORDER)
+                .map(ScheduleListItemResponse::from)
+                .toList();
+    }
+
+    /**
+     * 리스트가 늘어놓는 순서. 사용자가 세운 순서 그대로다.
+     * 날짜로 줄 세우는 것은 화면이 켜고 끄는 보기 방식이라 여기서 섞지 않는다.
+     * <p>
+     * 이 순서로 두면 화면이 부모로 묶을 때 무리 안의 순서가 그대로 보존된다.
+     * 아직 순서를 정한 적이 없으면 값이 모두 0이라 만든 순서로 남는다.
+     */
+    private static final Comparator<ScheduleEntity> LIST_ORDER =
+            Comparator.comparingInt(ScheduleEntity::getDisplayOrder)
+                    .thenComparing(ScheduleEntity::getId);
+
     /** 이미 쓴 적 있는 태그 이름. 입력 자동완성이 쓴다 */
     public List<String> findTagNames() {
         return scheduleRepository.findTagNames(currentUserProvider.get().getId());
@@ -210,6 +235,12 @@ public class ScheduleService {
         ScheduleUtil.validatePeriod(request.startAt(), request.endAt());
 
         ScheduleEntity schedule = getOwnedOrThrow(id);
+        // 습관이 되면 리스트에서 빠진다. 딸린 자식이 부모를 잃지 않게 먼저 막는다
+        if (request.recurrence() != null
+                && !scheduleRepository.findIdsByParentIdIn(List.of(id)).isEmpty()) {
+            throw new IllegalArgumentException("자식이 있는 일정은 습관으로 바꿀 수 없습니다");
+        }
+
         // 거부될 요청이 다른 칸을 먼저 바꿔 놓지 않도록 손대기 전에 검사한다
         Long parentId = resolveParent(id, request.parentId(), request.recurrence() != null);
 

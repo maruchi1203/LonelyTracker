@@ -5,6 +5,7 @@ import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.schedule.dto.ScheduleCompletionRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleDetailResponse;
+import com.lonelytracker.backend.schedule.dto.ScheduleListItemResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleRecurringResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleParseRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
@@ -73,6 +74,15 @@ public class ScheduleController {
     @GetMapping("/tags")
     public List<String> findTagNames() {
         return scheduleService.findTagNames();
+    }
+
+    /**
+     * 리스트 탭이 보는 일정
+     * 습관은 빠지고, 날짜를 안 정한 항목도 함께 온다
+     */
+    @GetMapping("/list")
+    public List<ScheduleListItemResponse> findForList() {
+        return scheduleService.findForList();
     }
 
     /**
