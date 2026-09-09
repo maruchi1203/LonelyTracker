@@ -18,6 +18,8 @@ import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
 import ScheduleEditModal from "../components/schedule/ScheduleEditModal";
 import {
   dropIntentAt,
+  dropLevelAt,
+  INDENT_PX,
   planDrop,
   planDropAtEnd,
   type DropIntent,
@@ -30,18 +32,14 @@ import type {
   SchedulePriority,
 } from "../types/schedule";
 
-/** 깊이만큼 들여쓴다. 계층은 3단까지라 세 칸이면 된다 */
-const INDENT = ["", "pl-6", "pl-12"];
+/**
+ * 깊이만큼 들여쓴다. 계층은 3단까지라 세 칸이면 된다
+ * 한 칸이 INDENT_PX 와 같아야 끌 때 손이 가리키는 단과 눈에 보이는 단이 맞는다
+ */
+const INDENT = ["", "pl-8", "pl-16"];
 
 const MENU_ITEM =
   "rounded-md px-2.5 py-1.5 text-left text-sm transition-colors";
-
-/** 놓으면 어떻게 되는지 보여주는 표시. 가운데는 자식으로 들어간다 */
-const DROP_MARK: Record<DropIntent, string> = {
-  before: "border-t-2 border-t-brand-500",
-  after: "border-b-2 border-b-brand-500",
-  inside: "bg-brand-50 ring-2 ring-inset ring-brand-300",
-};
 
 const TOGGLE = "rounded-md border px-3 py-1 text-sm transition-colors";
 const TOGGLE_ON = "border-brand-500 bg-brand-500 text-white";
@@ -69,7 +67,7 @@ export default function ListPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [dropAt, setDropAt] = useState<
-    { id: number; intent: DropIntent } | null
+    { id: number; intent: DropIntent; level: number } | null
   >(null);
 
   // 마지막 행이 깊은 곳에 있으면 그 아래에는 최상위 자리가 없다
@@ -200,8 +198,9 @@ export default function ListPage() {
       </div>
 
       <p className="text-xs text-slate-400">
-        날짜를 안 정한 일도 적어 둘 수 있습니다. 끌어서 행의 가운데에 놓으면 그
-        일정의 하위로 들어갑니다.
+        날짜를 안 정한 일도 적어 둘 수 있습니다. 끌 때 행의 가운데에 놓으면 그
+        일정의 막내 하위로, 위아래 틈에 놓으면 형제로 들어갑니다. 틈에서는 좌우로
+        움직여 몇 단에 설지 고릅니다.
       </p>
 
       {error && (
@@ -227,16 +226,18 @@ export default function ListPage() {
                 onDelete={() => void handleDelete(item)}
                 draggable={canDrag}
                 dragging={draggingId === item.id}
-                dropIntent={dropAt?.id === item.id ? dropAt.intent : null}
+                drop={dropAt?.id === item.id ? dropAt : null}
                 onDragStart={() => setDraggingId(item.id)}
                 onDragEnd={stopDragging}
-                onDragOverRow={(intent) => {
-                  setDropAt({ id: item.id, intent });
+                onDragOverRow={(intent, level) => {
+                  setDropAt({ id: item.id, intent, level });
                   setDropAtEnd(false);
                 }}
-                onDropAt={(intent) => {
+                onDropAt={(intent, level) => {
                   if (draggingId === null) return;
-                  void handleDrop(planDrop(items, draggingId, item.id, intent));
+                  void handleDrop(
+                    planDrop(items, draggingId, item.id, intent, level),
+                  );
                 }}
               />
             ))}
@@ -296,10 +297,13 @@ export default function ListPage() {
   );
 }
 
-/** 커서가 행의 위아래 어디쯤인지로 뜻을 읽는다 */
-function intentAtPointer(e: DragEvent<HTMLElement>): DropIntent {
+/** 커서 자리를 읽는다. 위아래가 뜻을, 좌우가 단을 정한다 */
+function spotAtPointer(e: DragEvent<HTMLElement>): [DropIntent, number] {
   const box = e.currentTarget.getBoundingClientRect();
-  return dropIntentAt((e.clientY - box.top) / box.height);
+  return [
+    dropIntentAt((e.clientY - box.top) / box.height),
+    dropLevelAt(e.clientX - box.left),
+  ];
 }
 
 interface RowProps {
@@ -312,11 +316,11 @@ interface RowProps {
   draggable: boolean;
   dragging: boolean;
   /** 지금 이 행에 놓으면 어떻게 되는지. 끌고 있지 않으면 null */
-  dropIntent: DropIntent | null;
+  drop: { intent: DropIntent; level: number } | null;
   onDragStart: () => void;
   onDragEnd: () => void;
-  onDragOverRow: (intent: DropIntent) => void;
-  onDropAt: (intent: DropIntent) => void;
+  onDragOverRow: (intent: DropIntent, level: number) => void;
+  onDropAt: (intent: DropIntent, level: number) => void;
 }
 
 function ListRow({
@@ -327,7 +331,7 @@ function ListRow({
   onDelete,
   draggable,
   dragging,
-  dropIntent,
+  drop,
   onDragStart,
   onDragEnd,
   onDragOverRow,
@@ -373,18 +377,29 @@ function ListRow({
         // 막지 않으면 브라우저가 놓기를 거부한다
         if (!draggable) return;
         e.preventDefault();
-        onDragOverRow(intentAtPointer(e));
+        onDragOverRow(...spotAtPointer(e));
       }}
       onDrop={(e) => {
         e.preventDefault();
-        onDropAt(intentAtPointer(e));
+        onDropAt(...spotAtPointer(e));
       }}
       className={`relative flex items-start gap-2 px-3 py-3 transition-opacity ${
         INDENT[depth] ?? ""
       } ${dragging ? "opacity-40" : ""} ${shelved ? "opacity-50" : ""} ${
-        dropIntent ? DROP_MARK[dropIntent] : ""
+        drop?.intent === "inside" ? "bg-brand-50 ring-2 ring-inset ring-brand-300" : ""
       }`}
     >
+      {/* 어느 틈에 몇 단으로 설지를 선의 자리와 들여쓰기로 보여준다 */}
+      {drop !== null && drop.intent !== "inside" && (
+        <span
+          aria-hidden
+          style={{ marginLeft: drop.level * INDENT_PX }}
+          className={`pointer-events-none absolute right-3 left-3 h-0.5 rounded-full bg-brand-500 ${
+            drop.intent === "before" ? "top-0" : "bottom-0"
+          }`}
+        />
+      )}
+
       {/* 손잡이만 끈다. 행 전체를 끌면 글자를 고르는 것과 부딪힌다 */}
       <button
         type="button"
@@ -394,7 +409,7 @@ function ListRow({
         disabled={!draggable}
         title={
           draggable
-            ? "끌어서 순서 바꾸기. 행 가운데에 놓으면 하위로 들어갑니다"
+            ? "끌어서 자리 바꾸기. 오른쪽으로 밀면 위 일정의 하위로 들어갑니다"
             : "내 순서로 볼 때만 자리를 바꿀 수 있습니다"
         }
         aria-label={`${item.title} 순서 바꾸기`}

@@ -1,14 +1,20 @@
 import type { ScheduleListItem } from "../types/schedule";
-import { selfAndDescendantIds } from "./scheduleTree";
+import { buildTree, flatten, selfAndDescendantIds } from "./scheduleTree";
 
 /**
  * 행 하나에 놓았을 때의 뜻
- * before/after 는 그 행의 형제가 되고, inside 는 그 행의 자식이 된다
+ * before/after 는 그 행 앞뒤의 틈이고, inside 는 그 행의 막내 자식이 된다
  */
 export type DropIntent = "before" | "inside" | "after";
 
+/** 계층은 3단까지다. 최상위를 0으로 센다 */
+const DEEPEST = 2;
+
 /** 자식으로 넣는 가운데 띠의 폭. 행의 절반을 준다 */
 const INSIDE_BAND = 0.5;
+
+/** 들여쓰기 한 칸. 화면의 INDENT 와 같아야 손과 눈이 맞는다 */
+export const INDENT_PX = 32;
 
 /**
  * 커서가 행의 어디에 있는지로 뜻을 가른다
@@ -23,16 +29,34 @@ export function dropIntentAt(ratio: number): DropIntent {
   return "inside";
 }
 
+/**
+ * 커서의 가로 자리로 몇 단에 설지 읽는다
+ * 왼쪽 끝에 두면 최상위, 한 칸씩 오른쪽으로 갈수록 한 단씩 깊어진다
+ *
+ * @param offsetX 행 왼쪽 끝에서 떨어진 거리
+ */
+export function dropLevelAt(offsetX: number): number {
+  const level = Math.floor(offsetX / INDENT_PX);
+  return Math.min(Math.max(level, 0), DEEPEST);
+}
+
 /** 옮긴 결과. 서버에 보낼 무리 하나를 담는다 */
 export interface DropPlan {
   parentId: number | null;
   ids: number[];
 }
 
+/** 설 자리. afterId 가 null 이면 그 무리의 맨 앞이다 */
+interface Spot {
+  parentId: number | null;
+  afterId: number | null;
+}
+
 /**
  * 끌어다 놓은 결과로 다시 세울 무리를 만든다
  * 서버는 무리의 최종 구성원 전부를 요구하므로 밖에서 들어온 것까지 한 줄에 담는다
  *
+ * @param level before/after 일 때 몇 단에 설지. inside 는 대상의 자식이라 안 쓴다
  * @returns 옮길 필요가 없거나 놓을 수 없는 자리면 null
  */
 export function planDrop(
@@ -40,34 +64,86 @@ export function planDrop(
   draggedId: number,
   targetId: number,
   intent: DropIntent,
+  level: number,
 ): DropPlan | null {
   const dragged = items.find((i) => i.id === draggedId);
   const target = items.find((i) => i.id === targetId);
   if (!dragged || !target || draggedId === targetId) return null;
 
   // 자기 자손 밑으로 들어가면 그 가지가 통째로 트리에서 떨어져 나간다
-  if (selfAndDescendantIds(items, draggedId).has(targetId)) return null;
+  const moving = selfAndDescendantIds(items, draggedId);
+  if (moving.has(targetId)) return null;
 
-  const parentId = intent === "inside" ? target.id : (target.parentId ?? null);
+  const spot =
+    intent === "inside"
+      ? lastChildSpot(items, target.id, draggedId)
+      : gapSpot(items, moving, target.id, intent, level);
+  if (spot === null) return null;
 
-  // 습관은 계층에 끼지 않는다. 서버도 같은 것을 막는다
-  if (parentId !== null && (dragged.recurring || parentIsHabit(items, parentId))) {
-    return null;
+  const { parentId } = spot;
+  if (parentId !== null) {
+    // 습관은 계층에 끼지 않는다. 서버도 같은 것을 막는다
+    if (dragged.recurring || isHabit(items, parentId)) return null;
+    if (depthOf(items, parentId) >= DEEPEST) return null;
   }
-  if (parentId !== null && depthOf(items, parentId) >= 2) return null;
 
   // items 는 서버가 준 차례라 저장된 순서 그대로다
   const ids = items
     .filter((i) => (i.parentId ?? null) === parentId && i.id !== draggedId)
     .map((i) => i.id);
 
-  if (intent === "inside") ids.push(draggedId);
-  else {
-    const at = ids.indexOf(target.id);
-    ids.splice(intent === "before" ? at : at + 1, 0, draggedId);
-  }
+  const at = spot.afterId === null ? 0 : ids.indexOf(spot.afterId) + 1;
+  ids.splice(at, 0, draggedId);
 
   return { parentId, ids };
+}
+
+/** 그 행의 자식 무리 맨 끝 */
+function lastChildSpot(
+  items: ScheduleListItem[],
+  targetId: number,
+  draggedId: number,
+): Spot {
+  const children = items.filter(
+    (i) => (i.parentId ?? null) === targetId && i.id !== draggedId,
+  );
+  return { parentId: targetId, afterId: children.at(-1)?.id ?? null };
+}
+
+/**
+ * 행 사이의 틈에서 그 단의 자리를 찾는다
+ * 틈 바로 위 행에서 조상을 거슬러 올라가면 단마다 자리가 하나씩 나온다
+ */
+function gapSpot(
+  items: ScheduleListItem[],
+  moving: Set<number>,
+  targetId: number,
+  intent: "before" | "after",
+  level: number,
+): Spot | null {
+  // 끌고 있는 가지는 없는 셈 친다. 자기가 자기 위 행이 되면 자기 밑으로 들어간다
+  const rows = flatten(buildTree(items)).filter((r) => !moving.has(r.item.id));
+  const at = rows.findIndex((r) => r.item.id === targetId);
+  if (at < 0) return null;
+
+  const above = intent === "before" ? rows[at - 1] : rows[at];
+  if (above === undefined) return { parentId: null, afterId: null };
+
+  const wanted = Math.min(level, above.depth + 1, DEEPEST);
+
+  // 바로 위 행보다 한 단 깊으면 그 행의 첫 자식이 된다
+  if (wanted === above.depth + 1) {
+    return { parentId: above.item.id, afterId: null };
+  }
+
+  // 그 단까지 거슬러 올라간 조상 바로 뒤에 선다
+  let anchor = above.item;
+  for (let depth = above.depth; depth > wanted; depth--) {
+    const parent = items.find((i) => i.id === anchor.parentId);
+    if (parent === undefined) return null;
+    anchor = parent;
+  }
+  return { parentId: anchor.parentId ?? null, afterId: anchor.id };
 }
 
 /**
@@ -91,8 +167,8 @@ export function planDropAtEnd(
   return { parentId: null, ids };
 }
 
-function parentIsHabit(items: ScheduleListItem[], parentId: number): boolean {
-  return items.find((i) => i.id === parentId)?.recurring === true;
+function isHabit(items: ScheduleListItem[], id: number): boolean {
+  return items.find((i) => i.id === id)?.recurring === true;
 }
 
 /** 최상위까지의 거리. 최상위 자신은 0이다 */
