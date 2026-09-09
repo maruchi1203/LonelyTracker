@@ -5,6 +5,12 @@ export type ScheduleStatus = "PLANNED" | "DONE" | "SKIPPED";
 export type RecurrenceFreq = "DAILY" | "WEEKLY";
 export type DeleteScope = "FUTURE" | "ALL";
 
+/**
+ * MoSCoW 우선순위
+ * 값이 없으면 COULD 로 본다. 기본값을 두지 않아 "아직 안 정함"과 구분된다
+ */
+export type SchedulePriority = "MUST" | "SHOULD" | "COULD" | "WONT";
+
 /** java.time.DayOfWeek에 대응되는 요일 이름 */
 export type Weekday =
   | "MONDAY"
@@ -69,6 +75,8 @@ export interface ScheduleListItem {
   completedAt?: string;
   /** 반복 규칙이 붙었는지. 완료를 어느 경로로 보낼지가 여기서 갈린다 */
   recurring: boolean;
+  /** 없으면 COULD 로 본다. WONT 은 흐리게 남고 달력에서는 빠진다 */
+  priority?: SchedulePriority;
   tags?: string[];
   place?: string;
   twoMinuteAction?: string;
@@ -98,6 +106,7 @@ export interface ScheduleCreateRequest {
   parentId?: number;
   /** "YYYY-MM-DD" */
   dueOn?: string;
+  priority?: SchedulePriority;
   recurrence?: RecurrenceRequest;
 }
 
@@ -134,6 +143,7 @@ export interface ScheduleDetailResponse {
   twoMinuteAction?: string;
   parentId?: number;
   dueOn?: string;
+  priority?: SchedulePriority;
   /** 없으면 1회성 일정이다 */
   recurrence?: RecurrenceResponse;
   createdAt: string;

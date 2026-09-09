@@ -1,4 +1,4 @@
-import type { ScheduleListItem } from "../types/schedule";
+import type { ScheduleListItem, SchedulePriority } from "../types/schedule";
 
 /** 리스트 한 줄과 그 밑에 딸린 것들 */
 export interface TreeNode {
@@ -14,9 +14,21 @@ export interface FlatRow {
 
 /**
  * 늘어놓는 기준
- * 서버는 사용자가 세운 순서만 지킨다. 날짜로 줄 세우는 것은 여기서 한다
+ * 서버는 사용자가 세운 순서만 지킨다. 날짜와 우선순위로 줄 세우는 것은 여기서 한다
  */
-export type ListSort = "manual" | "due";
+export type ListSort = "manual" | "due" | "priority";
+
+/** 값이 없으면 COULD 자리에 둔다. 저장은 구분하고 표시만 합친다 */
+const PRIORITY_RANK: Record<SchedulePriority, number> = {
+  MUST: 0,
+  SHOULD: 1,
+  COULD: 2,
+  WONT: 3,
+};
+
+function rankOf(item: ScheduleListItem): number {
+  return PRIORITY_RANK[item.priority ?? "COULD"];
+}
 
 /**
  * 정렬에 쓰는 날짜
@@ -54,22 +66,31 @@ export function buildTree(
     else roots.push(node);
   }
 
-  if (sort === "due") sortByDate(roots);
+  if (sort !== "manual") sortNodes(roots, sort);
   return roots;
 }
 
-/** 형제 무리 안에서만 날짜순으로 세운다 */
-function sortByDate(nodes: TreeNode[]): void {
-  // 날짜가 없는 항목은 뒤로 보낸다. 같으면 서버가 준 순서가 그대로 남는다
+/** 형제 무리 안에서만 세운다. 계층을 넘어 섞으면 자식이 부모보다 앞에 선다 */
+function sortNodes(nodes: TreeNode[], sort: Exclude<ListSort, "manual">): void {
   nodes.sort((a, b) => {
-    const left = sortDateOf(a.item);
-    const right = sortDateOf(b.item);
-    if (left === right) return 0;
-    if (left === undefined) return 1;
-    if (right === undefined) return -1;
-    return left < right ? -1 : 1;
+    // 우선순위가 같으면 마감이 빠른 것부터. 같으면 서버가 준 순서가 남는다
+    if (sort === "priority") {
+      const gap = rankOf(a.item) - rankOf(b.item);
+      if (gap !== 0) return gap;
+    }
+    return compareByDate(a, b);
   });
-  nodes.forEach((node) => sortByDate(node.children));
+  nodes.forEach((node) => sortNodes(node.children, sort));
+}
+
+/** 날짜가 없는 항목은 뒤로 보낸다 */
+function compareByDate(a: TreeNode, b: TreeNode): number {
+  const left = sortDateOf(a.item);
+  const right = sortDateOf(b.item);
+  if (left === right) return 0;
+  if (left === undefined) return 1;
+  if (right === undefined) return -1;
+  return left < right ? -1 : 1;
 }
 
 /**

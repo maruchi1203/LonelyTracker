@@ -1,5 +1,6 @@
 package com.lonelytracker.backend.schedule.dto;
 
+import com.lonelytracker.backend.schedule.domain.SchedulePriority;
 import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
 
 import java.time.LocalDate;
@@ -17,6 +18,7 @@ import java.util.Set;
  * @param startAt     언제 하기로 했나. 없으면 아직 안 정한 항목이다
  * @param completedAt 값이 있으면 완료다. 습관은 회차마다 상태를 가져 늘 비어 있다
  * @param recurring   반복 규칙이 붙었는지. 완료를 어느 경로로 보낼지가 여기서 갈린다
+ * @param priority    없으면 COULD 로 본다. WONT 은 흐리게 남는다
  */
 public record ScheduleListItemResponse(
         Long id,
@@ -25,6 +27,7 @@ public record ScheduleListItemResponse(
         String title,
         String description,
         LocalDate dueOn,
+        SchedulePriority priority,
         LocalDateTime startAt,
         LocalDateTime completedAt,
         boolean recurring,
@@ -42,6 +45,7 @@ public record ScheduleListItemResponse(
                 s.getTitle(),
                 s.getDescription(),
                 s.getDueOn(),
+                s.getPriority(),
                 s.getStartAt(),
                 s.getCompletedAt(),
                 recurring,

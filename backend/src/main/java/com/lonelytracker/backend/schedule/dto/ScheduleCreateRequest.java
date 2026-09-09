@@ -1,6 +1,7 @@
 package com.lonelytracker.backend.schedule.dto;
 
 import com.lonelytracker.backend.common.FieldLengths;
+import com.lonelytracker.backend.schedule.domain.SchedulePriority;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -42,6 +43,8 @@ public record ScheduleCreateRequest(
         Long parentId,
 
         LocalDate dueOn,
+
+        SchedulePriority priority,
 
         @Valid ScheduleRecurrenceRequest recurrence) {
 }

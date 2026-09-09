@@ -1,6 +1,7 @@
 import type { ParsedSchedule } from "../types/parse";
 import type {
   RecurrenceFreq,
+  SchedulePriority,
   ScheduleCreateRequest,
   ScheduleDetailResponse,
   Weekday,
@@ -29,6 +30,7 @@ export type FormFieldId =
   | "place"
   | "twoMinuteAction"
   | "dueOn"
+  | "priority"
   | "parentId";
 
 /**
@@ -61,6 +63,8 @@ export interface ScheduleForm {
   dueOn: string;
   /** 상위 일정 id. 빈 문자열이면 최상위 */
   parentId: string;
+  /** 빈 문자열이면 아직 안 정한 것이다. COULD 로 정한 것과 구분된다 */
+  priority: SchedulePriority | "";
 }
 
 /** 지금 이후의 가장 가까운 정각 */
@@ -88,6 +92,7 @@ export function emptyForm(defaultDate?: Date | null): ScheduleForm {
     twoMinuteAction: "",
     dueOn: "",
     parentId: "",
+    priority: "",
   };
 }
 
@@ -162,6 +167,7 @@ export function formFromDetail(detail: ScheduleDetailResponse): ScheduleForm {
     twoMinuteAction: detail.twoMinuteAction ?? "",
     dueOn: detail.dueOn ?? "",
     parentId: detail.parentId === undefined ? "" : String(detail.parentId),
+    priority: detail.priority ?? "",
   };
 }
 
@@ -277,6 +283,8 @@ export function formToCreateRequest(form: ScheduleForm): ScheduleCreateRequest {
     twoMinuteAction: form.twoMinuteAction.trim() || undefined,
     dueOn: form.dueOn || undefined,
     parentId: form.parentId ? Number(form.parentId) : undefined,
+    // 빈 값을 그대로 보내면 "안 정함"이 사라진다
+    priority: form.priority || undefined,
     recurrence: form.repeating
       ? {
           // MONTHLY 는 검증에서 걸러진다

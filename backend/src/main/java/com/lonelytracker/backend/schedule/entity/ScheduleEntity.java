@@ -1,11 +1,14 @@
 package com.lonelytracker.backend.schedule.entity;
 
 import com.lonelytracker.backend.common.FieldLengths;
+import com.lonelytracker.backend.schedule.domain.SchedulePriority;
 import com.lonelytracker.backend.user.entity.UserEntity;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -144,6 +147,14 @@ public class ScheduleEntity {
     private LocalDate dueOn;
 
     /**
+     * MoSCoW 우선순위
+     * 없으면 COULD 로 본다. 기본값을 두지 않아 아직 안 정한 것과 구분된다
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10)
+    private SchedulePriority priority;
+
+    /**
      * 형제 사이의 순서
      * 최상위끼리는 부모가 없는 한 무리로 본다
      */
@@ -178,6 +189,7 @@ public class ScheduleEntity {
      * @param twoMinuteAction 2분 행동
      * @param parentId        상위 일정
      * @param dueOn           기한
+     * @param priority        MoSCoW 우선순위
      */
     /**
      * 완료 여부를 바꾼다.
@@ -207,7 +219,8 @@ public class ScheduleEntity {
 
     public void update(String title, String description, LocalDateTime startAt,
             Integer durationMinutes, boolean allDay, Set<String> tags,
-            String place, String twoMinuteAction, Long parentId, LocalDate dueOn) {
+            String place, String twoMinuteAction, Long parentId, LocalDate dueOn,
+            SchedulePriority priority) {
         this.title = title;
         this.description = description;
         this.startAt = startAt;
@@ -218,5 +231,6 @@ public class ScheduleEntity {
         this.twoMinuteAction = twoMinuteAction;
         this.parentId = parentId;
         this.dueOn = dueOn;
+        this.priority = priority;
     }
 }

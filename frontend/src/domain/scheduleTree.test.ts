@@ -123,3 +123,45 @@ describe('자기와 자손 모으기', () => {
     expect([...selfAndDescendantIds(tree, 2)].sort()).toEqual([2, 3])
   })
 })
+
+describe('우선순위 정렬', () => {
+  it('높은 우선순위부터, 같으면 마감이 빠른 것부터', () => {
+    const tree = buildTree(
+      [
+        item(1, { priority: 'COULD' }),
+        item(2, { priority: 'MUST', dueOn: '2026-10-09' }),
+        item(3, { priority: 'MUST', dueOn: '2026-10-01' }),
+        item(4, { priority: 'WONT' }),
+      ],
+      'priority',
+    )
+
+    expect(tree.map((n) => n.item.id)).toEqual([3, 2, 1, 4])
+  })
+
+  it('안 정한 항목은 선택 자리에 둔다', () => {
+    // 저장은 null 로 구분하고 정렬에서만 COULD 로 본다
+    const tree = buildTree(
+      [item(1, { priority: 'WONT' }), item(2), item(3, { priority: 'MUST' })],
+      'priority',
+    )
+
+    expect(tree.map((n) => n.item.id)).toEqual([3, 2, 1])
+  })
+
+  it('형제 안에서만 세운다', () => {
+    const rows = flatten(
+      buildTree(
+        [
+          item(1, { priority: 'WONT' }),
+          item(2, { parentId: 1, priority: 'MUST' }),
+          item(3, { priority: 'MUST' }),
+        ],
+        'priority',
+      ),
+    )
+
+    // 2 는 가장 높지만 1 의 자식이라 1 밑에 그대로 있다
+    expect(rows.map((r) => r.item.id)).toEqual([3, 1, 2])
+  })
+})

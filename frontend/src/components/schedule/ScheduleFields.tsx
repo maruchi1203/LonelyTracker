@@ -6,7 +6,7 @@ import {
   type FormFreq,
   type ScheduleForm,
 } from "../../domain/scheduleForm";
-import type { Weekday } from "../../types/schedule";
+import type { SchedulePriority, Weekday } from "../../types/schedule";
 
 interface Props {
   value: ScheduleForm;
@@ -41,6 +41,14 @@ const WEEKDAYS: { value: Weekday; label: string }[] = [
   { value: "FRIDAY", label: "금" },
   { value: "SATURDAY", label: "토" },
   { value: "SUNDAY", label: "일" },
+];
+
+/** MoSCoW. 값을 비우면 아직 안 정한 것이고, 정렬에서는 COULD 로 본다 */
+const PRIORITIES: { value: SchedulePriority; label: string; hint: string }[] = [
+  { value: "MUST", label: "필수", hint: "반드시 해야 합니다" },
+  { value: "SHOULD", label: "권장", hint: "하는 편이 좋습니다" },
+  { value: "COULD", label: "선택", hint: "여유가 되면 합니다" },
+  { value: "WONT", label: "보류", hint: "안 하기로 했습니다. 달력에서 빠집니다" },
 ];
 
 const TOGGLE = "rounded-md border px-3 py-1 text-sm transition-colors";
@@ -217,6 +225,33 @@ export default function ScheduleFields({
               <option key={t} value={t} />
             ))}
         </datalist>
+      </div>
+
+      {/* 4-0. 우선순위 */}
+      <div className="flex flex-col gap-1.5">
+        <span className={LABEL}>우선순위 (선택)</span>
+        <div ref={ref("priority")} className="flex flex-wrap items-center gap-1.5">
+          {PRIORITIES.map(({ value, label, hint }) => (
+            <button
+              key={value}
+              type="button"
+              title={hint}
+              // 같은 것을 다시 누르면 안 정한 상태로 돌아간다
+              onClick={() =>
+                onChange({ priority: form.priority === value ? "" : value })
+              }
+              aria-pressed={form.priority === value}
+              className={`${TOGGLE} ${
+                form.priority === value ? TOGGLE_ON : TOGGLE_OFF
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <span className={HINT}>
+          안 고르면 “선택”으로 봅니다. “보류”는 달력에서 빠집니다.
+        </span>
       </div>
 
       {/* 4-1. 기한 */}

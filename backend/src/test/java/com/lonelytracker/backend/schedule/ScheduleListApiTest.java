@@ -176,6 +176,53 @@ class ScheduleListApiTest extends IntegrationTest {
                 .andExpect(status().isNoContent());
     }
 
+    @Test
+    @DisplayName("우선순위를 실어 다니고 수정해도 살아남는다")
+    void carriesPriority() throws Exception {
+        long id = create("{\"title\":\"보고서\",\"priority\":\"MUST\"}");
+
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$[0].priority").value("MUST"));
+
+        // 수정 요청에서 빠지면 한 번 저장한 뒤 조용히 지워진다
+        mvc.perform(put(BASE + "/" + id).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"보고서\",\"priority\":\"MUST\"}"))
+                .andExpect(status().isOk());
+
+        mvc.perform(get(BASE + "/" + id))
+                .andExpect(jsonPath("$.priority").value("MUST"));
+    }
+
+    @Test
+    @DisplayName("안 정하면 아무것도 실리지 않는다")
+    void leavesPriorityUnset() throws Exception {
+        // 기본값을 두지 않아 "아직 안 정함"과 "일부러 Could"가 구분된다
+        create("{\"title\":\"그냥 할 일\"}");
+
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$[0].priority").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("안 하기로 한 일정은 리스트에 남고 달력에서만 빠진다")
+    void hidesWontFromTheCalendarOnly() throws Exception {
+        create("{\"title\":\"안 하기로 함\",\"startAt\":\"2026-10-01T09:00:00\""
+                + ",\"priority\":\"WONT\"}");
+        create("{\"title\":\"할 일\",\"startAt\":\"2026-10-01T10:00:00\"}");
+
+        // 지우지 않는다. "안 하기로 했다"는 판단을 기록으로 남긴다
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$.length()").value(2));
+
+        // 다만 안 할 일이 시간축을 차지하면 안 된다
+        mvc.perform(get(BASE)
+                        .param("from", "2026-10-01T00:00:00")
+                        .param("to", "2026-10-02T00:00:00"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("할 일"));
+    }
+
     /** 순서 바꾸기 요청 */
     private org.springframework.test.web.servlet.ResultActions reorder(String body)
             throws Exception {

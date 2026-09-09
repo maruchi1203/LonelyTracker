@@ -29,6 +29,7 @@ import com.lonelytracker.backend.schedule.domain.ScheduleDeleteScope;
 import com.lonelytracker.backend.schedule.domain.ScheduleInstanceExpander;
 import com.lonelytracker.backend.schedule.domain.ScheduleStatsCounter;
 import com.lonelytracker.backend.schedule.domain.ScheduleUtil;
+import com.lonelytracker.backend.schedule.domain.SchedulePriority;
 import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
 import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
 import com.lonelytracker.backend.schedule.entity.ScheduleProgressEntity;
@@ -90,7 +91,8 @@ public class ScheduleService {
 
         // 조건에 맞는 일정 후보 전체 검색
         List<ScheduleEntity> candidates = scheduleRepository.findCandidates(
-                userId, windowFrom, windowTo, windowFrom.toLocalDate(), windowTo.toLocalDate());
+                userId, SchedulePriority.WONT,
+                windowFrom, windowTo, windowFrom.toLocalDate(), windowTo.toLocalDate());
         if (candidates.isEmpty()) {
             return List.of();
         }
@@ -259,6 +261,7 @@ public class ScheduleService {
                 .twoMinuteAction(request.twoMinuteAction())
                 .parentId(parentId)
                 .dueOn(request.dueOn())
+                .priority(request.priority())
                 .build());
 
         if (request.recurrence() != null) {
@@ -301,7 +304,8 @@ public class ScheduleService {
                 request.place(),
                 request.twoMinuteAction(),
                 parentId,
-                request.dueOn());
+                request.dueOn(),
+                request.priority());
 
         // 딸린 자손이 함께 내려가 3단을 넘길 수 있다
         flattenBelow(id, parentId);

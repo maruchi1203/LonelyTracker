@@ -10,7 +10,11 @@ import {
 import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
 import ScheduleEditModal from "../components/schedule/ScheduleEditModal";
 import { buildTree, flatten, type ListSort } from "../domain/scheduleTree";
-import type { ScheduleCreateRequest, ScheduleListItem } from "../types/schedule";
+import type {
+  ScheduleCreateRequest,
+  ScheduleListItem,
+  SchedulePriority,
+} from "../types/schedule";
 
 /** 깊이만큼 들여쓴다. 계층은 3단까지라 세 칸이면 된다 */
 const INDENT = ["", "pl-6", "pl-12"];
@@ -25,7 +29,17 @@ const TOGGLE_OFF = "border-slate-200 text-slate-600 hover:bg-brand-50";
 const SORTS: { value: ListSort; label: string }[] = [
   { value: "manual", label: "내 순서" },
   { value: "due", label: "기한순" },
+  { value: "priority", label: "우선순위순" },
 ];
+
+/** 값이 없으면 뱃지를 달지 않는다. 정렬에서만 선택으로 본다 */
+const PRIORITY_BADGE: Record<SchedulePriority, { label: string; style: string }> =
+  {
+    MUST: { label: "필수", style: "bg-red-50 text-red-600" },
+    SHOULD: { label: "권장", style: "bg-brand-50 text-brand-700" },
+    COULD: { label: "선택", style: "bg-slate-100 text-slate-500" },
+    WONT: { label: "보류", style: "bg-slate-100 text-slate-400" },
+  };
 
 export default function ListPage() {
   const [items, setItems] = useState<ScheduleListItem[]>([]);
@@ -271,6 +285,9 @@ function ListRow({
   }, [menuOpen]);
 
   const done = Boolean(item.completedAt);
+  // 안 하기로 한 일정. 지우지 않고 판단을 기록으로 남긴다
+  const shelved = item.priority === "WONT";
+  const badge = item.priority ? PRIORITY_BADGE[item.priority] : null;
 
   return (
     <li
@@ -290,7 +307,7 @@ function ListRow({
       }}
       className={`relative flex items-start gap-2 px-3 py-3 transition-opacity ${
         INDENT[depth] ?? ""
-      } ${dragging ? "opacity-40" : ""}`}
+      } ${dragging ? "opacity-40" : ""} ${shelved ? "opacity-50" : ""}`}
     >
       {/* 손잡이만 끈다. 행 전체를 끌면 글자를 고르는 것과 부딪힌다 */}
       <button
@@ -345,6 +362,11 @@ function ListRow({
         </button>
 
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
+          {badge && (
+            <span className={`rounded-full px-2 py-0.5 ${badge.style}`}>
+              {badge.label}
+            </span>
+          )}
           {item.dueOn && <span>기한 {item.dueOn}</span>}
           {item.startAt && <span>시작 {item.startAt.slice(0, 10)}</span>}
           {item.place && <span>{item.place}</span>}
