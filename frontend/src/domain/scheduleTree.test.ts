@@ -14,6 +14,7 @@ function item(
   return {
     id,
     displayOrder: 0,
+    recurring: false,
     title: `할 일 ${id}`,
     createdAt: '2026-09-08T00:00:00',
     updatedAt: '2026-09-08T00:00:00',

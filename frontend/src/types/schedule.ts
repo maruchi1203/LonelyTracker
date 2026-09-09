@@ -65,8 +65,10 @@ export interface ScheduleListItem {
   dueOn?: string;
   /** "YYYY-MM-DDTHH:mm:ss". 없으면 아직 언제 할지 안 정한 항목이다 */
   startAt?: string;
-  /** 값이 있으면 완료다 */
+  /** 값이 있으면 완료다. 습관은 회차마다 상태를 가져 늘 비어 있다 */
   completedAt?: string;
+  /** 반복 규칙이 붙었는지. 완료를 어느 경로로 보낼지가 여기서 갈린다 */
+  recurring: boolean;
   tags?: string[];
   place?: string;
   twoMinuteAction?: string;

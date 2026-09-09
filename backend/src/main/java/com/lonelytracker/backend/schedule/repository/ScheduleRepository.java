@@ -65,20 +65,19 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
   List<String> findTagNames(@Param("userId") Long userId);
 
   /**
-   * 리스트 탭이 보는 일정. 습관만 빼고 전부 가져온다.
+   * 리스트 탭이 보는 일정. 습관을 포함해 전부 가져온다.
    * 회차가 아니라 일정 자체라 조회 구간이 없다.
    * 정렬은 서비스가 맡는다. 기한이 없으면 시작일시를 쓰는 규칙을 JPQL로 쓰기 어렵다.
    */
   @Query("""
       select s from ScheduleEntity s
       where s.user.id = :userId
-        and not exists (select 1 from ScheduleRecurEntity r where r.scheduleId = s.id)
       """)
   List<ScheduleEntity> findForList(@Param("userId") Long userId);
 
   /**
    * 한 형제 무리 전부. 순서를 다시 매길 때 쓴다.
-   * 습관은 리스트에 없으므로 무리에서도 뺀다. 넣으면 화면이 보는 것과 어긋난다.
+   * 리스트가 보는 것과 무리가 같아야 한다. 하나라도 어긋나면 재정렬이 늘 거절된다.
    *
    * @param parentId null이면 최상위 무리다
    */
@@ -86,7 +85,6 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
       select s from ScheduleEntity s
       where s.user.id = :userId
         and ((:parentId is null and s.parentId is null) or s.parentId = :parentId)
-        and not exists (select 1 from ScheduleRecurEntity r where r.scheduleId = s.id)
       """)
   List<ScheduleEntity> findSiblings(@Param("userId") Long userId,
       @Param("parentId") Long parentId);

@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import com.lonelytracker.backend.schedule.domain.ScheduleDeleteScope;
@@ -136,10 +137,19 @@ public class ScheduleService {
      * 회차가 아니라 일정 자체라 날짜를 안 정한 항목도 함께 온다.
      */
     public List<ScheduleListItemResponse> findForList() {
-        return scheduleRepository.findForList(currentUserProvider.get().getId())
+        List<ScheduleEntity> schedules = scheduleRepository
+                .findForList(currentUserProvider.get().getId());
+
+        // 규칙 유무만 필요하다. 규칙 자체는 달력과 습관일지가 본다
+        Set<Long> recurringIds = recurRepository
+                .findByScheduleIds(schedules.stream().map(ScheduleEntity::getId).toList())
                 .stream()
+                .map(ScheduleRecurEntity::getScheduleId)
+                .collect(Collectors.toSet());
+
+        return schedules.stream()
                 .sorted(LIST_ORDER)
-                .map(ScheduleListItemResponse::from)
+                .map(s -> ScheduleListItemResponse.from(s, recurringIds.contains(s.getId())))
                 .toList();
     }
 
