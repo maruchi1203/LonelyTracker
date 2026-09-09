@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { changeSettings, fetchSettings } from "../../api/users";
 
 /** 2분 행동 칸을 폼에 늘 띄울지 정한다 */
-export default function TwoMinuteRuleSection() {
+export default function HabitSection() {
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +28,7 @@ export default function TwoMinuteRuleSection() {
 
   return (
     <section className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-      <h3 className="font-semibold text-slate-800">2분 법칙</h3>
+      <h3 className="font-semibold text-slate-800">습관일지</h3>
 
       <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 select-none">
         <input
@@ -38,9 +38,8 @@ export default function TwoMinuteRuleSection() {
           disabled={enabled === null || busy}
           onChange={(e) => void toggle(e.target.checked)}
         />
-        일정을 적을 때 2분 행동 칸을 띄웁니다
+        2분 법칙 적용 여부
       </label>
-
       <p className="text-xs text-slate-400">
         시작에 필요한 2분 이내의 행동을 미리 정해두면 실행될 확률이 높아집니다.
         꺼도 이미 적어둔 2분 행동은 그대로 보입니다.
