@@ -18,8 +18,6 @@ interface Props {
   fieldRef?: (id: FormFieldId) => (el: HTMLElement | null) => void;
   /** 되물음이 가리키는 칸의 테두리 */
   decorate?: (id: FormFieldId) => string;
-  /** 2분 행동 칸을 띄울지. 설정에서 꺼도 이미 적어둔 값이 있으면 보인다 */
-  showTwoMinute?: boolean;
 }
 
 const INPUT =
@@ -62,7 +60,6 @@ export default function ScheduleFields({
   idPrefix,
   fieldRef,
   decorate,
-  showTwoMinute = true,
 }: Props) {
   const id = (name: string) => `${idPrefix}-${name}`;
   const ref = (name: FormFieldId) => fieldRef?.(name);
@@ -427,24 +424,6 @@ export default function ScheduleFields({
         </div>
       )}
 
-      {/* 10. 2분 행동 */}
-      {(showTwoMinute || form.twoMinuteAction) && (
-        <div className="flex flex-col gap-1.5">
-          <label className={LABEL} htmlFor={id("twoMinuteAction")}>
-            2분 행동 (선택)
-          </label>
-          <input
-            id={id("twoMinuteAction")}
-            ref={ref("twoMinuteAction")}
-            className={box("twoMinuteAction")}
-            value={form.twoMinuteAction}
-            onChange={(e) => onChange({ twoMinuteAction: e.target.value })}
-            placeholder="예: 퇴근 후 운동복 갈아입기"
-            maxLength={200}
-          />
-          <span className={HINT}>시작에 필요한 2분 이내의 행동을 적습니다.</span>
-        </div>
-      )}
     </div>
   );
 }

@@ -14,7 +14,6 @@ interface Props {
   knownTags: string[];
   /** 어느 탭의 얼굴로 설지. 부르는 쪽이 반드시 밝힌다 */
   variant: FormVariant;
-  showTwoMinute?: boolean;
   onClose: () => void;
   /** 저장이나 삭제가 끝난 뒤. 부른 쪽이 목록을 다시 읽는다 */
   onSaved: () => void;
@@ -28,7 +27,6 @@ export default function ScheduleEditModal({
   id,
   knownTags,
   variant,
-  showTwoMinute,
   onClose,
   onSaved,
 }: Props) {
@@ -132,7 +130,6 @@ export default function ScheduleEditModal({
               }
               knownTags={knownTags}
               idPrefix={`edit-${id}`}
-              showTwoMinute={showTwoMinute}
             />
 
             {problem && <p className="text-sm text-red-600">{problem}</p>}

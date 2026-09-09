@@ -13,7 +13,6 @@ interface Props {
   defaultDate?: Date | null;
   /** AI가 문장을 못 읽었을 때 친 문장을 제목으로 넘겨받는다 */
   initialTitle?: string;
-  showTwoMinute?: boolean;
   disabled?: boolean;
   /** 어느 탭의 폼인지. 날짜를 요구할지가 갈린다 */
   variant?: FormVariant;
@@ -24,7 +23,6 @@ export default function ScheduleInputForm({
   knownTags,
   defaultDate,
   initialTitle,
-  showTwoMinute,
   disabled,
   variant = "calendar",
 }: Props) {
@@ -75,7 +73,6 @@ export default function ScheduleInputForm({
         onChange={change}
         knownTags={knownTags}
         idPrefix="manual"
-        showTwoMinute={showTwoMinute}
       />
 
       {problem && <p className="text-sm text-red-600">{problem}</p>}

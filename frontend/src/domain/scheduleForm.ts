@@ -28,7 +28,6 @@ export type FormFieldId =
   | "byWeekday"
   | "byMonthDay"
   | "place"
-  | "twoMinuteAction"
   | "dueOn"
   | "priority"
   | "parentId";
@@ -57,7 +56,11 @@ export interface ScheduleForm {
   /** MONTHLY 용. 백엔드가 받기 전까지 쓰이지 않는다 */
   byMonthDay: number[];
   place: string;
-  /** 시작에 필요한 2분 이내의 미니 행동 */
+  /**
+   * 2분 행동
+   * 일정 폼에서는 빠졌지만 값은 계속 들고 다닌다
+   * PUT 이 통째로 덮어쓰므로 안 실으면 이미 적어둔 값이 지워진다
+   */
   twoMinuteAction: string;
   /** "YYYY-MM-DD". 언제까지 해내야 하나 */
   dueOn: string;

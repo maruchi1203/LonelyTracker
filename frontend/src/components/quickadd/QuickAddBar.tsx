@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { HttpError } from "../../api/http";
 import { parseSchedule } from "../../api/schedules";
-import { fetchOpenAiKeyStatus, fetchSettings } from "../../api/users";
+import { fetchOpenAiKeyStatus } from "../../api/users";
 import { knownQuestions } from "../../constants/parseQuestions";
 import type { FormVariant, ScheduleForm } from "../../domain/scheduleForm";
 import { draftFromParsed, formToCreateRequest } from "../../domain/scheduleForm";
@@ -52,15 +52,6 @@ export default function QuickAddBar({
   const [manual, setManual] = useState(false);
   const [step, setStep] = useState(0);
   const abort = useRef<AbortController | null>(null);
-  // 못 읽으면 켬으로 본다. 설정을 못 불러왔다고 칸이 사라지면 안 된다
-  const [showTwoMinute, setShowTwoMinute] = useState(true);
-
-  useEffect(() => {
-    void fetchSettings()
-      .then((s) => setShowTwoMinute(s.twoMinuteRule))
-      .catch(() => {});
-  }, []);
-
   const parsing = state.mode === "parsing";
 
   useEffect(() => {
@@ -239,7 +230,6 @@ export default function QuickAddBar({
           knownTags={knownTags}
           saving={state.mode === "saving"}
           onChange={patch}
-          showTwoMinute={showTwoMinute}
           variant={variant}
           onSave={() => void save()}
           onDiscard={() => setState({ mode: "idle" })}
@@ -251,7 +241,6 @@ export default function QuickAddBar({
           onSubmit={createManually}
           knownTags={knownTags}
           defaultDate={defaultDate}
-          showTwoMinute={showTwoMinute}
           variant={variant}
           // 문장을 못 읽었을 때 친 내용을 버리지 않는다
           initialTitle={state.mode === "error" ? text.trim() : undefined}

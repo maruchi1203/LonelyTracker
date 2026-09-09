@@ -15,7 +15,6 @@ interface Props {
   questions: ParseQuestion[];
   knownTags: string[];
   saving: boolean;
-  showTwoMinute?: boolean;
   variant?: FormVariant;
   onChange: (patch: Partial<ScheduleForm>) => void;
   onSave: () => void;
@@ -30,7 +29,6 @@ export default function ParsedDraftCard({
   questions,
   knownTags,
   saving,
-  showTwoMinute,
   variant = "calendar",
   onChange,
   onSave,
@@ -94,7 +92,6 @@ export default function ParsedDraftCard({
         idPrefix="draft"
         fieldRef={fieldRef}
         decorate={decorate}
-        showTwoMinute={showTwoMinute}
       />
 
       {problem && <p className="text-sm text-red-600">{problem}</p>}
