@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -152,6 +153,38 @@ public class ScheduleService {
     private static final Comparator<ScheduleEntity> LIST_ORDER =
             Comparator.comparingInt(ScheduleEntity::getDisplayOrder)
                     .thenComparing(ScheduleEntity::getId);
+
+    /**
+     * 형제 무리의 순서를 다시 매긴다.
+     * 받은 차례대로 0부터 부여한다. 사이 값을 쓰지 않아 값이 촘촘해질 일이 없다.
+     *
+     * @param parentId null이면 최상위 무리
+     * @throws IllegalArgumentException 무리에 속하지 않은 id가 섞였거나 하나라도 빠졌을 때
+     */
+    @Transactional
+    public void reorder(Long parentId, List<Long> ids) {
+        Long userId = currentUserProvider.get().getId();
+
+        // 상위를 먼저 확인한다. 남의 일정 밑을 들여다볼 수 없어야 한다
+        if (parentId != null) {
+            getOwnedOrThrow(parentId);
+        }
+
+        List<ScheduleEntity> siblings = scheduleRepository.findSiblings(userId, parentId);
+        Map<Long, ScheduleEntity> byId = new HashMap<>();
+        siblings.forEach(s -> byId.put(s.getId(), s));
+
+        // 무리 전체를 받아야 한다. 일부만 받으면 나머지가 어디에 설지 정할 수 없다
+        if (!byId.keySet().equals(new HashSet<>(ids)) || ids.size() != byId.size()) {
+            throw new IllegalArgumentException(
+                    "그 무리의 일정 전부를 한 번에 보내 주세요");
+        }
+
+        for (int i = 0; i < ids.size(); i++) {
+            byId.get(ids.get(i)).changeDisplayOrder(i);
+        }
+        scheduleRepository.saveAll(siblings);
+    }
 
     /** 이미 쓴 적 있는 태그 이름. 입력 자동완성이 쓴다 */
     public List<String> findTagNames() {

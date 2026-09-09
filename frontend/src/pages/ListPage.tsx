@@ -5,6 +5,7 @@ import {
   deleteSchedule,
   fetchScheduleList,
   fetchTagNames,
+  reorderSchedules,
 } from "../api/schedules";
 import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
 import ScheduleEditModal from "../components/schedule/ScheduleEditModal";
@@ -37,6 +38,10 @@ export default function ListPage() {
   const [knownTags, setKnownTags] = useState<string[]>([]);
   const [sort, setSort] = useState<ListSort>("manual");
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+
+  // 보이는 차례와 저장되는 차례가 다르면 놓은 자리와 결과가 어긋난다
+  const canDrag = sort === "manual";
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -120,6 +125,35 @@ export default function ListPage() {
     }
   };
 
+  /** 끌어다 놓은 항목을 대상 앞자리에 넣는다 */
+  const handleDrop = async (targetId: number) => {
+    const dragged = items.find((i) => i.id === draggingId);
+    const target = items.find((i) => i.id === targetId);
+    setDraggingId(null);
+
+    if (!dragged || !target || dragged.id === target.id) return;
+
+    // 무리를 넘는 이동은 상위를 바꾸는 일이라 수정 폼이 맡는다
+    if (dragged.parentId !== target.parentId) {
+      setError("같은 무리 안에서만 순서를 바꿀 수 있습니다");
+      return;
+    }
+
+    // items 는 서버가 준 차례라 저장된 순서 그대로다
+    const ids = items
+      .filter((i) => i.parentId === dragged.parentId && i.id !== dragged.id)
+      .map((i) => i.id);
+    ids.splice(ids.indexOf(target.id), 0, dragged.id);
+
+    setError(null);
+    try {
+      await reorderSchedules(dragged.parentId ?? null, ids);
+      await reload();
+    } catch (e) {
+      fail(e, "순서를 바꾸지 못했습니다");
+    }
+  };
+
   const handleDelete = async (item: ScheduleListItem) => {
     if (!window.confirm(`"${item.title}" 을(를) 지울까요? 되돌릴 수 없습니다.`)) {
       return;
@@ -182,6 +216,11 @@ export default function ListPage() {
                 onToggle={() => void handleToggle(item)}
                 onEdit={() => setEditingId(item.id)}
                 onDelete={() => void handleDelete(item)}
+                draggable={canDrag}
+                dragging={draggingId === item.id}
+                onDragStart={() => setDraggingId(item.id)}
+                onDragEnd={() => setDraggingId(null)}
+                onDrop={() => void handleDrop(item.id)}
               />
             ))}
           </ul>
@@ -219,9 +258,26 @@ interface RowProps {
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  /** 기한순으로 보는 중이면 끌 수 없다 */
+  draggable: boolean;
+  dragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  onDrop: () => void;
 }
 
-function ListRow({ item, depth, onToggle, onEdit, onDelete }: RowProps) {
+function ListRow({
+  item,
+  depth,
+  onToggle,
+  onEdit,
+  onDelete,
+  draggable,
+  dragging,
+  onDragStart,
+  onDragEnd,
+  onDrop,
+}: RowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const row = useRef<HTMLLIElement>(null);
 
@@ -255,15 +311,36 @@ function ListRow({ item, depth, onToggle, onEdit, onDelete }: RowProps) {
         e.preventDefault();
         setMenuOpen(true);
       }}
-      className={`relative flex items-start gap-2 px-3 py-3 ${INDENT[depth] ?? ""}`}
+      onDragOver={(e) => {
+        // 막지 않으면 브라우저가 놓기를 거부한다
+        if (draggable) e.preventDefault();
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        onDrop();
+      }}
+      className={`relative flex items-start gap-2 px-3 py-3 transition-opacity ${
+        INDENT[depth] ?? ""
+      } ${dragging ? "opacity-40" : ""}`}
     >
-      {/* 순서 바꾸기 자리. 재정렬 API 가 아직 없어 잡아만 둔다 */}
+      {/* 손잡이만 끈다. 행 전체를 끌면 글자를 고르는 것과 부딪힌다 */}
       <button
         type="button"
-        disabled
-        title="순서 바꾸기는 준비 중입니다"
-        aria-label={`${item.title} 순서 바꾸기 (준비 중)`}
-        className="mt-0.5 shrink-0 cursor-not-allowed px-1 text-slate-300"
+        draggable={draggable}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+        disabled={!draggable}
+        title={
+          draggable
+            ? "끌어서 순서 바꾸기"
+            : "기한순으로 보는 중에는 순서를 바꿀 수 없습니다"
+        }
+        aria-label={`${item.title} 순서 바꾸기`}
+        className={`mt-0.5 shrink-0 px-1 ${
+          draggable
+            ? "cursor-grab text-slate-400 hover:text-slate-600 active:cursor-grabbing"
+            : "cursor-not-allowed text-slate-200"
+        }`}
       >
         ⠿
       </button>

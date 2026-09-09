@@ -8,6 +8,7 @@ import com.lonelytracker.backend.schedule.dto.ScheduleDetailResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleListItemResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleRecurringResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleParseRequest;
+import com.lonelytracker.backend.schedule.dto.ScheduleReorderRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleStatusRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleUpdateRequest;
@@ -83,6 +84,16 @@ public class ScheduleController {
     @GetMapping("/list")
     public List<ScheduleListItemResponse> findForList() {
         return scheduleService.findForList();
+    }
+
+    /**
+     * 형제 무리의 순서를 다시 정함
+     * 받은 차례대로 0부터 번호를 매김
+     */
+    @PatchMapping("/order")
+    public ResponseEntity<Void> reorder(@Valid @RequestBody ScheduleReorderRequest request) {
+        scheduleService.reorder(request.parentId(), request.ids());
+        return ResponseEntity.noContent().build();
     }
 
     /**

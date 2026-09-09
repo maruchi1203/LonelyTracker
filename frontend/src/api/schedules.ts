@@ -75,6 +75,24 @@ export async function updateSchedule(
   return handle<ScheduleResponse>(res)
 }
 
+/**
+ * 형제 무리의 순서를 통째로 다시 정한다
+ * 그 무리의 일정을 하나도 빠뜨리지 않고 보내야 한다
+ *
+ * @param parentId null 이면 최상위 무리
+ */
+export async function reorderSchedules(
+  parentId: number | null,
+  ids: number[],
+): Promise<void> {
+  const res = await fetch(`${BASE}/order`, {
+    method: 'PATCH',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ parentId, ids }),
+  })
+  return handle<void>(res)
+}
+
 export async function changeInstanceStatus(
   id: number,
   onDate: string,

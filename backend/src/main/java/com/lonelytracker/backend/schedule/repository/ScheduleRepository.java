@@ -77,6 +77,21 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
   List<ScheduleEntity> findForList(@Param("userId") Long userId);
 
   /**
+   * 한 형제 무리 전부. 순서를 다시 매길 때 쓴다.
+   * 습관은 리스트에 없으므로 무리에서도 뺀다. 넣으면 화면이 보는 것과 어긋난다.
+   *
+   * @param parentId null이면 최상위 무리다
+   */
+  @Query("""
+      select s from ScheduleEntity s
+      where s.user.id = :userId
+        and ((:parentId is null and s.parentId is null) or s.parentId = :parentId)
+        and not exists (select 1 from ScheduleRecurEntity r where r.scheduleId = s.id)
+      """)
+  List<ScheduleEntity> findSiblings(@Param("userId") Long userId,
+      @Param("parentId") Long parentId);
+
+  /**
    * 주어진 일정들의 자식 id. 계층의 깊이를 잴 때 쓴다.
    * 3단까지라 두 번 부르면 손자까지 닿는다.
    */

@@ -185,6 +185,14 @@ public class ScheduleEntity {
      * @param completed 풀면 완료 시각이 지워진다
      */
     /**
+     * 형제 사이의 자리를 바꾼다
+     * 무리 전체를 다시 매기므로 값 하나만 바뀌는 일은 없다
+     */
+    public void changeDisplayOrder(int displayOrder) {
+        this.displayOrder = displayOrder;
+    }
+
+    /**
      * 상위를 바꾼다
      *
      * @param parentId null이면 최상위가 된다
