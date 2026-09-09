@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dropIntentAt, planDrop } from "./scheduleDrop";
+import { dropIntentAt, planDrop, planDropAtEnd } from "./scheduleDrop";
 import type { ScheduleListItem } from "../types/schedule";
 
 /** 필요한 칸만 채운 리스트 항목 */
@@ -122,5 +122,25 @@ describe("planDrop", () => {
       parentId: null,
       ids: [2, 1],
     });
+  });
+});
+
+describe("planDropAtEnd", () => {
+  it("깊은 곳에 있던 일정을 최상위 끝으로 뺀다", () => {
+    const items = [item(1), item(2, { parentId: 1 }), item(3, { parentId: 2 })];
+
+    expect(planDropAtEnd(items, 3)).toEqual({ parentId: null, ids: [1, 3] });
+  });
+
+  it("최상위 안에서도 맨 끝으로 보낸다", () => {
+    const items = [item(1), item(2), item(3)];
+
+    expect(planDropAtEnd(items, 1)).toEqual({ parentId: null, ids: [2, 3, 1] });
+  });
+
+  it("이미 끝자리면 아무 일도 없다", () => {
+    const items = [item(1), item(2)];
+
+    expect(planDropAtEnd(items, 2)).toBeNull();
   });
 });

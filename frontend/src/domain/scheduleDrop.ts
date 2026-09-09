@@ -70,6 +70,27 @@ export function planDrop(
   return { parentId, ids };
 }
 
+/**
+ * 최상위 무리의 맨 끝으로 보낸다
+ * 마지막 행이 깊은 곳에 있으면 그 아래에는 최상위 자리가 없어 따로 둔다
+ *
+ * @returns 이미 최상위 끝자리에 있으면 null
+ */
+export function planDropAtEnd(
+  items: ScheduleListItem[],
+  draggedId: number,
+): DropPlan | null {
+  if (!items.some((i) => i.id === draggedId)) return null;
+
+  const top = items.filter((i) => (i.parentId ?? null) === null);
+  if (top[top.length - 1]?.id === draggedId) return null;
+
+  const ids = top.filter((i) => i.id !== draggedId).map((i) => i.id);
+  ids.push(draggedId);
+
+  return { parentId: null, ids };
+}
+
 function parentIsHabit(items: ScheduleListItem[], parentId: number): boolean {
   return items.find((i) => i.id === parentId)?.recurring === true;
 }

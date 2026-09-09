@@ -19,7 +19,9 @@ import ScheduleEditModal from "../components/schedule/ScheduleEditModal";
 import {
   dropIntentAt,
   planDrop,
+  planDropAtEnd,
   type DropIntent,
+  type DropPlan,
 } from "../domain/scheduleDrop";
 import { buildTree, flatten, type ListSort } from "../domain/scheduleTree";
 import type {
@@ -69,6 +71,9 @@ export default function ListPage() {
   const [dropAt, setDropAt] = useState<
     { id: number; intent: DropIntent } | null
   >(null);
+
+  // 마지막 행이 깊은 곳에 있으면 그 아래에는 최상위 자리가 없다
+  const [dropAtEnd, setDropAtEnd] = useState(false);
 
   // 보이는 차례와 저장되는 차례가 다르면 놓은 자리와 결과가 어긋난다
   const canDrag = sort === "manual";
@@ -131,14 +136,16 @@ export default function ListPage() {
     }
   };
 
-  /** 끌어다 놓은 자리대로 무리를 다시 세운다 */
-  const handleDrop = async (targetId: number, intent: DropIntent) => {
-    const from = draggingId;
+  const stopDragging = () => {
     setDraggingId(null);
     setDropAt(null);
-    if (from === null) return;
+    setDropAtEnd(false);
+  };
 
-    const plan = planDrop(items, from, targetId, intent);
+  /** 끌어다 놓은 자리대로 무리를 다시 세운다 */
+  const handleDrop = async (plan: DropPlan | null) => {
+    stopDragging();
+
     if (plan === null) {
       setError("그 자리에는 놓을 수 없습니다");
       return;
@@ -222,15 +229,46 @@ export default function ListPage() {
                 dragging={draggingId === item.id}
                 dropIntent={dropAt?.id === item.id ? dropAt.intent : null}
                 onDragStart={() => setDraggingId(item.id)}
-                onDragEnd={() => {
-                  setDraggingId(null);
-                  setDropAt(null);
+                onDragEnd={stopDragging}
+                onDragOverRow={(intent) => {
+                  setDropAt({ id: item.id, intent });
+                  setDropAtEnd(false);
                 }}
-                onDragOverRow={(intent) => setDropAt({ id: item.id, intent })}
-                onDropAt={(intent) => void handleDrop(item.id, intent)}
+                onDropAt={(intent) => {
+                  if (draggingId === null) return;
+                  void handleDrop(planDrop(items, draggingId, item.id, intent));
+                }}
               />
             ))}
           </ul>
+        )}
+
+        {/* 마지막 행에 붙이지 않고도 최상위 끝으로 뺄 수 있어야 한다 */}
+        {draggingId !== null && (
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDropAt(null);
+              setDropAtEnd(true);
+            }}
+            onDragLeave={() => setDropAtEnd(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              if (draggingId === null) return;
+
+              // 이미 끝자리면 알릴 것이 없다. 못 놓는 자리가 아니다
+              const plan = planDropAtEnd(items, draggingId);
+              if (plan === null) stopDragging();
+              else void handleDrop(plan);
+            }}
+            className={`m-2 rounded-xl border-2 border-dashed py-3 text-center text-xs transition-colors ${
+              dropAtEnd
+                ? "border-brand-500 bg-brand-50 text-brand-700"
+                : "border-slate-200 text-slate-400"
+            }`}
+          >
+            여기에 놓으면 맨 아래로 갑니다
+          </div>
         )}
       </section>
 
