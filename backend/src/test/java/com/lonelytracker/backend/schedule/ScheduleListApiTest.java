@@ -151,12 +151,91 @@ class ScheduleListApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("다른 무리의 일정을 섞으면 거절한다")
-    void refusesOutsider() throws Exception {
+    @DisplayName("밖에 있던 일정을 그 무리로 데려온다")
+    void takesAnOutsiderIn() throws Exception {
         long parent = create("{\"title\":\"이사 준비\"}");
         long child = create("{\"title\":\"짐 싸기\",\"parentId\":" + parent + "}");
 
-        reorder("{\"ids\":[" + parent + "," + child + "]}")
+        // 최상위 무리의 최종 구성원은 둘이다. 자식을 꺼내 올린다
+        reorder("{\"ids\":[" + child + "," + parent + "]}")
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$[0].title").value("짐 싸기"))
+                .andExpect(jsonPath("$[0].parentId").doesNotExist())
+                .andExpect(jsonPath("$[1].title").value("이사 준비"));
+    }
+
+    @Test
+    @DisplayName("최상위 일정을 다른 일정 밑으로 넣는다")
+    void takesAnOutsiderUnderAParent() throws Exception {
+        long parent = create("{\"title\":\"이사 준비\"}");
+        long child = create("{\"title\":\"짐 싸기\",\"parentId\":" + parent + "}");
+        long loner = create("{\"title\":\"청소\"}");
+
+        reorder("{\"parentId\":" + parent + ",\"ids\":[" + loner + "," + child + "]}")
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get(BASE + "/" + loner))
+                .andExpect(jsonPath("$.parentId").value(parent));
+    }
+
+    @Test
+    @DisplayName("데려온 일정의 자손이 넘치면 끌어올린다")
+    void pullsUpOverflowOfAnIncomer() throws Exception {
+        long top = create("{\"title\":\"상위\"}");
+        long moving = create("{\"title\":\"옮길 것\"}");
+        long child = create("{\"title\":\"자식\",\"parentId\":" + moving + "}");
+        long grandChild = create("{\"title\":\"손자\",\"parentId\":" + child + "}");
+
+        // 1단에 앉으면 손자가 4단이 된다. 넘친 손자는 옮긴 것의 자식이 된다
+        reorder("{\"parentId\":" + top + ",\"ids\":[" + moving + "]}")
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get(BASE + "/" + grandChild))
+                .andExpect(jsonPath("$.parentId").value(moving));
+    }
+
+    @Test
+    @DisplayName("자기 자손의 무리로는 들어갈 수 없다")
+    void refusesCycle() throws Exception {
+        long parent = create("{\"title\":\"이사 준비\"}");
+        long child = create("{\"title\":\"짐 싸기\",\"parentId\":" + parent + "}");
+
+        // 눌러 앉혀서 풀 수 있는 문제가 아니다
+        reorder("{\"parentId\":" + child + ",\"ids\":[" + parent + "]}")
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("3단보다 깊은 무리는 만들 수 없다")
+    void refusesTooDeepGroup() throws Exception {
+        long first = create("{\"title\":\"1단\"}");
+        long second = create("{\"title\":\"2단\",\"parentId\":" + first + "}");
+        long third = create("{\"title\":\"3단\",\"parentId\":" + second + "}");
+        long loner = create("{\"title\":\"떠도는 것\"}");
+
+        reorder("{\"parentId\":" + third + ",\"ids\":[" + loner + "]}")
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("습관은 데려와도 남의 밑에 서지 않는다")
+    void refusesHabitAsChild() throws Exception {
+        long parent = create("{\"title\":\"이사 준비\"}");
+        long habit = create("{\"title\":\"매일 운동\",\"startAt\":\"2026-10-01T07:00:00\""
+                + ",\"recurrence\":{\"freq\":\"DAILY\"}}");
+
+        reorder("{\"parentId\":" + parent + ",\"ids\":[" + habit + "]}")
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("같은 일정을 두 번 보내면 거절한다")
+    void refusesDuplicateIds() throws Exception {
+        long a = create("{\"title\":\"A\"}");
+
+        reorder("{\"ids\":[" + a + "," + a + "]}")
                 .andExpect(status().isBadRequest());
     }
 

@@ -167,11 +167,14 @@ public class ScheduleService {
                     .thenComparing(ScheduleEntity::getId);
 
     /**
-     * 형제 무리의 순서를 다시 매긴다.
+     * 형제 무리를 다시 세운다.
      * 받은 차례대로 0부터 부여한다. 사이 값을 쓰지 않아 값이 촘촘해질 일이 없다.
+     * <p>
+     * ids는 그 무리의 최종 구성원이다. 밖에 있던 일정이 섞여 있으면 이 무리로 데려온다.
+     * 무리를 떠나는 일은 데려가는 쪽 요청이 맡는다. 그래야 어느 요청에도 안 담기는 일정이 없다.
      *
      * @param parentId null이면 최상위 무리
-     * @throws IllegalArgumentException 무리에 속하지 않은 id가 섞였거나 하나라도 빠졌을 때
+     * @throws IllegalArgumentException 원래 있던 일정이 빠졌거나, 데려올 수 없는 일정이 섞였을 때
      */
     @Transactional
     public void reorder(Long parentId, List<Long> ids) {
@@ -180,22 +183,68 @@ public class ScheduleService {
         // 상위를 먼저 확인한다. 남의 일정 밑을 들여다볼 수 없어야 한다
         if (parentId != null) {
             getOwnedOrThrow(parentId);
+
+            if (recurRepository.existsById(parentId)) {
+                throw new IllegalArgumentException("습관은 다른 일정을 거느릴 수 없습니다");
+            }
+
+            // 여기서 눌러 앉히면 요청한 무리가 아닌 곳에 서게 된다
+            if (depthOf(parentId, null) >= DEEPEST) {
+                throw new IllegalArgumentException("3단보다 깊이 넣을 수 없습니다");
+            }
+        }
+
+        Set<Long> wanted = new HashSet<>(ids);
+        if (wanted.size() != ids.size()) {
+            throw new IllegalArgumentException("같은 일정을 두 번 보낼 수 없습니다");
         }
 
         List<ScheduleEntity> siblings = scheduleRepository.findSiblings(userId, parentId);
         Map<Long, ScheduleEntity> byId = new HashMap<>();
         siblings.forEach(s -> byId.put(s.getId(), s));
 
-        // 무리 전체를 받아야 한다. 일부만 받으면 나머지가 어디에 설지 정할 수 없다
-        if (!byId.keySet().equals(new HashSet<>(ids)) || ids.size() != byId.size()) {
+        // 원래 있던 것이 빠지면 그 자리가 비어 어디에 설지 정할 수 없다
+        if (!wanted.containsAll(byId.keySet())) {
             throw new IllegalArgumentException(
                     "그 무리의 일정 전부를 한 번에 보내 주세요");
         }
 
-        for (int i = 0; i < ids.size(); i++) {
-            byId.get(ids.get(i)).changeDisplayOrder(i);
+        List<ScheduleEntity> group = ids.stream()
+                .map(id -> byId.containsKey(id) ? byId.get(id) : moveIn(id, parentId))
+                .toList();
+
+        for (int i = 0; i < group.size(); i++) {
+            group.get(i).changeDisplayOrder(i);
         }
-        scheduleRepository.saveAll(siblings);
+        scheduleRepository.saveAll(group);
+    }
+
+    /**
+     * 다른 무리에 있던 일정을 이 무리로 데려온다.
+     * 딸린 자손이 함께 내려와 3단을 넘치면 끌어올린다.
+     *
+     * @param parentId null이면 최상위로 꺼내는 것이라 걸릴 것이 없다
+     */
+    private ScheduleEntity moveIn(Long id, Long parentId) {
+        ScheduleEntity moving = getOwnedOrThrow(id);
+
+        if (parentId != null) {
+            if (id.equals(parentId)) {
+                throw new IllegalArgumentException("자기 자신을 상위 일정으로 둘 수 없습니다");
+            }
+
+            // 리스트가 습관을 계층에서 빼면 그 자식만 떠 있게 된다
+            if (recurRepository.existsById(id)) {
+                throw new IllegalArgumentException("습관은 상위 일정을 가질 수 없습니다");
+            }
+
+            // 올라가다 자기를 만나면 순환이다. 이건 눌러서 풀 수 없다
+            depthOf(parentId, id);
+        }
+
+        moving.changeParent(parentId);
+        flattenBelow(id, parentId);
+        return moving;
     }
 
     /** 이미 쓴 적 있는 태그 이름. 입력 자동완성이 쓴다 */
