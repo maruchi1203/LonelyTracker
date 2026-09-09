@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { ParsedSchedule } from '../types/parse'
-import type { Weekday } from '../types/schedule'
+import type { ScheduleDetailResponse, Weekday } from '../types/schedule'
 import type { ScheduleForm } from './scheduleForm'
 import {
   draftFromParsed,
   emptyForm,
+  formFromDetail,
   formToCreateRequest,
   formValidationError,
 } from './scheduleForm'
@@ -262,5 +263,93 @@ describe('날짜 없는 리스트 항목', () => {
 
     expect(body.dueOn).toBeUndefined()
     expect(body.parentId).toBeUndefined()
+  })
+})
+
+function detail(
+  overrides: Partial<ScheduleDetailResponse> = {},
+): ScheduleDetailResponse {
+  return {
+    id: 1,
+    title: '보고서',
+    allDay: false,
+    createdAt: '2026-09-09T00:00:00',
+    updatedAt: '2026-09-09T00:00:00',
+    ...overrides,
+  }
+}
+
+describe('수정 폼으로 되돌리기', () => {
+  it('시작일시를 날짜와 시각으로 나눈다', () => {
+    const f = formFromDetail(
+      detail({ startAt: '2026-10-01T09:00:00', endAt: '2026-10-01T10:30:00' }),
+    )
+
+    expect(f.startDate).toBe('2026-10-01')
+    expect(f.startTime).toBe('09:00')
+    expect(f.endTime).toBe('10:30')
+    expect(f.repeating).toBe(false)
+  })
+
+  it('날짜가 없으면 빈 칸으로 둔다', () => {
+    // emptyForm 이 채우는 오늘 날짜가 남으면 안 된다
+    const f = formFromDetail(detail())
+
+    expect(f.startDate).toBe('')
+    expect(f.startTime).toBe('')
+  })
+
+  it('기한과 상위를 문자열로 받는다', () => {
+    const f = formFromDetail(detail({ dueOn: '2026-10-05', parentId: 7 }))
+
+    expect(f.dueOn).toBe('2026-10-05')
+    expect(f.parentId).toBe('7')
+  })
+
+  it('상위가 없으면 빈 문자열이다', () => {
+    expect(formFromDetail(detail()).parentId).toBe('')
+  })
+
+  it('반복이면 종료일자 칸이 반복 종료일을 받는다', () => {
+    const f = formFromDetail(
+      detail({
+        startAt: '2026-10-01T07:00:00',
+        endAt: '2026-10-01T08:30:00',
+        recurrence: { freq: 'WEEKLY', byWeekday: WMF, endsOn: '2026-12-31' },
+      }),
+    )
+
+    expect(f.repeating).toBe(true)
+    expect(f.endDate).toBe('2026-12-31')
+    expect(f.durationHours).toBe('1')
+    expect(f.durationMins).toBe('30')
+    expect(f.byWeekday).toEqual(WMF)
+  })
+
+  it('하루 종일이면 시작시각을 비운다', () => {
+    const f = formFromDetail(
+      detail({ startAt: '2026-10-01T00:00:00', allDay: true }),
+    )
+
+    expect(f.startTime).toBe('')
+  })
+
+  it('읽어서 그대로 다시 보내면 값이 살아남는다', () => {
+    const source = detail({
+      startAt: '2026-10-01T09:00:00',
+      endAt: '2026-10-01T10:00:00',
+      tags: ['업무'],
+      place: '사무실',
+      dueOn: '2026-10-05',
+      parentId: 7,
+    })
+
+    const body = formToCreateRequest(formFromDetail(source))
+
+    expect(body.startAt).toBe('2026-10-01T09:00:00')
+    expect(body.dueOn).toBe('2026-10-05')
+    expect(body.parentId).toBe(7)
+    expect(body.tags).toEqual(['업무'])
+    expect(body.place).toBe('사무실')
   })
 })

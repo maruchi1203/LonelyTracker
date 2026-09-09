@@ -2,6 +2,7 @@ import type { ParsedSchedule } from "../types/parse";
 import type {
   RecurrenceFreq,
   ScheduleCreateRequest,
+  ScheduleDetailResponse,
   Weekday,
 } from "../types/schedule";
 import { toLocalDate, toLocalDateTime } from "../utils/datetime";
@@ -120,6 +121,38 @@ export function draftFromParsed(
     freq: parsed.recurrence?.freq ?? base.freq,
     byWeekday: parsed.recurrence?.byWeekday ?? [],
     place: parsed.place ?? "",
+  };
+}
+
+/**
+ * 서버가 준 일정 하나를 폼으로 되돌린다
+ * 수정 폼이 지금 값을 띄우는 데 쓴다
+ */
+export function formFromDetail(detail: ScheduleDetailResponse): ScheduleForm {
+  const [startDate, startTime] = splitDateTime(detail.startAt);
+  const [endDate, endTime] = splitDateTime(detail.endAt);
+  const repeating = Boolean(detail.recurrence);
+
+  return {
+    ...emptyForm(),
+    title: detail.title,
+    repeating,
+    freq: detail.recurrence?.freq ?? "WEEKLY",
+    tags: detail.tags ?? [],
+    // 날짜를 안 정한 항목이면 빈 칸으로 둔다. emptyForm 이 채운 오늘 날짜를 덮는다
+    startDate,
+    startTime: detail.allDay ? "" : startTime,
+    // 반복이면 종료일자 칸은 반복이 끝나는 날을 뜻한다
+    endDate: repeating ? (detail.recurrence?.endsOn ?? "") : endDate,
+    endTime: repeating ? "" : endTime,
+    ...(repeating
+      ? splitDuration(minutesBetween(detail.startAt, detail.endAt))
+      : { durationHours: "", durationMins: "" }),
+    byWeekday: detail.recurrence?.byWeekday ?? [],
+    place: detail.place ?? "",
+    twoMinuteAction: detail.twoMinuteAction ?? "",
+    dueOn: detail.dueOn ?? "",
+    parentId: detail.parentId === undefined ? "" : String(detail.parentId),
   };
 }
 

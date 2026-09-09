@@ -72,6 +72,37 @@ function sortByDate(nodes: TreeNode[]): void {
   nodes.forEach((node) => sortByDate(node.children));
 }
 
+/**
+ * 그 항목과 그 밑에 딸린 것 전부의 id
+ * 수정 폼의 상위 후보에서 빼는 데 쓴다. 자기 자손을 부모로 삼으면 순환이 된다
+ */
+export function selfAndDescendantIds(
+  items: ScheduleListItem[],
+  id: number,
+): Set<number> {
+  const childrenOf = new Map<number, number[]>();
+  for (const item of items) {
+    if (item.parentId === undefined) continue;
+    childrenOf.set(item.parentId, [
+      ...(childrenOf.get(item.parentId) ?? []),
+      item.id,
+    ]);
+  }
+
+  const found = new Set<number>([id]);
+  const pending = [id];
+
+  // 이미 담은 것은 다시 펼치지 않는다. 서로를 가리켜도 두 번째 만남에서 멈춘다
+  for (let cursor = pending.pop(); cursor !== undefined; cursor = pending.pop()) {
+    for (const child of childrenOf.get(cursor) ?? []) {
+      if (found.has(child)) continue;
+      found.add(child);
+      pending.push(child);
+    }
+  }
+  return found;
+}
+
 /** 트리를 화면이 그릴 순서대로 편다 */
 export function flatten(nodes: TreeNode[], depth = 0): FlatRow[] {
   return nodes.flatMap((node) => [

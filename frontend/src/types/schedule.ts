@@ -99,6 +99,45 @@ export interface ScheduleCreateRequest {
   recurrence?: RecurrenceRequest;
 }
 
+/**
+ * 수정 요청. 만들기와 필드가 같다.
+ * 백엔드의 두 record 가 같은 모양이라 별칭으로 둔다.
+ *
+ * 준 것으로 통째로 덮어쓴다 — recurrence 를 빼면 반복이 지워진다
+ */
+export type ScheduleUpdateRequest = ScheduleCreateRequest;
+
+/** 반복 규칙. 요청과 같은 모양이라 읽은 값을 그대로 다시 보낼 수 있다 */
+export interface RecurrenceResponse {
+  freq: RecurrenceFreq;
+  byWeekday?: Weekday[];
+  endsOn?: string;
+}
+
+/**
+ * 일정 하나. 회차가 아니라 일정 자체의 값이고 수정 폼이 읽는다.
+ * 수정 요청에 읽기 전용 셋(id, createdAt, updatedAt)을 더한 것이다.
+ *
+ * endAt 은 저장된 값이 아니라 시작에 소요시간을 더한 계산값이다
+ */
+export interface ScheduleDetailResponse {
+  id: number;
+  title: string;
+  description?: string;
+  startAt?: string;
+  endAt?: string;
+  allDay: boolean;
+  tags?: string[];
+  place?: string;
+  twoMinuteAction?: string;
+  parentId?: number;
+  dueOn?: string;
+  /** 없으면 1회성 일정이다 */
+  recurrence?: RecurrenceResponse;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** 회차 하나만 고친다. 준 것만 바뀌고, 생략하면 일정의 값으로 되돌아간다 */
 export interface InstanceUpdateRequest {
   title?: string;

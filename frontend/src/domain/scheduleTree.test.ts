@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import type { ScheduleListItem } from '../types/schedule'
-import { buildTree, flatten, sortDateOf } from './scheduleTree'
+import {
+  buildTree,
+  flatten,
+  selfAndDescendantIds,
+  sortDateOf,
+} from './scheduleTree'
 
 function item(
   id: number,
@@ -93,5 +98,27 @@ describe('기한순 정렬', () => {
 
     // 2 는 기한이 가장 이르지만 1 의 자식이라 1 밑에 그대로 있다
     expect(rows.map((r) => r.item.id)).toEqual([3, 1, 2])
+  })
+})
+
+describe('자기와 자손 모으기', () => {
+  const tree = [
+    item(1),
+    item(2, { parentId: 1 }),
+    item(3, { parentId: 2 }),
+    item(4),
+  ]
+
+  it('자식이 없으면 자기 자신만 나온다', () => {
+    expect([...selfAndDescendantIds(tree, 4)]).toEqual([4])
+  })
+
+  it('자식과 손자까지 모은다', () => {
+    // 자기 자손을 상위로 삼으면 순환이 된다. 후보에서 빼야 한다
+    expect([...selfAndDescendantIds(tree, 1)].sort()).toEqual([1, 2, 3])
+  })
+
+  it('형제는 넣지 않는다', () => {
+    expect([...selfAndDescendantIds(tree, 2)].sort()).toEqual([2, 3])
   })
 })

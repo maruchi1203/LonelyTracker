@@ -3,10 +3,12 @@ import type {
   DeleteScope,
   InstanceUpdateRequest,
   ScheduleCreateRequest,
+  ScheduleDetailResponse,
   ScheduleListItem,
   ScheduleQuery,
   ScheduleResponse,
   ScheduleStatus,
+  ScheduleUpdateRequest,
 } from '../types/schedule'
 import { handle } from './http'
 
@@ -52,6 +54,27 @@ export async function createSchedule(
 }
 
 /** 회차 하나의 상태를 바꾼다. 습관 전용이다 */
+/** 일정 자체의 값. 반복이면 규칙도 함께 온다 */
+export async function fetchSchedule(
+  id: number,
+  signal?: AbortSignal,
+): Promise<ScheduleDetailResponse> {
+  return handle<ScheduleDetailResponse>(await fetch(`${BASE}/${id}`, { signal }))
+}
+
+/** 앞으로의 회차를 전부 고친다. recurrence 를 빼면 반복이 지워진다 */
+export async function updateSchedule(
+  id: number,
+  body: ScheduleUpdateRequest,
+): Promise<ScheduleResponse> {
+  const res = await fetch(`${BASE}/${id}`, {
+    method: 'PUT',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  })
+  return handle<ScheduleResponse>(res)
+}
+
 export async function changeInstanceStatus(
   id: number,
   onDate: string,
