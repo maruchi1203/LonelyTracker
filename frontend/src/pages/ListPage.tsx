@@ -9,13 +9,7 @@ import {
 } from "../api/schedules";
 import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
 import ScheduleEditModal from "../components/schedule/ScheduleEditModal";
-import type { ParentOption } from "../components/schedule/ScheduleFields";
-import {
-  buildTree,
-  flatten,
-  selfAndDescendantIds,
-  type ListSort,
-} from "../domain/scheduleTree";
+import { buildTree, flatten, type ListSort } from "../domain/scheduleTree";
 import type { ScheduleCreateRequest, ScheduleListItem } from "../types/schedule";
 
 /** 깊이만큼 들여쓴다. 계층은 3단까지라 세 칸이면 된다 */
@@ -75,30 +69,6 @@ export default function ListPage() {
 
   const rows = useMemo(() => flatten(buildTree(items, sort)), [items, sort]);
 
-  /**
-   * 상위로 고를 수 있는 목록
-   * 3단이 꽉 찬 자리는 뺀다. 서버가 눌러 앉히기 전에 못 고르게 한다
-   *
-   * @param excludeId 수정 중인 항목. 자기 자신과 자기 자손은 부모가 될 수 없다
-   */
-  const optionsFor = useCallback(
-    (excludeId?: number): ParentOption[] => {
-      const blocked =
-        excludeId === undefined
-          ? new Set<number>()
-          : selfAndDescendantIds(items, excludeId);
-
-      return flatten(buildTree(items))
-        .filter(
-          ({ item, depth }) =>
-            depth < INDENT.length - 1 && !blocked.has(item.id),
-        )
-        .map(({ item, depth }) => ({ id: item.id, title: item.title, depth }));
-    },
-    [items],
-  );
-
-  const parentOptions = useMemo(() => optionsFor(), [optionsFor]);
 
   /** 성공 여부를 돌려준다. 실패했는데 입력이 지워지면 곤란하다 */
   const handleCreate = async (body: ScheduleCreateRequest): Promise<boolean> => {
@@ -231,7 +201,6 @@ export default function ListPage() {
       <QuickAddLauncher
         knownTags={knownTags}
         variant="list"
-        parentOptions={parentOptions}
         onCreate={handleCreate}
       />
 
@@ -239,7 +208,7 @@ export default function ListPage() {
         <ScheduleEditModal
           id={editingId}
           knownTags={knownTags}
-          parentOptions={optionsFor(editingId)}
+          variant="list"
           onClose={() => setEditingId(null)}
           onSaved={() => {
             // 3단을 넘기면 서버가 눌러 앉힌다. 목록을 다시 읽어야 결과가 맞는다
@@ -345,13 +314,24 @@ function ListRow({
         ⠿
       </button>
 
-      <input
-        type="checkbox"
-        checked={done}
-        onChange={onToggle}
-        aria-label={`${item.title} 완료`}
-        className="mt-1 size-4 shrink-0 accent-brand-500"
-      />
+      {/* 습관의 완료는 회차마다 있다. 리스트에는 회차가 없어 체크할 대상이 없다 */}
+      {item.recurring ? (
+        <span
+          title="반복 일정입니다. 완료는 달력에서 회차마다 표시합니다"
+          aria-label="반복 일정"
+          className="mt-0.5 shrink-0 text-brand-400"
+        >
+          ⟳
+        </span>
+      ) : (
+        <input
+          type="checkbox"
+          checked={done}
+          onChange={onToggle}
+          aria-label={`${item.title} 완료`}
+          className="mt-1 size-4 shrink-0 accent-brand-500"
+        />
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <button

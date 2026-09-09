@@ -9,16 +9,14 @@ import { draftFromParsed, formToCreateRequest } from "../../domain/scheduleForm"
 import type { ParseQuestion } from "../../types/parse";
 import type { ScheduleCreateRequest } from "../../types/schedule";
 import ScheduleInputForm from "../ScheduleInputForm";
-import type { ParentOption } from "../schedule/ScheduleFields";
 import ParsedDraftCard from "./ParsedDraftCard";
 
 interface Props {
   /** 달력에서 고른 날짜. 리스트처럼 날짜 개념이 없는 탭은 주지 않는다 */
   defaultDate?: Date | null;
   knownTags: string[];
-  /** 어느 탭의 폼인지. 칸 구성과 검증이 함께 갈린다 */
+  /** 어느 탭의 폼인지. 날짜를 요구할지가 갈린다 */
   variant?: FormVariant;
-  parentOptions?: ParentOption[];
   onCreate: (body: ScheduleCreateRequest) => Promise<boolean>;
   /** 저장에 성공했을 때. 띄워둔 패널을 닫는 데 쓴다 */
   onDone?: () => void;
@@ -43,7 +41,6 @@ export default function QuickAddBar({
   defaultDate = null,
   knownTags,
   variant = "calendar",
-  parentOptions,
   onCreate,
   onDone,
   autoFocus,
@@ -244,7 +241,6 @@ export default function QuickAddBar({
           onChange={patch}
           showTwoMinute={showTwoMinute}
           variant={variant}
-          parentOptions={parentOptions}
           onSave={() => void save()}
           onDiscard={() => setState({ mode: "idle" })}
         />
@@ -257,7 +253,6 @@ export default function QuickAddBar({
           defaultDate={defaultDate}
           showTwoMinute={showTwoMinute}
           variant={variant}
-          parentOptions={parentOptions}
           // 문장을 못 읽었을 때 친 내용을 버리지 않는다
           initialTitle={state.mode === "error" ? text.trim() : undefined}
         />

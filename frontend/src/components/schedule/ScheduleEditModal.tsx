@@ -7,13 +7,13 @@ import {
   type FormVariant,
   type ScheduleForm,
 } from "../../domain/scheduleForm";
-import ScheduleFields, { type ParentOption } from "./ScheduleFields";
+import ScheduleFields from "./ScheduleFields";
 
 interface Props {
   id: number;
   knownTags: string[];
-  parentOptions: ParentOption[];
-  variant?: FormVariant;
+  /** 어느 탭의 얼굴로 설지. 부르는 쪽이 반드시 밝힌다 */
+  variant: FormVariant;
   showTwoMinute?: boolean;
   onClose: () => void;
   /** 저장이나 삭제가 끝난 뒤. 부른 쪽이 목록을 다시 읽는다 */
@@ -27,8 +27,7 @@ const BUTTON =
 export default function ScheduleEditModal({
   id,
   knownTags,
-  parentOptions,
-  variant = "list",
+  variant,
   showTwoMinute,
   onClose,
   onSaved,
@@ -133,8 +132,6 @@ export default function ScheduleEditModal({
               }
               knownTags={knownTags}
               idPrefix={`edit-${id}`}
-              variant={variant}
-              parentOptions={parentOptions}
               showTwoMinute={showTwoMinute}
             />
 

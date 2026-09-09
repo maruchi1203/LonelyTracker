@@ -376,3 +376,28 @@ describe('수정 폼으로 되돌리기', () => {
     expect(body.place).toBe('사무실')
   })
 })
+
+describe('반복 일정을 리스트 얼굴로 수정할 때', () => {
+  const recurring = detail({
+    startAt: '2026-10-01T07:00:00',
+    endAt: '2026-10-01T08:00:00',
+    recurrence: { freq: 'WEEKLY', byWeekday: WMF, endsOn: '2026-12-31' },
+  })
+
+  it('반복 규칙이 살아남는다', () => {
+    // 반복 토글이 안 보이는 얼굴로 고쳐도 규칙이 지워지면 안 된다
+    const body = formToCreateRequest(formFromDetail(recurring))
+
+    expect(body.recurrence).toEqual({
+      freq: 'WEEKLY',
+      byWeekday: WMF,
+      endsOn: '2026-12-31',
+    })
+  })
+
+  it('소요시간이 endAt 으로 돌아간다', () => {
+    const body = formToCreateRequest(formFromDetail(recurring))
+
+    expect(body.endAt).toBe('2026-10-01T08:00:00')
+  })
+})

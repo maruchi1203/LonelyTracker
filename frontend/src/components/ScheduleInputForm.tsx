@@ -3,7 +3,7 @@ import type { FormVariant, ScheduleForm } from "../domain/scheduleForm";
 import { emptyForm, formToCreateRequest, formValidationError } from "../domain/scheduleForm";
 import type { ScheduleCreateRequest } from "../types/schedule";
 import { toLocalDate } from "../utils/datetime";
-import ScheduleFields, { type ParentOption } from "./schedule/ScheduleFields";
+import ScheduleFields from "./schedule/ScheduleFields";
 
 interface Props {
   /** 저장에 성공했는지 돌려준다. 실패하면 입력값을 지우지 않는다 */
@@ -15,9 +15,8 @@ interface Props {
   initialTitle?: string;
   showTwoMinute?: boolean;
   disabled?: boolean;
-  /** 어느 탭의 폼인지. 칸 구성과 검증이 함께 갈린다 */
+  /** 어느 탭의 폼인지. 날짜를 요구할지가 갈린다 */
   variant?: FormVariant;
-  parentOptions?: ParentOption[];
 }
 
 export default function ScheduleInputForm({
@@ -28,7 +27,6 @@ export default function ScheduleInputForm({
   showTwoMinute,
   disabled,
   variant = "calendar",
-  parentOptions,
 }: Props) {
   const [form, setForm] = useState<ScheduleForm>(() => ({
     ...emptyForm(defaultDate),
@@ -78,8 +76,6 @@ export default function ScheduleInputForm({
         knownTags={knownTags}
         idPrefix="manual"
         showTwoMinute={showTwoMinute}
-        variant={variant}
-        parentOptions={parentOptions}
       />
 
       {problem && <p className="text-sm text-red-600">{problem}</p>}

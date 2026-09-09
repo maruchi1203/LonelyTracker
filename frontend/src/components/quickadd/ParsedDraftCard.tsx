@@ -7,9 +7,7 @@ import type {
 } from "../../domain/scheduleForm";
 import { formValidationError } from "../../domain/scheduleForm";
 import type { ParseQuestion } from "../../types/parse";
-import ScheduleFields, {
-  type ParentOption,
-} from "../schedule/ScheduleFields";
+import ScheduleFields from "../schedule/ScheduleFields";
 import QuestionChips from "./QuestionChips";
 
 interface Props {
@@ -19,7 +17,6 @@ interface Props {
   saving: boolean;
   showTwoMinute?: boolean;
   variant?: FormVariant;
-  parentOptions?: ParentOption[];
   onChange: (patch: Partial<ScheduleForm>) => void;
   onSave: () => void;
   onDiscard: () => void;
@@ -35,7 +32,6 @@ export default function ParsedDraftCard({
   saving,
   showTwoMinute,
   variant = "calendar",
-  parentOptions,
   onChange,
   onSave,
   onDiscard,
@@ -99,8 +95,6 @@ export default function ParsedDraftCard({
         fieldRef={fieldRef}
         decorate={decorate}
         showTwoMinute={showTwoMinute}
-        variant={variant}
-        parentOptions={parentOptions}
       />
 
       {problem && <p className="text-sm text-red-600">{problem}</p>}
