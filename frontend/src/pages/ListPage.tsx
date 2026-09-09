@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+} from "react";
 import {
   changeCompletion,
   createSchedule,
@@ -9,6 +16,11 @@ import {
 } from "../api/schedules";
 import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
 import ScheduleEditModal from "../components/schedule/ScheduleEditModal";
+import {
+  dropIntentAt,
+  planDrop,
+  type DropIntent,
+} from "../domain/scheduleDrop";
 import { buildTree, flatten, type ListSort } from "../domain/scheduleTree";
 import type {
   ScheduleCreateRequest,
@@ -21,6 +33,13 @@ const INDENT = ["", "pl-6", "pl-12"];
 
 const MENU_ITEM =
   "rounded-md px-2.5 py-1.5 text-left text-sm transition-colors";
+
+/** 놓으면 어떻게 되는지 보여주는 표시. 가운데는 자식으로 들어간다 */
+const DROP_MARK: Record<DropIntent, string> = {
+  before: "border-t-2 border-t-brand-500",
+  after: "border-b-2 border-b-brand-500",
+  inside: "bg-brand-50 ring-2 ring-inset ring-brand-300",
+};
 
 const TOGGLE = "rounded-md border px-3 py-1 text-sm transition-colors";
 const TOGGLE_ON = "border-brand-500 bg-brand-500 text-white";
@@ -47,6 +66,9 @@ export default function ListPage() {
   const [sort, setSort] = useState<ListSort>("manual");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [dropAt, setDropAt] = useState<
+    { id: number; intent: DropIntent } | null
+  >(null);
 
   // 보이는 차례와 저장되는 차례가 다르면 놓은 자리와 결과가 어긋난다
   const canDrag = sort === "manual";
@@ -109,29 +131,24 @@ export default function ListPage() {
     }
   };
 
-  /** 끌어다 놓은 항목을 대상 앞자리에 넣는다 */
-  const handleDrop = async (targetId: number) => {
-    const dragged = items.find((i) => i.id === draggingId);
-    const target = items.find((i) => i.id === targetId);
+  /** 끌어다 놓은 자리대로 무리를 다시 세운다 */
+  const handleDrop = async (targetId: number, intent: DropIntent) => {
+    const from = draggingId;
     setDraggingId(null);
+    setDropAt(null);
+    if (from === null) return;
 
-    if (!dragged || !target || dragged.id === target.id) return;
-
-    // 무리를 넘는 이동은 상위를 바꾸는 일이라 수정 폼이 맡는다
-    if (dragged.parentId !== target.parentId) {
-      setError("같은 무리 안에서만 순서를 바꿀 수 있습니다");
+    const plan = planDrop(items, from, targetId, intent);
+    if (plan === null) {
+      setError("그 자리에는 놓을 수 없습니다");
       return;
     }
 
-    // items 는 서버가 준 차례라 저장된 순서 그대로다
-    const ids = items
-      .filter((i) => i.parentId === dragged.parentId && i.id !== dragged.id)
-      .map((i) => i.id);
-    ids.splice(ids.indexOf(target.id), 0, dragged.id);
-
     setError(null);
     try {
-      await reorderSchedules(dragged.parentId ?? null, ids);
+      await reorderSchedules(plan.parentId, plan.ids);
+
+      // 자손이 넘치면 서버가 끌어올린다. 응답 하나만 믿으면 화면이 거짓말한다
       await reload();
     } catch (e) {
       fail(e, "순서를 바꾸지 못했습니다");
@@ -176,7 +193,8 @@ export default function ListPage() {
       </div>
 
       <p className="text-xs text-slate-400">
-        날짜를 안 정한 일도 적어 둘 수 있습니다. 습관은 습관일지 탭에 있습니다.
+        날짜를 안 정한 일도 적어 둘 수 있습니다. 끌어서 행의 가운데에 놓으면 그
+        일정의 하위로 들어갑니다.
       </p>
 
       {error && (
@@ -202,9 +220,14 @@ export default function ListPage() {
                 onDelete={() => void handleDelete(item)}
                 draggable={canDrag}
                 dragging={draggingId === item.id}
+                dropIntent={dropAt?.id === item.id ? dropAt.intent : null}
                 onDragStart={() => setDraggingId(item.id)}
-                onDragEnd={() => setDraggingId(null)}
-                onDrop={() => void handleDrop(item.id)}
+                onDragEnd={() => {
+                  setDraggingId(null);
+                  setDropAt(null);
+                }}
+                onDragOverRow={(intent) => setDropAt({ id: item.id, intent })}
+                onDropAt={(intent) => void handleDrop(item.id, intent)}
               />
             ))}
           </ul>
@@ -235,18 +258,27 @@ export default function ListPage() {
   );
 }
 
+/** 커서가 행의 위아래 어디쯤인지로 뜻을 읽는다 */
+function intentAtPointer(e: DragEvent<HTMLElement>): DropIntent {
+  const box = e.currentTarget.getBoundingClientRect();
+  return dropIntentAt((e.clientY - box.top) / box.height);
+}
+
 interface RowProps {
   item: ScheduleListItem;
   depth: number;
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  /** 기한순으로 보는 중이면 끌 수 없다 */
+  /** 내 순서로 보는 중일 때만 끌 수 있다 */
   draggable: boolean;
   dragging: boolean;
+  /** 지금 이 행에 놓으면 어떻게 되는지. 끌고 있지 않으면 null */
+  dropIntent: DropIntent | null;
   onDragStart: () => void;
   onDragEnd: () => void;
-  onDrop: () => void;
+  onDragOverRow: (intent: DropIntent) => void;
+  onDropAt: (intent: DropIntent) => void;
 }
 
 function ListRow({
@@ -257,9 +289,11 @@ function ListRow({
   onDelete,
   draggable,
   dragging,
+  dropIntent,
   onDragStart,
   onDragEnd,
-  onDrop,
+  onDragOverRow,
+  onDropAt,
 }: RowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const row = useRef<HTMLLIElement>(null);
@@ -299,15 +333,19 @@ function ListRow({
       }}
       onDragOver={(e) => {
         // 막지 않으면 브라우저가 놓기를 거부한다
-        if (draggable) e.preventDefault();
+        if (!draggable) return;
+        e.preventDefault();
+        onDragOverRow(intentAtPointer(e));
       }}
       onDrop={(e) => {
         e.preventDefault();
-        onDrop();
+        onDropAt(intentAtPointer(e));
       }}
       className={`relative flex items-start gap-2 px-3 py-3 transition-opacity ${
         INDENT[depth] ?? ""
-      } ${dragging ? "opacity-40" : ""} ${shelved ? "opacity-50" : ""}`}
+      } ${dragging ? "opacity-40" : ""} ${shelved ? "opacity-50" : ""} ${
+        dropIntent ? DROP_MARK[dropIntent] : ""
+      }`}
     >
       {/* 손잡이만 끈다. 행 전체를 끌면 글자를 고르는 것과 부딪힌다 */}
       <button
@@ -318,8 +356,8 @@ function ListRow({
         disabled={!draggable}
         title={
           draggable
-            ? "끌어서 순서 바꾸기"
-            : "기한순으로 보는 중에는 순서를 바꿀 수 없습니다"
+            ? "끌어서 순서 바꾸기. 행 가운데에 놓으면 하위로 들어갑니다"
+            : "내 순서로 볼 때만 자리를 바꿀 수 있습니다"
         }
         aria-label={`${item.title} 순서 바꾸기`}
         className={`mt-0.5 shrink-0 px-1 ${
