@@ -56,11 +56,34 @@ describe('초안 만들기', () => {
     expect(d.startTime).toBe('')
   })
 
-  it('시작일을 못 채웠어도 비워두지 않는다', () => {
+  it('달력은 시작일을 못 채웠어도 비워두지 않는다', () => {
     const d = draftFromParsed({ title: '회의', allDay: false }, new Date(2026, 7, 31))
 
     expect(d.startDate).toBe('2026-08-31')
     expect(d.repeating).toBe(false)
+  })
+
+  it('리스트는 못 채운 시작일을 비워 둔다', () => {
+    // "언젠가 책 읽기" 가 오늘 일정이 되면 안 된다
+    const d = draftFromParsed(
+      { title: '책 읽기', allDay: false },
+      new Date(2026, 7, 31),
+      'list',
+    )
+
+    expect(d.startDate).toBe('')
+    expect(d.startTime).toBe('')
+  })
+
+  it('리스트라도 AI 가 날짜를 뽑았으면 그대로 쓴다', () => {
+    const d = draftFromParsed(
+      { title: '회의', startAt: '2026-10-01T14:00:00', allDay: false },
+      null,
+      'list',
+    )
+
+    expect(d.startDate).toBe('2026-10-01')
+    expect(d.startTime).toBe('14:00')
   })
 })
 

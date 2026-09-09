@@ -1,10 +1,16 @@
 import { useEffect, useRef, useState } from "react";
+import type { FormVariant } from "../../domain/scheduleForm";
 import type { ScheduleCreateRequest } from "../../types/schedule";
+import type { ParentOption } from "../schedule/ScheduleFields";
 import QuickAddBar from "./QuickAddBar";
 
 interface Props {
-  defaultDate: Date | null;
+  /** 달력에서 고른 날짜. 리스트처럼 날짜 개념이 없는 탭은 주지 않는다 */
+  defaultDate?: Date | null;
   knownTags: string[];
+  /** 어느 탭의 폼인지. 칸 구성과 검증이 함께 갈린다 */
+  variant?: FormVariant;
+  parentOptions?: ParentOption[];
   onCreate: (body: ScheduleCreateRequest) => Promise<boolean>;
 }
 
@@ -12,6 +18,8 @@ interface Props {
 export default function QuickAddLauncher({
   defaultDate,
   knownTags,
+  variant,
+  parentOptions,
   onCreate,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -47,6 +55,8 @@ export default function QuickAddLauncher({
           <QuickAddBar
             defaultDate={defaultDate}
             knownTags={knownTags}
+            variant={variant}
+            parentOptions={parentOptions}
             onCreate={onCreate}
             onDone={() => setOpen(false)}
             autoFocus

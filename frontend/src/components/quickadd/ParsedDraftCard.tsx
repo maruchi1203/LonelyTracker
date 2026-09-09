@@ -1,9 +1,15 @@
 import { useCallback, useRef, useState } from "react";
 import { PARSE_QUESTION_FIELD } from "../../constants/parseQuestions";
-import type { FormFieldId, ScheduleForm } from "../../domain/scheduleForm";
+import type {
+  FormFieldId,
+  FormVariant,
+  ScheduleForm,
+} from "../../domain/scheduleForm";
 import { formValidationError } from "../../domain/scheduleForm";
 import type { ParseQuestion } from "../../types/parse";
-import ScheduleFields from "../schedule/ScheduleFields";
+import ScheduleFields, {
+  type ParentOption,
+} from "../schedule/ScheduleFields";
 import QuestionChips from "./QuestionChips";
 
 interface Props {
@@ -12,6 +18,8 @@ interface Props {
   knownTags: string[];
   saving: boolean;
   showTwoMinute?: boolean;
+  variant?: FormVariant;
+  parentOptions?: ParentOption[];
   onChange: (patch: Partial<ScheduleForm>) => void;
   onSave: () => void;
   onDiscard: () => void;
@@ -26,6 +34,8 @@ export default function ParsedDraftCard({
   knownTags,
   saving,
   showTwoMinute,
+  variant = "calendar",
+  parentOptions,
   onChange,
   onSave,
   onDiscard,
@@ -71,7 +81,7 @@ export default function ParsedDraftCard({
         ? "border-amber-300"
         : "border-slate-200";
 
-  const problem = formValidationError(draft);
+  const problem = formValidationError(draft, variant);
 
   return (
     <div className="flex flex-col gap-3.5 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
@@ -89,6 +99,8 @@ export default function ParsedDraftCard({
         fieldRef={fieldRef}
         decorate={decorate}
         showTwoMinute={showTwoMinute}
+        variant={variant}
+        parentOptions={parentOptions}
       />
 
       {problem && <p className="text-sm text-red-600">{problem}</p>}

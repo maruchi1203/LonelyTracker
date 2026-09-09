@@ -95,10 +95,15 @@ export function emptyForm(defaultDate?: Date | null): ScheduleForm {
 const splitDateTime = (value: string | undefined): [string, string] =>
   value ? [value.slice(0, 10), value.slice(11, 16)] : ["", ""];
 
-//
+/**
+ * AI 가 읽은 문장을 폼 초안으로
+ *
+ * @param variant 리스트는 날짜 없이 둘 수 있다. 달력은 날짜가 없으면 화면에서 사라진다
+ */
 export function draftFromParsed(
   parsed: ParsedSchedule,
   fallbackDate: Date | null,
+  variant: FormVariant = "calendar",
 ): ScheduleForm {
   const base = emptyForm(fallbackDate);
   const [startDate, startTime] = splitDateTime(parsed.startAt);
@@ -108,9 +113,13 @@ export function draftFromParsed(
     ...base,
     title: parsed.title,
     tags: parsed.tags ?? [],
-    // 시작일을 비워두지 않는다. 못 채운 칸은 되물음이 따로 알려준다
-    startDate: startDate || base.startDate,
-    startTime: parsed.allDay ? "" : startTime || base.startTime,
+    // 달력은 시작일을 비워두지 않는다. 못 채운 칸은 되물음이 따로 알려준다
+    // 리스트는 "언젠가 할 일"을 담는 곳이라 오늘로 채우면 없던 날짜가 생긴다
+    startDate: startDate || (variant === "list" ? "" : base.startDate),
+    startTime:
+      parsed.allDay || (variant === "list" && !startDate)
+        ? ""
+        : startTime || base.startTime,
     // 반복이면 종료일자 칸은 반복이 끝나는 날을 뜻한다
     endDate: parsed.recurrence ? (parsed.recurrence.endsOn ?? "") : endDate,
     endTime: parsed.recurrence ? "" : endTime,

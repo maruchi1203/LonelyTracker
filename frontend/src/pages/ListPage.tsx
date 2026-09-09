@@ -6,7 +6,7 @@ import {
   fetchScheduleList,
   fetchTagNames,
 } from "../api/schedules";
-import ScheduleInputForm from "../components/ScheduleInputForm";
+import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
 import ScheduleEditModal from "../components/schedule/ScheduleEditModal";
 import type { ParentOption } from "../components/schedule/ScheduleFields";
 import {
@@ -167,14 +167,6 @@ export default function ListPage() {
         </p>
       )}
 
-      <ScheduleInputForm
-        onSubmit={handleCreate}
-        knownTags={knownTags}
-        variant="list"
-        parentOptions={parentOptions}
-        disabled={loading}
-      />
-
       <section className="rounded-2xl border border-slate-200 bg-white shadow-xs">
         {rows.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-slate-400">
@@ -195,6 +187,14 @@ export default function ListPage() {
           </ul>
         )}
       </section>
+
+      {/* 다른 탭과 같은 자리에서 연다. 우하단 하나로 모은다 */}
+      <QuickAddLauncher
+        knownTags={knownTags}
+        variant="list"
+        parentOptions={parentOptions}
+        onCreate={handleCreate}
+      />
 
       {editingId !== null && (
         <ScheduleEditModal
