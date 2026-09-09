@@ -66,8 +66,9 @@ export default function ListPage() {
   const [sort, setSort] = useState<ListSort>("manual");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [draggingId, setDraggingId] = useState<number | null>(null);
+  // 놓을 수 있을 때만 채운다. 화면은 세울 자리를 스스로 셈하지 않는다
   const [dropAt, setDropAt] = useState<
-    { id: number; intent: DropIntent; level: number } | null
+    { id: number; intent: DropIntent; plan: DropPlan } | null
   >(null);
 
   // 마지막 행이 깊은 곳에 있으면 그 아래에는 최상위 자리가 없다
@@ -141,14 +142,8 @@ export default function ListPage() {
   };
 
   /** 끌어다 놓은 자리대로 무리를 다시 세운다 */
-  const handleDrop = async (plan: DropPlan | null) => {
+  const handleDrop = async (plan: DropPlan) => {
     stopDragging();
-
-    if (plan === null) {
-      setError("그 자리에는 놓을 수 없습니다");
-      return;
-    }
-
     setError(null);
     try {
       await reorderSchedules(plan.parentId, plan.ids);
@@ -226,18 +221,26 @@ export default function ListPage() {
                 onDelete={() => void handleDelete(item)}
                 draggable={canDrag}
                 dragging={draggingId === item.id}
-                drop={dropAt?.id === item.id ? dropAt : null}
+                drop={
+                  dropAt?.id === item.id
+                    ? { intent: dropAt.intent, level: dropAt.plan.level }
+                    : null
+                }
                 onDragStart={() => setDraggingId(item.id)}
                 onDragEnd={stopDragging}
                 onDragOverRow={(intent, level) => {
-                  setDropAt({ id: item.id, intent, level });
+                  const plan =
+                    draggingId === null
+                      ? null
+                      : planDrop(items, draggingId, item.id, intent, level);
+
+                  // 못 놓는 자리에는 아무 표시도 하지 않는다
+                  setDropAt(plan && { id: item.id, intent, plan });
                   setDropAtEnd(false);
                 }}
-                onDropAt={(intent, level) => {
-                  if (draggingId === null) return;
-                  void handleDrop(
-                    planDrop(items, draggingId, item.id, intent, level),
-                  );
+                onDropAt={() => {
+                  if (dropAt?.id !== item.id) return;
+                  void handleDrop(dropAt.plan);
                 }}
               />
             ))}
@@ -257,7 +260,7 @@ export default function ListPage() {
               e.preventDefault();
               if (draggingId === null) return;
 
-              // 이미 끝자리면 알릴 것이 없다. 못 놓는 자리가 아니다
+              // 이미 끝자리면 옮길 것이 없다
               const plan = planDropAtEnd(items, draggingId);
               if (plan === null) stopDragging();
               else void handleDrop(plan);
@@ -320,7 +323,7 @@ interface RowProps {
   onDragStart: () => void;
   onDragEnd: () => void;
   onDragOverRow: (intent: DropIntent, level: number) => void;
-  onDropAt: (intent: DropIntent, level: number) => void;
+  onDropAt: () => void;
 }
 
 function ListRow({
@@ -381,7 +384,7 @@ function ListRow({
       }}
       onDrop={(e) => {
         e.preventDefault();
-        onDropAt(...spotAtPointer(e));
+        onDropAt();
       }}
       className={`relative flex items-start gap-2 px-3 py-3 transition-opacity ${
         INDENT[depth] ?? ""

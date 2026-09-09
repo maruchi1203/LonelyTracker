@@ -44,12 +44,15 @@ export function dropLevelAt(offsetX: number): number {
 export interface DropPlan {
   parentId: number | null;
   ids: number[];
+  /** 실제로 서게 되는 단. 커서를 오른쪽 끝까지 밀어도 여기까지다 */
+  level: number;
 }
 
 /** 설 자리. afterId 가 null 이면 그 무리의 맨 앞이다 */
 interface Spot {
   parentId: number | null;
   afterId: number | null;
+  level: number;
 }
 
 /**
@@ -74,10 +77,13 @@ export function planDrop(
   const moving = selfAndDescendantIds(items, draggedId);
   if (moving.has(targetId)) return null;
 
+  // 습관은 남의 밑에 서지 않아 오른쪽으로 밀어도 최상위에 머문다
+  const wanted = dragged.recurring ? 0 : level;
+
   const spot =
     intent === "inside"
       ? lastChildSpot(items, target.id, draggedId)
-      : gapSpot(items, moving, target.id, intent, level);
+      : gapSpot(items, moving, target.id, intent, wanted);
   if (spot === null) return null;
 
   const { parentId } = spot;
@@ -95,7 +101,7 @@ export function planDrop(
   const at = spot.afterId === null ? 0 : ids.indexOf(spot.afterId) + 1;
   ids.splice(at, 0, draggedId);
 
-  return { parentId, ids };
+  return { parentId, ids, level: spot.level };
 }
 
 /** 그 행의 자식 무리 맨 끝 */
@@ -107,7 +113,11 @@ function lastChildSpot(
   const children = items.filter(
     (i) => (i.parentId ?? null) === targetId && i.id !== draggedId,
   );
-  return { parentId: targetId, afterId: children.at(-1)?.id ?? null };
+  return {
+    parentId: targetId,
+    afterId: children.at(-1)?.id ?? null,
+    level: depthOf(items, targetId) + 1,
+  };
 }
 
 /**
@@ -127,13 +137,16 @@ function gapSpot(
   if (at < 0) return null;
 
   const above = intent === "before" ? rows[at - 1] : rows[at];
-  if (above === undefined) return { parentId: null, afterId: null };
+  if (above === undefined) return { parentId: null, afterId: null, level: 0 };
 
-  const wanted = Math.min(level, above.depth + 1, DEEPEST);
+  // 오른쪽으로 아무리 밀어도 바로 위 행보다 한 단 깊은 곳까지다
+  let wanted = Math.min(level, above.depth + 1, DEEPEST);
 
-  // 바로 위 행보다 한 단 깊으면 그 행의 첫 자식이 된다
+  // 습관은 자식을 거느리지 못해 그 밑의 단은 처음부터 없는 자리다
+  if (wanted === above.depth + 1 && above.item.recurring) wanted--;
+
   if (wanted === above.depth + 1) {
-    return { parentId: above.item.id, afterId: null };
+    return { parentId: above.item.id, afterId: null, level: wanted };
   }
 
   // 그 단까지 거슬러 올라간 조상 바로 뒤에 선다
@@ -143,7 +156,7 @@ function gapSpot(
     if (parent === undefined) return null;
     anchor = parent;
   }
-  return { parentId: anchor.parentId ?? null, afterId: anchor.id };
+  return { parentId: anchor.parentId ?? null, afterId: anchor.id, level: wanted };
 }
 
 /**
@@ -164,7 +177,7 @@ export function planDropAtEnd(
   const ids = top.filter((i) => i.id !== draggedId).map((i) => i.id);
   ids.push(draggedId);
 
-  return { parentId: null, ids };
+  return { parentId: null, ids, level: 0 };
 }
 
 function isHabit(items: ScheduleListItem[], id: number): boolean {

@@ -59,6 +59,7 @@ describe("planDrop", () => {
     expect(planDrop(items, 3, 1, "before", 0)).toEqual({
       parentId: null,
       ids: [3, 1, 2],
+      level: 0,
     });
   });
 
@@ -68,6 +69,7 @@ describe("planDrop", () => {
     expect(planDrop(items, 1, 2, "after", 0)).toEqual({
       parentId: null,
       ids: [2, 1, 3],
+      level: 0,
     });
   });
 
@@ -77,6 +79,7 @@ describe("planDrop", () => {
     expect(planDrop(items, 3, 1, "inside", 0)).toEqual({
       parentId: 1,
       ids: [2, 3],
+      level: 1,
     });
   });
 
@@ -87,6 +90,7 @@ describe("planDrop", () => {
     expect(planDrop(items, 3, 2, "before", 1)).toEqual({
       parentId: 1,
       ids: [3, 2],
+      level: 1,
     });
   });
 
@@ -97,6 +101,7 @@ describe("planDrop", () => {
     expect(planDrop(items, 3, 2, "before", 0)).toEqual({
       parentId: null,
       ids: [1, 3],
+      level: 0,
     });
   });
 
@@ -112,12 +117,14 @@ describe("planDrop", () => {
     expect(planDrop(items, 4, 3, "after", 0)).toEqual({
       parentId: null,
       ids: [1, 4],
+      level: 0,
     });
 
     // 같은 틈에서 1단이면 2 바로 뒤다
     expect(planDrop(items, 4, 3, "after", 1)).toEqual({
       parentId: 1,
       ids: [2, 4],
+      level: 1,
     });
   });
 
@@ -128,6 +135,7 @@ describe("planDrop", () => {
     expect(planDrop(items, 2, 3, "before", 0)).toEqual({
       parentId: null,
       ids: [1, 2, 3],
+      level: 0,
     });
   });
 
@@ -156,6 +164,38 @@ describe("planDrop", () => {
     expect(planDrop(items, 4, 3, "before", 2)).toEqual({
       parentId: 2,
       ids: [4, 3],
+      level: 2,
+    });
+  });
+
+  it("설 수 없는 단까지 밀면 설 수 있는 단을 돌려준다", () => {
+    const items = [item(1), item(2)];
+
+    // 위 행이 최상위라 아무리 밀어도 1단까지다
+    expect(planDrop(items, 2, 1, "after", 2)).toEqual({
+      parentId: 1,
+      ids: [2],
+      level: 1,
+    });
+  });
+
+  it("습관 밑으로 밀어도 그 옆자리에 선다", () => {
+    const items = [item(1, { recurring: true }), item(2)];
+
+    expect(planDrop(items, 2, 1, "after", 2)).toEqual({
+      parentId: null,
+      ids: [1, 2],
+      level: 0,
+    });
+  });
+
+  it("습관을 끌면 오른쪽으로 밀어도 최상위에 남는다", () => {
+    const items = [item(1), item(2, { recurring: true })];
+
+    expect(planDrop(items, 2, 1, "after", 2)).toEqual({
+      parentId: null,
+      ids: [1, 2],
+      level: 0,
     });
   });
 
@@ -172,6 +212,7 @@ describe("planDrop", () => {
     expect(planDrop(items, 2, 1, "before", 0)).toEqual({
       parentId: null,
       ids: [2, 1],
+      level: 0,
     });
   });
 });
@@ -180,13 +221,21 @@ describe("planDropAtEnd", () => {
   it("깊은 곳에 있던 일정을 최상위 끝으로 뺀다", () => {
     const items = [item(1), item(2, { parentId: 1 }), item(3, { parentId: 2 })];
 
-    expect(planDropAtEnd(items, 3)).toEqual({ parentId: null, ids: [1, 3] });
+    expect(planDropAtEnd(items, 3)).toEqual({
+      parentId: null,
+      ids: [1, 3],
+      level: 0,
+    });
   });
 
   it("최상위 안에서도 맨 끝으로 보낸다", () => {
     const items = [item(1), item(2), item(3)];
 
-    expect(planDropAtEnd(items, 1)).toEqual({ parentId: null, ids: [2, 3, 1] });
+    expect(planDropAtEnd(items, 1)).toEqual({
+      parentId: null,
+      ids: [2, 3, 1],
+      level: 0,
+    });
   });
 
   it("이미 끝자리면 아무 일도 없다", () => {
