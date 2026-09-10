@@ -16,6 +16,23 @@ final class ParsedScheduleSchema {
     private ParsedScheduleSchema() {
     }
 
+    /** 문장 하나에서 받을 수 있는 일정의 최대 개수. 응답 길이가 곧 토큰 비용이다 */
+    static final int MAX_SCHEDULES = 10;
+
+    /**
+     * 응답의 뿌리. 한 문장에 일정이 여럿 들어 있을 수 있어 배열로 받는다.
+     * 구조화 출력은 뿌리가 object 여야 해서 배열을 한 칸에 담아 감싼다.
+     */
+    static Map<String, Object> getRoot() {
+        return object(
+                Map.of("schedules", Map.of(
+                        "type", "array",
+                        "description", "문장에서 읽어낸 일정들. 하나뿐이면 길이 1의 배열",
+                        "maxItems", MAX_SCHEDULES,
+                        "items", getSchedule())),
+                List.of("schedules"));
+    }
+
     // 1회성 스케줄
     static Map<String, Object> getSchedule() {
         return object(

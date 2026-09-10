@@ -124,7 +124,7 @@ public class ScheduleController {
      * @return
      */
     @PostMapping("/parse")
-    public ParsedSchedule parse(@Valid @RequestBody ScheduleParseRequest request) {
+    public List<ParsedSchedule> parse(@Valid @RequestBody ScheduleParseRequest request) {
         return scheduleParseService.parse(request.text());
     }
 

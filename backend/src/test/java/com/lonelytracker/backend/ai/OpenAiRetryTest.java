@@ -33,7 +33,7 @@ class OpenAiRetryTest {
     private static final String OK_BODY = """
             { "output": [ { "type": "message", "content": [
                 { "type": "output_text",
-                  "text": "{\\"title\\":\\"운동\\",\\"startAt\\":\\"2026-09-01T07:00:00\\"}" } ] } ] }""";
+                  "text": "{\\"schedules\\":[{\\"title\\":\\"운동\\",\\"startAt\\":\\"2026-09-01T07:00:00\\"}]}" } ] } ] }""";
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -49,7 +49,7 @@ class OpenAiRetryTest {
         server.expect(requestTo(ENDPOINT))
                 .andRespond(withSuccess(OK_BODY, MediaType.APPLICATION_JSON));
 
-        ParsedSchedule parsed = parser.parse(command());
+        ParsedSchedule parsed = parser.parse(command()).get(0);
 
         assertThat(parsed.title()).isEqualTo("운동");
         server.verify();
@@ -129,7 +129,7 @@ class OpenAiRetryTest {
         server.expect(requestTo(ENDPOINT))
                 .andRespond(withSuccess(OK_BODY, MediaType.APPLICATION_JSON));
 
-        ParsedSchedule parsed = parser.parse(command());
+        ParsedSchedule parsed = parser.parse(command()).get(0);
 
         assertThat(parsed.title()).isEqualTo("운동");
         assertThat(parsed.startAt()).isEqualTo(LocalDateTime.parse("2026-09-01T07:00:00"));

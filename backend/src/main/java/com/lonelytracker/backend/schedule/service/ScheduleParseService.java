@@ -25,7 +25,12 @@ public class ScheduleParseService {
     private final ScheduleService scheduleService;
     private final UserProvider currentUserProvider;
 
-    public ParsedSchedule parse(String text) {
+    /**
+     * 문장 하나를 초안 목록으로 바꾼다.
+     *
+     * @return 읽어낸 초안들. 쓸 수 없는 것은 버리고 남은 것만 온다
+     */
+    public List<ParsedSchedule> parse(String text) {
         // 짧은 트랜잭션. 여기서 닫힌다
         UserEntity user = currentUserProvider.get();
         if (!user.hasOpenAiApiKey()) {
@@ -38,26 +43,37 @@ public class ScheduleParseService {
         List<String> knownTags = scheduleService.findTagNames();
 
         // 트랜잭션 밖에서 호출
-        ParsedSchedule parsed = scheduleParser.parse(
+        List<ParsedSchedule> parsed = scheduleParser.parse(
                 new AiParseCommand(text, LocalDateTime.now(), knownTags, apiKey));
 
-        // LLM 응답을 사용자 입력과 같은 등급으로 검증한다
-        return validate(parsed);
+        // LLM 응답을 사용자 입력과 같은 등급으로 검증한다.
+        // 하나가 어긋났다고 나머지까지 버리지 않는다
+        List<ParsedSchedule> usable = parsed.stream()
+                .filter(ScheduleParseService::isUsable)
+                .map(ScheduleParseService::trim)
+                .toList();
+
+        if (usable.isEmpty()) {
+            throw new AiParseException("일정으로 읽을 수 없는 문장입니다. 직접 입력해 주세요");
+        }
+        return usable;
     }
 
     /**
-     * 초안의 내용을 검사한다. 빈 칸은 잘못이 아니라 되물음의 대상이다.
+     * 쓸 수 있는 초안인지. 빈 칸은 잘못이 아니라 되물음의 대상이다.
      * 태그는 자유 입력이라 후보에 없는 이름도 그대로 둔다.
      */
-    private ParsedSchedule validate(ParsedSchedule parsed) {
+    private static boolean isUsable(ParsedSchedule parsed) {
         if (parsed.title() == null || parsed.title().isBlank()) {
-            throw new AiParseException("일정으로 읽을 수 없는 문장입니다. 직접 입력해 주세요");
-        }
-        if (parsed.startAt() != null && parsed.endAt() != null
-                && parsed.endAt().isBefore(parsed.startAt())) {
-            throw new AiParseException("AI 가 종료 시각을 시작보다 이르게 잡았습니다");
+            return false;
         }
 
+        // 끝이 시작보다 이르면 그 초안은 고칠 방법이 없다
+        return parsed.startAt() == null || parsed.endAt() == null
+                || !parsed.endAt().isBefore(parsed.startAt());
+    }
+
+    private static ParsedSchedule trim(ParsedSchedule parsed) {
         return new ParsedSchedule(
                 parsed.title().strip(),
                 parsed.startAt(),

@@ -45,9 +45,9 @@ public class OpenAiScheduleParser implements ScheduleParser {
     }
 
     @Override
-    public ParsedSchedule parse(AiParseCommand command) {
+    public List<ParsedSchedule> parse(AiParseCommand command) {
         String responseBody = callWithRetry(requestBody(command), command.apiKey());
-        return toParsed(extractOutput(responseBody));
+        return toParsedList(extractOutput(responseBody));
     }
 
     // --- HTTP ------------------------------------------------------------
@@ -147,9 +147,9 @@ public class OpenAiScheduleParser implements ScheduleParser {
                         Map.of("role", "user", "content", command.text())),
                 "text", Map.of("format", Map.of(
                         "type", "json_schema",
-                        "name", "parsed_schedule",
+                        "name", "parsed_schedules",
                         "strict", true,
-                        "schema", ParsedScheduleSchema.getSchedule())));
+                        "schema", ParsedScheduleSchema.getRoot())));
     }
 
     /** 규칙과 예시를 담은 system 메시지를 만든다. 칸별 규칙은 {@link ParsedScheduleSchema} 에 있다. */
@@ -162,6 +162,8 @@ public class OpenAiScheduleParser implements ScheduleParser {
 
                 - 모르는 값은 지어내지 말고 null로 두고, 그 칸의 ID를 questions에 넣는다.
                 - 행동이 막연하면(예: "열심히 하기") TOO_VAGUE를 넣거나 질문을 요청한다.
+                - 문장에 서로 다른 일정이 여럿이면 schedules 배열에 하나씩 나눠 담는다.
+                  한 일정을 쪼개지는 말고, 서로 다른 일을 한 칸에 합치지도 않는다.
 
                 예시 — 현재 시각이 2026-08-27T13:00:00 목요일, 태그 후보가 [육체] 일 때:
                 "내일 3시 헬스장에서 운동"
@@ -174,6 +176,9 @@ public class OpenAiScheduleParser implements ScheduleParser {
                   recurrence={"freq":"DAILY","byWeekday":[],"endsOn":"2026-09-02"}
                 "회의"
                   title=회의 startAt=null questions=["DATE","START_TIME","PLACE"]
+                "내일 3시 치과, 5시에 장보기"
+                  schedules 에 두 칸 — title=치과 startAt=2026-08-28T15:00:00 과
+                  title=장보기 startAt=2026-08-28T17:00:00
 
                 현재 시각: %s (%s) — 상대 날짜는 이 시각 기준으로 푼다.
                 태그 후보: %s — 맞는 것이 있으면 쓰고, 없으면 새로 지어도 된다.
@@ -197,6 +202,27 @@ public class OpenAiScheduleParser implements ScheduleParser {
 
     /** 오류 메시지에 실을 응답 원문의 최대 길이 */
     private static final int HINT_LENGTH = 300;
+
+    /**
+     * 봉투 안의 배열을 초안 목록으로 바꾼다.
+     * 하나도 못 읽으면 문장 자체를 일정으로 볼 수 없었던 것이다.
+     */
+    private List<ParsedSchedule> toParsedList(JsonNode root) {
+        JsonNode schedules = root.path("schedules");
+        if (!schedules.isArray() || schedules.isEmpty()) {
+            throw new AiParseException(
+                    "AI 가 일정을 하나도 읽지 못했습니다. 응답: " + hint(root.toString()));
+        }
+
+        List<ParsedSchedule> parsed = new ArrayList<>();
+        for (JsonNode node : schedules) {
+            if (parsed.size() >= ParsedScheduleSchema.MAX_SCHEDULES) {
+                break;
+            }
+            parsed.add(toParsed(node));
+        }
+        return parsed;
+    }
 
     private ParsedSchedule toParsed(JsonNode node) {
         // 제목과 시작일을 못 채우면 최소한의 일정을 형성할 수 없음
