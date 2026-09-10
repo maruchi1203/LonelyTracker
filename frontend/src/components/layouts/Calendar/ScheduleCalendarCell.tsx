@@ -54,7 +54,10 @@ export default function ScheduleCalendarCell({
       <ul className="flex list-none flex-col gap-0.5 p-0">
         {day.lanes.map((slot, lane) =>
           slot ? (
-            <Bar key={`${instanceKey(slot.instance)}:${slot.kind}`} slot={slot} />
+            <Bar
+              key={`${instanceKey(slot.instance)}:${slot.kind}`}
+              slot={slot}
+            />
           ) : (
             // 빈 레인도 자리를 차지해야 옆 칸의 띠와 높이가 맞는다
             <li key={`empty-${lane}`} className="h-4" aria-hidden />
@@ -81,10 +84,11 @@ function Bar({ slot }: { slot: LaneSlot }) {
     isEnd ? "rounded-r-sm" : BLEED_RIGHT,
   ].join(" ");
 
-  // 시작은 왼쪽에, 기한은 오른쪽에 굵은 선을 둔다. 색을 못 가려도 방향으로 갈린다
+  // 시작은 왼쪽에, 기한은 오른쪽에 굵은 선을 둔다. 색을 못 가려도 방향으로 갈린다.
+  // 이어지는 칸에는 선을 두지 않는다. 띠 한가운데에 금이 그어져 두 개로 보인다
   const tone = due
-    ? "border-r-2 border-r-amber-700 bg-amber-100 text-amber-900"
-    : "border-l-2 border-l-brand-500 bg-brand-100 text-brand-800";
+    ? `bg-amber-100 text-amber-900 ${isEnd ? "border-r-2 border-r-amber-700" : ""}`
+    : `bg-brand-100 text-brand-800 ${isStart ? "border-l-2 border-l-brand-500" : ""}`;
 
   return (
     <li
