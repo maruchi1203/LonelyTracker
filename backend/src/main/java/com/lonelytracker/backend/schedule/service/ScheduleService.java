@@ -161,6 +161,22 @@ public class ScheduleService {
                 .forEach(d -> d.changeCompletion(completed, mark));
     }
 
+    /**
+     * 딸린 자손의 완료를 모두 푼다.
+     * 반복이 다음 회차로 넘어가면 그 밑의 일도 다시 해야 한다.
+     * 언제 끝냈는지는 보지 않는다. 회차가 바뀌면 지난 회차의 완료는 뜻을 잃는다.
+     */
+    @Transactional
+    void releaseDescendants(Long id) {
+        List<Long> descendants = descendantIdsOf(id);
+        if (descendants.isEmpty()) {
+            return;
+        }
+
+        scheduleRepository.findAllById(descendants)
+                .forEach(d -> d.changeCompletion(false, null));
+    }
+
     /** 그 일정 밑에 딸린 것 전부. 계층이 3단이라 두 번 내려가면 바닥이다 */
     private List<Long> descendantIdsOf(Long id) {
         List<Long> children = scheduleRepository.findIdsByParentIdIn(List.of(id));

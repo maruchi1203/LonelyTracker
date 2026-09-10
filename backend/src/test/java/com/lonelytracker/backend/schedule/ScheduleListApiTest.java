@@ -394,6 +394,27 @@ class ScheduleListApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$[0].occurrenceOn").doesNotExist());
     }
 
+    @Test
+    @DisplayName("회차가 넘어가면 딸린 자손의 완료가 풀린다")
+    void nextOccurrenceReleasesDescendants() throws Exception {
+        long recurring = create("{\"title\":\"매일 운동\",\"startAt\":\"2026-10-01T07:00:00\""
+                + ",\"recurrence\":{\"freq\":\"DAILY\"}}");
+        long child = create("{\"title\":\"운동복 챙기기\",\"parentId\":" + recurring + "}");
+        long grandChild = create("{\"title\":\"수건 넣기\",\"parentId\":" + child + "}");
+
+        complete(child, true).andExpect(status().isOk());
+
+        mvc.perform(patch(BASE + "/" + recurring + "/instances/2026-10-01/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"DONE\"}"))
+                .andExpect(status().isOk());
+
+        // 언제 끝냈는지는 보지 않는다. 회차가 바뀌면 전부 다시 선다
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$[?(@.id == " + child + ")].completedAt").isEmpty())
+                .andExpect(jsonPath("$[?(@.id == " + grandChild + ")].completedAt").isEmpty());
+    }
+
     /** 완료 여부 바꾸기 요청 */
     private org.springframework.test.web.servlet.ResultActions complete(
             long id, boolean completed) throws Exception {
