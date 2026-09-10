@@ -97,7 +97,8 @@ public class OpenAiScheduleParser implements ScheduleParser {
      * 응답 봉투에서 결과 JSON을 꺼낸다.
      *
      * @param envelope Responses API 응답 원문
-     * @throws com.lonelytracker.backend.common.exception.AiParseException 결과를 못 찾았을 때
+     * @throws com.lonelytracker.backend.common.exception.AiParseException 결과를 못 찾았을
+     *                                                                     때
      */
     JsonNode extractOutput(String envelope) {
         JsonNode root;
@@ -227,8 +228,8 @@ public class OpenAiScheduleParser implements ScheduleParser {
     }
 
     private ParsedSchedule toParsed(JsonNode node) {
-        // 제목과 시작일을 못 채우면 최소한의 일정을 형성할 수 없음
-        if (textOrNull(node, "title") == null || dateTimeOrNull(node, "startAt") == null) {
+        // 제목을 못 채우면 최소한의 일정을 형성할 수 없음
+        if (textOrNull(node, "title") == null) {
             throw new AiParseException("AI가 제목을 채우지 못했습니다. 응답: " + hint(node.toString()));
         }
 
