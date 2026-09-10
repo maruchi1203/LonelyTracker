@@ -208,7 +208,7 @@ public class ScheduleService {
                 .sorted(LIST_ORDER)
                 .map(s -> {
                     ScheduleRecurEntity recur = recurs.get(s.getId());
-                    return ScheduleListItemResponse.from(s, recur != null,
+                    return ScheduleListItemResponse.from(s, recur,
                             ScheduleUtil.currentOccurrence(s, recur,
                                     doneDates.getOrDefault(s.getId(), Set.of()), today));
                 })

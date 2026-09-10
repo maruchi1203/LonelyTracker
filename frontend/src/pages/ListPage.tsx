@@ -26,6 +26,7 @@ import {
   type DropIntent,
   type DropPlan,
 } from "../domain/scheduleDrop";
+import { describeRecurrence, stepOccurrence } from "../domain/recurrence";
 import { buildTree, flatten, type ListSort } from "../domain/scheduleTree";
 import type {
   ScheduleCreateRequest,
@@ -66,6 +67,9 @@ export default function ListPage() {
   const [knownTags, setKnownTags] = useState<string[]>([]);
   const [sort, setSort] = useState<ListSort>("manual");
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  // 화살표로 미리 넘겨 본 회차. 저장은 건드리지 않는다
+  const [peeked, setPeeked] = useState<Record<number, string>>({});
   const [draggingId, setDraggingId] = useState<number | null>(null);
   // 놓을 수 있을 때만 채운다. 화면은 세울 자리를 스스로 셈하지 않는다
   const [dropAt, setDropAt] = useState<
@@ -126,16 +130,18 @@ export default function ListPage() {
     }
   };
 
-  const handleToggle = async (item: ScheduleListItem) => {
+  const handleToggle = async (item: ScheduleListItem, onDate?: string) => {
     setError(null);
     try {
       // 반복의 완료는 일정이 아니라 회차가 갖는다
       if (item.recurring) {
-        if (item.occurrenceOn === undefined) return;
-        await changeInstanceStatus(item.id, item.occurrenceOn, "DONE");
+        if (onDate === undefined) return;
+        await changeInstanceStatus(item.id, onDate, "DONE");
       } else {
         await changeCompletion(item.id, !item.completedAt);
       }
+      // 넘겨 보던 회차는 완료와 함께 의미를 잃는다
+      setPeeked(({ [item.id]: _gone, ...rest }) => rest);
       await reload();
     } catch (e) {
       fail(e, "완료 상태를 바꾸지 못했습니다");
@@ -223,7 +229,11 @@ export default function ListPage() {
                 key={item.id}
                 item={item}
                 depth={depth}
-                onToggle={() => void handleToggle(item)}
+                shownOn={peeked[item.id] ?? item.occurrenceOn}
+                onStep={(to) =>
+                  setPeeked((seen) => ({ ...seen, [item.id]: to }))
+                }
+                onToggle={(onDate) => void handleToggle(item, onDate)}
                 onEdit={() => setEditingId(item.id)}
                 onDelete={() => void handleDelete(item)}
                 draggable={canDrag}
@@ -307,6 +317,31 @@ export default function ListPage() {
   );
 }
 
+/** 회차를 앞뒤로 옮기는 화살표. 규칙 밖이면 눌리지 않는다 */
+function StepButton({
+  label,
+  to,
+  onStep,
+  children,
+}: {
+  label: string;
+  to: string | null;
+  onStep: (to: string) => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={to === null}
+      onClick={() => to !== null && onStep(to)}
+      className="rounded px-1 leading-none transition-colors enabled:hover:bg-brand-50 disabled:text-slate-300"
+    >
+      {children}
+    </button>
+  );
+}
+
 /** 커서 자리를 읽는다. 위아래가 뜻을, 좌우가 단을 정한다 */
 function spotAtPointer(e: DragEvent<HTMLElement>): [DropIntent, number] {
   const box = e.currentTarget.getBoundingClientRect();
@@ -319,7 +354,10 @@ function spotAtPointer(e: DragEvent<HTMLElement>): [DropIntent, number] {
 interface RowProps {
   item: ScheduleListItem;
   depth: number;
-  onToggle: () => void;
+  /** 반복이면 지금 보고 있는 회차 날짜. 화살표로 옮겨 다닌다 */
+  shownOn?: string;
+  onStep: (to: string) => void;
+  onToggle: (onDate?: string) => void;
   onEdit: () => void;
   onDelete: () => void;
   /** 내 순서로 보는 중일 때만 끌 수 있다 */
@@ -336,6 +374,8 @@ interface RowProps {
 function ListRow({
   item,
   depth,
+  shownOn,
+  onStep,
   onToggle,
   onEdit,
   onDelete,
@@ -436,8 +476,8 @@ function ListRow({
       <input
         type="checkbox"
         checked={done}
-        onChange={onToggle}
-        disabled={item.recurring && item.occurrenceOn === undefined}
+        onChange={() => onToggle(shownOn)}
+        disabled={item.recurring && shownOn === undefined}
         aria-label={`${item.title} 완료`}
         className="mt-1 size-4 shrink-0 accent-brand-500"
       />
@@ -459,9 +499,30 @@ function ListRow({
               {badge.label}
             </span>
           )}
-          {item.recurring && (
-            <span className="text-brand-500">
-              ⟳ {item.occurrenceOn ?? "남은 회차 없음"}
+          {item.recurring && item.recurrence && (
+            <span className="flex items-center gap-1 text-brand-600">
+              ⟳ {describeRecurrence(item.recurrence)}
+              {shownOn === undefined ? (
+                "· 남은 회차 없음"
+              ) : (
+                <>
+                  <StepButton
+                    label={`${item.title} 이전 회차`}
+                    to={stepOccurrence(item.recurrence, shownOn, -1)}
+                    onStep={onStep}
+                  >
+                    ‹
+                  </StepButton>
+                  <span className="tabular-nums">{shownOn}</span>
+                  <StepButton
+                    label={`${item.title} 다음 회차`}
+                    to={stepOccurrence(item.recurrence, shownOn, 1)}
+                    onStep={onStep}
+                  >
+                    ›
+                  </StepButton>
+                </>
+              )}
             </span>
           )}
           {item.dueOn && <span>기한 {item.dueOn}</span>}

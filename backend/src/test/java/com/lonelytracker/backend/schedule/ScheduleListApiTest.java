@@ -386,12 +386,25 @@ class ScheduleListApiTest extends IntegrationTest {
     }
 
     @Test
+    @DisplayName("반복 일정은 규칙도 함께 싣는다")
+    void carriesTheRule() throws Exception {
+        create("{\"title\":\"운동\",\"startAt\":\"2026-10-05T07:00:00\""
+                + ",\"recurrence\":{\"freq\":\"WEEKLY\""
+                + ",\"byWeekday\":[\"MONDAY\",\"WEDNESDAY\"]}}");
+
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$[0].recurrence.freq").value("WEEKLY"))
+                .andExpect(jsonPath("$[0].recurrence.byWeekday.length()").value(2));
+    }
+
+    @Test
     @DisplayName("1회성 일정에는 회차가 실리지 않는다")
     void leavesOccurrenceEmptyForOneOff() throws Exception {
         create("{\"title\":\"보고서\",\"startAt\":\"2026-10-01T09:00:00\"}");
 
         mvc.perform(get(BASE + "/list"))
-                .andExpect(jsonPath("$[0].occurrenceOn").doesNotExist());
+                .andExpect(jsonPath("$[0].occurrenceOn").doesNotExist())
+                .andExpect(jsonPath("$[0].recurrence").doesNotExist());
     }
 
     @Test

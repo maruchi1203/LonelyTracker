@@ -2,6 +2,7 @@ package com.lonelytracker.backend.schedule.dto;
 
 import com.lonelytracker.backend.schedule.domain.SchedulePriority;
 import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
+import com.lonelytracker.backend.schedule.entity.ScheduleRecurEntity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,6 +20,7 @@ import java.util.Set;
  * @param completedAt 값이 있으면 완료다. 습관은 회차마다 상태를 가져 늘 비어 있다
  * @param recurring   반복 규칙이 붙었는지. 완료를 어느 경로로 보낼지가 여기서 갈린다
  * @param occurrenceOn 반복이면 아직 안 끝낸 가장 빠른 회차 날짜. 아니면 null
+ * @param recurrence  반복이면 그 규칙. 화면이 "매주 월·수·금"을 적고 회차를 세는 데 쓴다
  * @param priority    없으면 COULD 로 본다. WONT 은 흐리게 남는다
  */
 public record ScheduleListItemResponse(
@@ -33,13 +35,14 @@ public record ScheduleListItemResponse(
         LocalDateTime completedAt,
         boolean recurring,
         LocalDate occurrenceOn,
+        ScheduleRecurrenceResponse recurrence,
         Set<String> tags,
         String place,
         String twoMinuteAction,
         LocalDateTime createdAt,
         LocalDateTime updatedAt) {
 
-    public static ScheduleListItemResponse from(ScheduleEntity s, boolean recurring,
+    public static ScheduleListItemResponse from(ScheduleEntity s, ScheduleRecurEntity recur,
             LocalDate occurrenceOn) {
         return new ScheduleListItemResponse(
                 s.getId(),
@@ -51,8 +54,9 @@ public record ScheduleListItemResponse(
                 s.getPriority(),
                 s.getStartAt(),
                 s.getCompletedAt(),
-                recurring,
+                recur != null,
                 occurrenceOn,
+                (recur == null) ? null : ScheduleRecurrenceResponse.from(recur),
                 // 지연 로딩 컬렉션을 그대로 내보내면 세션이 닫힌 뒤 직렬화가 깨진다
                 s.tagsCopy(),
                 s.getPlace(),

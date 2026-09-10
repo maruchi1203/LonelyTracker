@@ -77,6 +77,8 @@ export interface ScheduleListItem {
   recurring: boolean;
   /** "YYYY-MM-DD". 반복이면 아직 안 끝낸 가장 빠른 회차. 끝내면 다음 것이 올라온다 */
   occurrenceOn?: string;
+  /** 반복이면 그 규칙. 규칙을 적고 회차를 앞뒤로 세는 데 쓴다 */
+  recurrence?: RecurrenceResponse;
   /** 없으면 COULD 로 본다. WONT 은 흐리게 남고 달력에서는 빠진다 */
   priority?: SchedulePriority;
   tags?: string[];
