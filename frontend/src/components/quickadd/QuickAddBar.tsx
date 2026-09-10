@@ -23,11 +23,18 @@ interface Props {
   autoFocus?: boolean;
 }
 
+/** 카드 한 장. key 는 목록에서 지워도 안 흔들리는 자리표다 */
+interface Draft {
+  key: number;
+  form: ScheduleForm;
+  questions: ParseQuestion[];
+  saving: boolean;
+}
+
 type State =
   | { mode: "idle" }
   | { mode: "parsing" }
-  | { mode: "draft"; draft: ScheduleForm; questions: ParseQuestion[] }
-  | { mode: "saving"; draft: ScheduleForm; questions: ParseQuestion[] }
+  | { mode: "drafts"; drafts: Draft[] }
   | { mode: "error"; message: string; needsKey: boolean };
 
 /** 서버 읽기 타임아웃이 30초라 그보다 조금 뒤에 포기한다 */
@@ -64,6 +71,15 @@ export default function QuickAddBar({
     return () => window.clearInterval(timer);
   }, [parsing]);
 
+  // 카드를 다 치우면 입력줄로 돌아간다. 상태를 고치는 자리에서 하면 두 번 돈다
+  const empty = state.mode === "drafts" && state.drafts.length === 0;
+  useEffect(() => {
+    if (!empty) return;
+    setText("");
+    setState({ mode: "idle" });
+    onDone?.();
+  }, [empty, onDone]);
+
   const stop = () => {
     abort.current?.abort();
     abort.current = null;
@@ -83,9 +99,13 @@ export default function QuickAddBar({
     try {
       const parsed = await parseSchedule(sentence, controller.signal);
       setState({
-        mode: "draft",
-        draft: draftFromParsed(parsed, defaultDate, variant),
-        questions: knownQuestions(parsed.questions),
+        mode: "drafts",
+        drafts: parsed.map((one, at) => ({
+          key: at,
+          form: draftFromParsed(one, defaultDate, variant),
+          questions: knownQuestions(one.questions),
+          saving: false,
+        })),
       });
       sessionStorage.removeItem(DRAFT_TEXT_KEY);
     } catch (e) {
@@ -116,19 +136,35 @@ export default function QuickAddBar({
     }
   };
 
-  const save = async () => {
-    if (state.mode !== "draft") return;
-    const { draft, questions } = state;
-    setState({ mode: "saving", draft, questions });
+  /** 그 카드만 바꾼다. 나머지는 그대로 둔다 */
+  const mapDraft = (key: number, change: (d: Draft) => Draft) =>
+    setState((prev) =>
+      prev.mode === "drafts"
+        ? {
+            ...prev,
+            drafts: prev.drafts.map((d) => (d.key === key ? change(d) : d)),
+          }
+        : prev,
+    );
 
-    const created = await onCreate(formToCreateRequest(draft));
-    if (created) {
-      setText("");
-      setState({ mode: "idle" });
-      onDone?.();
-    } else {
-      setState({ mode: "draft", draft, questions });
-    }
+  /** 카드를 목록에서 뺀다 */
+  const drop = (key: number) =>
+    setState((prev) =>
+      prev.mode === "drafts"
+        ? { ...prev, drafts: prev.drafts.filter((d) => d.key !== key) }
+        : prev,
+    );
+
+  const save = async (key: number) => {
+    if (state.mode !== "drafts") return;
+    const target = state.drafts.find((d) => d.key === key);
+    if (!target || target.saving) return;
+
+    mapDraft(key, (d) => ({ ...d, saving: true }));
+
+    const created = await onCreate(formToCreateRequest(target.form));
+    if (created) drop(key);
+    else mapDraft(key, (d) => ({ ...d, saving: false }));
   };
 
   const createManually = async (body: ScheduleCreateRequest) => {
@@ -137,10 +173,8 @@ export default function QuickAddBar({
     return created;
   };
 
-  const patch = (changes: Partial<ScheduleForm>) =>
-    setState((prev) =>
-      prev.mode === "draft" ? { ...prev, draft: { ...prev.draft, ...changes } } : prev,
-    );
+  const patch = (key: number, changes: Partial<ScheduleForm>) =>
+    mapDraft(key, (d) => ({ ...d, form: { ...d.form, ...changes } }));
 
   return (
     <section className="flex flex-col gap-3">
@@ -223,17 +257,28 @@ export default function QuickAddBar({
         </div>
       )}
 
-      {(state.mode === "draft" || state.mode === "saving") && (
-        <ParsedDraftCard
-          draft={state.draft}
-          questions={state.questions}
-          knownTags={knownTags}
-          saving={state.mode === "saving"}
-          onChange={patch}
-          variant={variant}
-          onSave={() => void save()}
-          onDiscard={() => setState({ mode: "idle" })}
-        />
+      {state.mode === "drafts" && (
+        <>
+          {state.drafts.length > 1 && (
+            <p className="text-sm text-slate-500">
+              일정 {state.drafts.length}개를 읽었습니다. 하나씩 확인해 주세요.
+            </p>
+          )}
+
+          {state.drafts.map((draft) => (
+            <ParsedDraftCard
+              key={draft.key}
+              draft={draft.form}
+              questions={draft.questions}
+              knownTags={knownTags}
+              saving={draft.saving}
+              onChange={(changes) => patch(draft.key, changes)}
+              variant={variant}
+              onSave={() => void save(draft.key)}
+              onDiscard={() => drop(draft.key)}
+            />
+          ))}
+        </>
       )}
 
       {manual && (
