@@ -18,6 +18,7 @@ import java.util.Set;
  * @param startAt     언제 하기로 했나. 없으면 아직 안 정한 항목이다
  * @param completedAt 값이 있으면 완료다. 습관은 회차마다 상태를 가져 늘 비어 있다
  * @param recurring   반복 규칙이 붙었는지. 완료를 어느 경로로 보낼지가 여기서 갈린다
+ * @param occurrenceOn 반복이면 아직 안 끝낸 가장 빠른 회차 날짜. 아니면 null
  * @param priority    없으면 COULD 로 본다. WONT 은 흐리게 남는다
  */
 public record ScheduleListItemResponse(
@@ -31,13 +32,15 @@ public record ScheduleListItemResponse(
         LocalDateTime startAt,
         LocalDateTime completedAt,
         boolean recurring,
+        LocalDate occurrenceOn,
         Set<String> tags,
         String place,
         String twoMinuteAction,
         LocalDateTime createdAt,
         LocalDateTime updatedAt) {
 
-    public static ScheduleListItemResponse from(ScheduleEntity s, boolean recurring) {
+    public static ScheduleListItemResponse from(ScheduleEntity s, boolean recurring,
+            LocalDate occurrenceOn) {
         return new ScheduleListItemResponse(
                 s.getId(),
                 s.getParentId(),
@@ -49,6 +52,7 @@ public record ScheduleListItemResponse(
                 s.getStartAt(),
                 s.getCompletedAt(),
                 recurring,
+                occurrenceOn,
                 // 지연 로딩 컬렉션을 그대로 내보내면 세션이 닫힌 뒤 직렬화가 깨진다
                 s.tagsCopy(),
                 s.getPlace(),

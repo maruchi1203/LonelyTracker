@@ -75,6 +75,8 @@ export interface ScheduleListItem {
   completedAt?: string;
   /** 반복 규칙이 붙었는지. 완료를 어느 경로로 보낼지가 여기서 갈린다 */
   recurring: boolean;
+  /** "YYYY-MM-DD". 반복이면 아직 안 끝낸 가장 빠른 회차. 끝내면 다음 것이 올라온다 */
+  occurrenceOn?: string;
   /** 없으면 COULD 로 본다. WONT 은 흐리게 남고 달력에서는 빠진다 */
   priority?: SchedulePriority;
   tags?: string[];

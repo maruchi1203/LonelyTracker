@@ -8,6 +8,7 @@ import {
 } from "react";
 import {
   changeCompletion,
+  changeInstanceStatus,
   createSchedule,
   deleteSchedule,
   fetchScheduleList,
@@ -128,7 +129,13 @@ export default function ListPage() {
   const handleToggle = async (item: ScheduleListItem) => {
     setError(null);
     try {
-      await changeCompletion(item.id, !item.completedAt);
+      // 반복의 완료는 일정이 아니라 회차가 갖는다
+      if (item.recurring) {
+        if (item.occurrenceOn === undefined) return;
+        await changeInstanceStatus(item.id, item.occurrenceOn, "DONE");
+      } else {
+        await changeCompletion(item.id, !item.completedAt);
+      }
       await reload();
     } catch (e) {
       fail(e, "완료 상태를 바꾸지 못했습니다");
@@ -425,24 +432,15 @@ function ListRow({
         ⠿
       </button>
 
-      {/* 습관의 완료는 회차마다 있다. 리스트에는 회차가 없어 체크할 대상이 없다 */}
-      {item.recurring ? (
-        <span
-          title="반복 일정입니다. 완료는 달력에서 회차마다 표시합니다"
-          aria-label="반복 일정"
-          className="mt-0.5 shrink-0 text-brand-400"
-        >
-          ⟳
-        </span>
-      ) : (
-        <input
-          type="checkbox"
-          checked={done}
-          onChange={onToggle}
-          aria-label={`${item.title} 완료`}
-          className="mt-1 size-4 shrink-0 accent-brand-500"
-        />
-      )}
+      {/* 반복은 회차 하나만 걸려 있다. 끝내면 다음 회차가 올라와 늘 비어 보인다 */}
+      <input
+        type="checkbox"
+        checked={done}
+        onChange={onToggle}
+        disabled={item.recurring && item.occurrenceOn === undefined}
+        aria-label={`${item.title} 완료`}
+        className="mt-1 size-4 shrink-0 accent-brand-500"
+      />
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <button
@@ -459,6 +457,11 @@ function ListRow({
           {badge && (
             <span className={`rounded-full px-2 py-0.5 ${badge.style}`}>
               {badge.label}
+            </span>
+          )}
+          {item.recurring && (
+            <span className="text-brand-500">
+              ⟳ {item.occurrenceOn ?? "남은 회차 없음"}
             </span>
           )}
           {item.dueOn && <span>기한 {item.dueOn}</span>}

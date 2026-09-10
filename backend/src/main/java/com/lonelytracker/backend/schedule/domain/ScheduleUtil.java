@@ -197,6 +197,38 @@ public final class ScheduleUtil {
     }
 
     /**
+     * 오늘부터 헤아려 아직 끝내지 않은 가장 빠른 회차.
+     * 리스트는 회차를 하나만 보여주고, 그것이 끝나면 다음 것이 올라온다.
+     *
+     * @param doneDates 이미 끝낸 회차 날짜
+     * @return 남은 회차가 없거나 반복이 아니면 null
+     */
+    public static LocalDate currentOccurrence(ScheduleEntity schedule, ScheduleRecurEntity recur,
+            Set<LocalDate> doneDates, LocalDate today) {
+        if (recur == null || schedule.getStartAt() == null) {
+            return null;
+        }
+
+        // 아직 시작 전이면 첫 회차부터 센다
+        LocalDate start = schedule.getStartAt().toLocalDate();
+        LocalDate from = today.isAfter(start) ? today : start;
+
+        LocalDate to = (recur.getEndsOn() != null)
+                ? recur.getEndsOn()
+                : from.plusMonths(RULE_CHECK_MONTHS);
+        if (to.isBefore(from)) {
+            return null;
+        }
+
+        return ScheduleInstanceDates
+                .generate(recur.getFreq(), recur.getByWeekday(), from, to)
+                .stream()
+                .filter(date -> !doneDates.contains(date))
+                .findFirst()
+                .orElse(null);
+    }
+
+    /**
      * 그 일정이 그 날짜에 회차를 내는지.
      *
      * @param recur null이면 1회성 일정

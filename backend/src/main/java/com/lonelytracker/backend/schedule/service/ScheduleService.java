@@ -179,17 +179,43 @@ public class ScheduleService {
         List<ScheduleEntity> schedules = scheduleRepository
                 .findForList(currentUserProvider.get().getId());
 
-        // 규칙 유무만 필요하다. 규칙 자체는 달력과 습관일지가 본다
-        Set<Long> recurringIds = recurRepository
+        // 규칙이 있어야 회차를 셀 수 있다. 없으면 1회성이라 완료 시각 하나로 끝난다
+        Map<Long, ScheduleRecurEntity> recurs = recurRepository
                 .findByScheduleIds(schedules.stream().map(ScheduleEntity::getId).toList())
                 .stream()
-                .map(ScheduleRecurEntity::getScheduleId)
-                .collect(Collectors.toSet());
+                .collect(Collectors.toMap(ScheduleRecurEntity::getScheduleId, r -> r));
+
+        LocalDate today = LocalDate.now();
+        Map<Long, Set<LocalDate>> doneDates = doneDatesFrom(recurs.keySet(), today);
 
         return schedules.stream()
                 .sorted(LIST_ORDER)
-                .map(s -> ScheduleListItemResponse.from(s, recurringIds.contains(s.getId())))
+                .map(s -> {
+                    ScheduleRecurEntity recur = recurs.get(s.getId());
+                    return ScheduleListItemResponse.from(s, recur != null,
+                            ScheduleUtil.currentOccurrence(s, recur,
+                                    doneDates.getOrDefault(s.getId(), Set.of()), today));
+                })
                 .toList();
+    }
+
+    /**
+     * 오늘 이후로 이미 끝낸 회차 날짜.
+     * 지난 회차는 보지 않는다. 리스트가 세는 회차가 오늘부터라 쓸 데가 없다.
+     */
+    private Map<Long, Set<LocalDate>> doneDatesFrom(Set<Long> recurringIds, LocalDate today) {
+        if (recurringIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return progressRepository
+                .findByScheduleIdInAndOnDateGreaterThanEqual(List.copyOf(recurringIds), today)
+                .stream()
+                .filter(p -> p.getStatus() == ScheduleStatus.DONE)
+                .collect(Collectors.groupingBy(
+                        p -> p.getSchedule().getId(),
+                        Collectors.mapping(ScheduleProgressEntity::getOnDate,
+                                Collectors.toSet())));
     }
 
     /**

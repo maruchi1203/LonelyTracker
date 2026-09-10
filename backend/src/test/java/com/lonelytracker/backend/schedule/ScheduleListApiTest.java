@@ -366,6 +366,34 @@ class ScheduleListApiTest extends IntegrationTest {
         complete(recurring, true).andExpect(status().isBadRequest());
     }
 
+    @Test
+    @DisplayName("반복 일정은 아직 안 끝낸 가장 빠른 회차를 싣는다")
+    void carriesTheCurrentOccurrence() throws Exception {
+        long recurring = create("{\"title\":\"매일 운동\",\"startAt\":\"2026-10-01T07:00:00\""
+                + ",\"recurrence\":{\"freq\":\"DAILY\"}}");
+
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$[0].occurrenceOn").value("2026-10-01"));
+
+        mvc.perform(patch(BASE + "/" + recurring + "/instances/2026-10-01/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"DONE\"}"))
+                .andExpect(status().isOk());
+
+        // 끝낸 회차는 물러나고 다음 것이 올라온다
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$[0].occurrenceOn").value("2026-10-02"));
+    }
+
+    @Test
+    @DisplayName("1회성 일정에는 회차가 실리지 않는다")
+    void leavesOccurrenceEmptyForOneOff() throws Exception {
+        create("{\"title\":\"보고서\",\"startAt\":\"2026-10-01T09:00:00\"}");
+
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$[0].occurrenceOn").doesNotExist());
+    }
+
     /** 완료 여부 바꾸기 요청 */
     private org.springframework.test.web.servlet.ResultActions complete(
             long id, boolean completed) throws Exception {
