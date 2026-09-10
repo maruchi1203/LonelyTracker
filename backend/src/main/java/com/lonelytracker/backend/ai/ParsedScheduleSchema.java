@@ -43,7 +43,9 @@ final class ParsedScheduleSchema {
                         "allDay", Map.of("type", "boolean"),
                         "tags", Map.of(
                                 "type", "array",
-                                "description", "일정의 분류. 후보에 없는 태그도 만들 수 있다. 없으면 빈 배열",
+                                "description", "일정의 분류. 후보에 맞는 것이 있으면 그것을 쓰고, "
+                                        + "없으면 한 단어로 새로 짓는다. 되도록 하나는 붙인다",
+                                "minItems", 1,
                                 "items", Map.of("type", "string")),
                         "place", nullableString("어디서 하는지. 문장에 없으면 null"),
                         "recurrence", getRecurringSchedule(),

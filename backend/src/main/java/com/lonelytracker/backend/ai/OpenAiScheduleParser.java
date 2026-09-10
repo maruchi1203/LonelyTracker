@@ -164,6 +164,8 @@ public class OpenAiScheduleParser implements ScheduleParser {
                 - 행동이 막연하면(예: "열심히 하기") TOO_VAGUE를 넣거나 질문을 요청한다.
                 - 문장에 서로 다른 일정이 여럿이면 schedules 배열에 하나씩 나눠 담는다.
                   한 일정을 쪼개지는 말고, 서로 다른 일을 한 칸에 합치지도 않는다.
+                - tags 는 비워 두지 않는다. 후보에 맞는 것이 없으면 그 일이 어느 갈래인지
+                  한 단어로 지어 붙인다. 예: 육체, 정신, 일, 관계, 집안일, 돈.
 
                 예시 — 현재 시각이 2026-08-27T13:00:00 목요일, 태그 후보가 [육체] 일 때:
                 "내일 3시 헬스장에서 운동"
@@ -177,8 +179,8 @@ public class OpenAiScheduleParser implements ScheduleParser {
                 "회의"
                   title=회의 startAt=null questions=["DATE","START_TIME","PLACE"]
                 "내일 3시 치과, 5시에 장보기"
-                  schedules 에 두 칸 — title=치과 startAt=2026-08-28T15:00:00 과
-                  title=장보기 startAt=2026-08-28T17:00:00
+                  schedules 에 두 칸 — title=치과 startAt=2026-08-28T15:00:00 tags=["건강"] 과
+                  title=장보기 startAt=2026-08-28T17:00:00 tags=["집안일"]
 
                 현재 시각: %s (%s) — 상대 날짜는 이 시각 기준으로 푼다.
                 태그 후보: %s — 맞는 것이 있으면 쓰고, 없으면 새로 지어도 된다.
