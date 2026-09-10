@@ -36,7 +36,7 @@ describe('초안 만들기', () => {
 
     expect(d.startDate).toBe('2026-08-31')
     expect(d.startTime).toBe('07:00')
-    expect(d.repeating).toBe(true)
+    expect(d.kind).toBe('repeat')
     expect(d.byWeekday).toEqual(['MONDAY', 'WEDNESDAY', 'FRIDAY'])
     expect(d.place).toBe('헬스장')
   })
@@ -47,7 +47,7 @@ describe('초안 만들기', () => {
       null,
     )
 
-    expect(d.endDate).toBe('2026-09-02')
+    expect(d.repeatEndsOn).toBe('2026-09-02')
   })
 
   it('하루 종일이면 시작시각을 비운다', () => {
@@ -60,7 +60,7 @@ describe('초안 만들기', () => {
     const d = draftFromParsed({ title: '회의', allDay: false }, new Date(2026, 7, 31))
 
     expect(d.startDate).toBe('2026-08-31')
-    expect(d.repeating).toBe(false)
+    expect(d.kind).toBe('simple')
   })
 
   it('리스트는 못 채운 시작일을 비워 둔다', () => {
@@ -95,40 +95,44 @@ describe('저장 전 검증', () => {
   })
 
   it('매주 반복인데 요일이 없으면 막는다', () => {
-    const weekly = form({ repeating: true, freq: 'WEEKLY', byWeekday: [] })
+    const weekly = form({ kind: 'repeat' as const, freq: 'WEEKLY', byWeekday: [] })
 
     expect(formValidationError(weekly)).not.toBeNull()
     expect(formValidationError({ ...weekly, byWeekday: ['MONDAY'] })).toBeNull()
   })
 
   it('매일 반복은 요일이 없어도 된다', () => {
-    expect(formValidationError(form({ repeating: true, freq: 'DAILY' }))).toBeNull()
+    expect(formValidationError(form({ kind: 'repeat' as const, freq: 'DAILY' }))).toBeNull()
   })
 
   it('매월은 아직 보낼 수 없다고 알린다', () => {
-    expect(formValidationError(form({ repeating: true, freq: 'MONTHLY' }))).toContain(
+    expect(formValidationError(form({ kind: 'repeat' as const, freq: 'MONTHLY' }))).toContain(
       '준비 중',
     )
   })
 
   it('종료가 시작보다 앞서면 막는다', () => {
-    expect(formValidationError(form({ endDate: '2026-08-30' }))).not.toBeNull()
-    expect(formValidationError(form({ endTime: '06:00' }))).not.toBeNull()
-    expect(formValidationError(form({ endTime: '08:00' }))).toBeNull()
+    const period = { kind: 'period' as const }
+
+    expect(
+      formValidationError(form({ ...period, endDate: '2026-08-30' })),
+    ).not.toBeNull()
+    expect(formValidationError(form({ ...period, endTime: '06:00' }))).not.toBeNull()
+    expect(formValidationError(form({ ...period, endTime: '08:00' }))).toBeNull()
   })
 })
 
 describe('반복 소요시간', () => {
   it('매일 반복이 24시간을 넘으면 막는다', () => {
     const error = formValidationError(
-      form({ repeating: true, freq: 'DAILY', durationHours: '25' }),
+      form({ kind: 'repeat' as const, freq: 'DAILY', durationHours: '25' }),
     )
 
     expect(error).toContain('최대 24시간')
   })
 
   it('매주 월수금은 48시간까지 허용한다', () => {
-    const base = { repeating: true, freq: 'WEEKLY' as const, byWeekday: WMF }
+    const base = { kind: 'repeat' as const, freq: 'WEEKLY' as const, byWeekday: WMF }
 
     expect(formValidationError(form({ ...base, durationHours: '48' }))).toBeNull()
     expect(formValidationError(form({ ...base, durationHours: '49' }))).toContain(
@@ -139,7 +143,7 @@ describe('반복 소요시간', () => {
   it('매주 한 요일만 고르면 일주일까지 허용한다', () => {
     const error = formValidationError(
       form({
-        repeating: true,
+        kind: 'repeat' as const,
         freq: 'WEEKLY',
         byWeekday: ['MONDAY'],
         durationHours: '167',
@@ -163,7 +167,9 @@ describe('생성 요청으로 바꾸기', () => {
   })
 
   it('한번만이면 종료일자가 endAt 으로 간다', () => {
-    const body = formToCreateRequest(form({ endDate: '2026-09-02', endTime: '09:00' }))
+    const body = formToCreateRequest(
+      form({ kind: 'period' as const, endDate: '2026-09-02', endTime: '09:00' }),
+    )
 
     expect(body.endAt).toBe('2026-09-02T09:00:00')
     expect(body.recurrence).toBeUndefined()
@@ -173,10 +179,10 @@ describe('생성 요청으로 바꾸기', () => {
     // 회차마다 날짜가 달라 절대 종료시각을 쓸 수 없다
     const body = formToCreateRequest(
       form({
-        repeating: true,
+        kind: 'repeat' as const,
         freq: 'WEEKLY',
         byWeekday: ['MONDAY'],
-        endDate: '2026-09-30',
+        repeatEndsOn: '2026-09-30',
         durationHours: '1',
         durationMins: '0',
       }),
@@ -189,7 +195,7 @@ describe('생성 요청으로 바꾸기', () => {
   it('자정을 넘는 반복은 endAt 이 다음 날로 간다', () => {
     const body = formToCreateRequest(
       form({
-        repeating: true,
+        kind: 'repeat' as const,
         freq: 'DAILY',
         startTime: '22:00',
         durationHours: '4',
@@ -200,13 +206,13 @@ describe('생성 요청으로 바꾸기', () => {
   })
 
   it('소요시간을 비우면 endAt 을 보내지 않는다', () => {
-    const body = formToCreateRequest(form({ repeating: true, freq: 'DAILY' }))
+    const body = formToCreateRequest(form({ kind: 'repeat' as const, freq: 'DAILY' }))
 
     expect(body.endAt).toBeUndefined()
   })
 
   it('매일 반복은 요일을 싣지 않는다', () => {
-    const body = formToCreateRequest(form({ repeating: true, freq: 'DAILY' }))
+    const body = formToCreateRequest(form({ kind: 'repeat' as const, freq: 'DAILY' }))
 
     expect(body.recurrence?.freq).toBe('DAILY')
     expect(body.recurrence?.byWeekday).toBeUndefined()
@@ -259,7 +265,7 @@ describe('날짜 없는 리스트 항목', () => {
   })
 
   it('리스트라도 반복이면 시작일자가 필요하다', () => {
-    const f = form({ startDate: '', repeating: true, freq: 'DAILY' })
+    const f = form({ startDate: '', kind: 'repeat' as const, freq: 'DAILY' })
 
     expect(formValidationError(f, 'list')).toMatch('시작일자')
   })
@@ -274,7 +280,12 @@ describe('날짜 없는 리스트 항목', () => {
 
   it('기한과 상위를 그대로 보낸다', () => {
     const body = formToCreateRequest(
-      form({ startDate: '', dueOn: '2026-10-01', parentId: '7' }),
+      form({
+        kind: 'period' as const,
+        startDate: '',
+        dueOn: '2026-10-01',
+        parentId: '7',
+      }),
     )
 
     expect(body.dueOn).toBe('2026-10-01')
@@ -311,7 +322,7 @@ describe('수정 폼으로 되돌리기', () => {
     expect(f.startDate).toBe('2026-10-01')
     expect(f.startTime).toBe('09:00')
     expect(f.endTime).toBe('10:30')
-    expect(f.repeating).toBe(false)
+    expect(f.kind).toBe('period')
   })
 
   it('날짜가 없으면 빈 칸으로 둔다', () => {
@@ -342,8 +353,8 @@ describe('수정 폼으로 되돌리기', () => {
       }),
     )
 
-    expect(f.repeating).toBe(true)
-    expect(f.endDate).toBe('2026-12-31')
+    expect(f.kind).toBe('repeat')
+    expect(f.repeatEndsOn).toBe('2026-12-31')
     expect(f.durationHours).toBe('1')
     expect(f.durationMins).toBe('30')
     expect(f.byWeekday).toEqual(WMF)
@@ -399,5 +410,61 @@ describe('반복 일정을 리스트 얼굴로 수정할 때', () => {
     const body = formToCreateRequest(formFromDetail(recurring))
 
     expect(body.endAt).toBe('2026-10-01T08:00:00')
+  })
+})
+
+describe('종류가 칸을 가른다', () => {
+  it('간단은 끝도 마감도 보내지 않는다', () => {
+    // 기간에서 적어둔 값이 남아 있어도 종류를 옮기면 함께 지워진다
+    const body = formToCreateRequest(
+      form({
+        kind: 'simple' as const,
+        endDate: '2026-09-02',
+        endTime: '09:00',
+        dueOn: '2026-10-01',
+      }),
+    )
+
+    expect(body.endAt).toBeUndefined()
+    expect(body.dueOn).toBeUndefined()
+  })
+
+  it('기간은 끝과 마감을 함께 보낸다', () => {
+    const body = formToCreateRequest(
+      form({
+        kind: 'period' as const,
+        endDate: '2026-09-02',
+        endTime: '09:00',
+        dueOn: '2026-10-01',
+      }),
+    )
+
+    expect(body.endAt).toBe('2026-09-02T09:00:00')
+    expect(body.dueOn).toBe('2026-10-01')
+  })
+
+  it('반복은 마감을 받지 않는다', () => {
+    const body = formToCreateRequest(
+      form({ kind: 'repeat' as const, freq: 'DAILY', dueOn: '2026-10-01' }),
+    )
+
+    expect(body.dueOn).toBeUndefined()
+    expect(body.recurrence?.freq).toBe('DAILY')
+  })
+
+  it('간단은 끝이 어긋나도 막지 않는다', () => {
+    // 안 보내는 칸이라 검증할 것이 없다
+    expect(
+      formValidationError(form({ kind: 'simple' as const, endDate: '2026-08-01' })),
+    ).toBeNull()
+  })
+
+  it('우선순위를 안 고르면 실리지 않는다', () => {
+    // 화면에서는 "선택"이 눌린 것처럼 보이지만 값은 비어 있다
+    expect(formToCreateRequest(form()).priority).toBeUndefined()
+  })
+
+  it('선택을 직접 고르면 실린다', () => {
+    expect(formToCreateRequest(form({ priority: 'COULD' })).priority).toBe('COULD')
   })
 })

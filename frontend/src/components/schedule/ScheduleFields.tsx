@@ -1,9 +1,8 @@
 import { useState } from "react";
 import {
-  durationMinutesOf,
-  gapHours,
   type FormFieldId,
   type FormFreq,
+  type FormKind,
   type ScheduleForm,
 } from "../../domain/scheduleForm";
 import type { SchedulePriority, Weekday } from "../../types/schedule";
@@ -24,6 +23,13 @@ const INPUT =
   "w-full rounded-md border bg-white px-2.5 py-2 text-slate-800 placeholder:text-slate-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-3 focus:ring-brand-100";
 const LABEL = "text-xs font-semibold tracking-wide text-slate-500";
 const HINT = "text-xs text-slate-400";
+
+/** 폼을 가르는 종류. 고른 것에 따라 아래 칸이 바뀐다 */
+const KINDS: { value: FormKind; label: string; hint: string }[] = [
+  { value: "simple", label: "간단", hint: "언제 할지만 적습니다" },
+  { value: "period", label: "기간", hint: "시작과 끝, 마감이 있는 일입니다" },
+  { value: "repeat", label: "반복", hint: "되풀이하는 일입니다" },
+];
 
 const FREQ: { value: FormFreq; label: string; ready: boolean }[] = [
   { value: "DAILY", label: "매일", ready: true },
@@ -76,26 +82,6 @@ export default function ScheduleFields({
     onChange({ tags: [...form.tags, name] });
   };
 
-  const maxHours = gapHours(form.freq, form.byWeekday);
-
-  /** 소요시간을 적으면 실제로 몇 시에 끝나는지 보여준다 */
-  const endsAtHint = (() => {
-    const minutes = durationMinutesOf(form);
-    if (!form.repeating || minutes === undefined || minutes <= 0) return null;
-
-    const end = new Date(`${form.startDate}T${form.startTime || "00:00"}:00`);
-    if (Number.isNaN(end.getTime())) return null;
-    end.setMinutes(end.getMinutes() + minutes);
-
-    const time = `${String(end.getHours()).padStart(2, "0")}:${String(
-      end.getMinutes(),
-    ).padStart(2, "0")}`;
-    const days = Math.floor(
-      (end.getTime() - new Date(`${form.startDate}T00:00:00`).getTime()) / 86400000,
-    );
-    return days > 0 ? `→ ${days}일 뒤 ${time} 에 끝납니다.` : `→ ${time} 에 끝납니다.`;
-  })();
-
   const toggleWeekday = (day: Weekday) =>
     onChange({
       byWeekday: form.byWeekday.includes(day)
@@ -105,10 +91,29 @@ export default function ScheduleFields({
 
   return (
     <div className="flex flex-col gap-3.5">
-      {/* 1. 제목 */}
+      {/* 1. 종류 — 아래 칸이 여기서 갈린다 */}
+      <div className="flex flex-col gap-1.5">
+        <span className={LABEL}>종류 *</span>
+        <div className="flex items-center gap-1.5">
+          {KINDS.map(({ value, label, hint }) => (
+            <button
+              key={value}
+              type="button"
+              title={hint}
+              onClick={() => onChange({ kind: value })}
+              aria-pressed={form.kind === value}
+              className={`${TOGGLE} ${form.kind === value ? TOGGLE_ON : TOGGLE_OFF}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 2. 제목 */}
       <div className="flex flex-col gap-1.5">
         <label className={LABEL} htmlFor={id("title")}>
-          제목
+          제목 *
         </label>
         <input
           id={id("title")}
@@ -121,58 +126,32 @@ export default function ScheduleFields({
         />
       </div>
 
-      {/* 2. 한번만 / 반복 */}
+      {/* 3. 우선순위 — 안 고르면 "선택"이 눌린 것처럼 보이되 값은 비어 있다 */}
       <div className="flex flex-col gap-1.5">
-        <span className={LABEL}>반복</span>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => onChange({ repeating: false })}
-            aria-pressed={!form.repeating}
-            className={`${TOGGLE} ${form.repeating ? TOGGLE_OFF : TOGGLE_ON}`}
-          >
-            한번만
-          </button>
-          <button
-            type="button"
-            onClick={() => onChange({ repeating: true })}
-            aria-pressed={form.repeating}
-            className={`${TOGGLE} ${form.repeating ? TOGGLE_ON : TOGGLE_OFF}`}
-          >
-            반복
-          </button>
-        </div>
-      </div>
-
-      {/* 3. 주기 */}
-      {form.repeating && (
-        <div className="flex flex-col gap-1.5">
-          <span className={LABEL}>주기</span>
-          <div ref={ref("freq")} className="flex items-center gap-1.5">
-            {FREQ.map(({ value: freq, label, ready }) => (
+        <span className={LABEL}>우선순위 *</span>
+        <div ref={ref("priority")} className="flex flex-wrap items-center gap-1.5">
+          {PRIORITIES.map(({ value, label, hint }) => {
+            const on = (form.priority || "COULD") === value;
+            return (
               <button
-                key={freq}
+                key={value}
                 type="button"
-                disabled={!ready}
-                title={ready ? undefined : "준비 중입니다"}
-                onClick={() => onChange({ freq })}
-                aria-pressed={form.freq === freq}
-                className={`${TOGGLE} disabled:cursor-not-allowed disabled:opacity-40 ${
-                  form.freq === freq ? TOGGLE_ON : TOGGLE_OFF
-                }`}
+                title={hint}
+                onClick={() => onChange({ priority: value })}
+                aria-pressed={on}
+                className={`${TOGGLE} ${on ? TOGGLE_ON : TOGGLE_OFF}`}
               >
                 {label}
-                {!ready && " (준비 중)"}
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      )}
+      </div>
 
       {/* 4. 태그 */}
       <div className="flex flex-col gap-1.5">
         <label className={LABEL} htmlFor={id("tags")}>
-          태그 (선택)
+          태그
         </label>
 
         {form.tags.length > 0 && (
@@ -224,69 +203,7 @@ export default function ScheduleFields({
         </datalist>
       </div>
 
-      {/* 4-0. 우선순위 */}
-      <div className="flex flex-col gap-1.5">
-        <span className={LABEL}>우선순위 (선택)</span>
-        <div ref={ref("priority")} className="flex flex-wrap items-center gap-1.5">
-          {PRIORITIES.map(({ value, label, hint }) => (
-            <button
-              key={value}
-              type="button"
-              title={hint}
-              // 같은 것을 다시 누르면 안 정한 상태로 돌아간다
-              onClick={() =>
-                onChange({ priority: form.priority === value ? "" : value })
-              }
-              aria-pressed={form.priority === value}
-              className={`${TOGGLE} ${
-                form.priority === value ? TOGGLE_ON : TOGGLE_OFF
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <span className={HINT}>
-          안 고르면 “선택”으로 봅니다. “보류”는 달력에서 빠집니다.
-        </span>
-      </div>
-
-      {/* 4-1. 기한 */}
-      <div className="flex flex-col gap-1.5">
-        <label className={LABEL} htmlFor={id("dueOn")}>
-          기한 (선택)
-        </label>
-        <input
-          id={id("dueOn")}
-          ref={ref("dueOn")}
-          type="date"
-          className={box("dueOn")}
-          value={form.dueOn}
-          onChange={(e) => onChange({ dueOn: e.target.value })}
-        />
-        <span className={HINT}>
-          언제까지 해내야 하는지입니다. 시작일시와는 다릅니다.
-        </span>
-      </div>
-
-      {/* 5. 장소 */}
-      <div className="flex flex-col gap-1.5">
-        <label className={LABEL} htmlFor={id("place")}>
-          장소 (선택)
-        </label>
-        <input
-          id={id("place")}
-          ref={ref("place")}
-          className={box("place")}
-          value={form.place}
-          onChange={(e) => onChange({ place: e.target.value })}
-          placeholder="예: 헬스장"
-          maxLength={200}
-        />
-        <span className={HINT}>언제·어디서가 구체적일수록 실행될 확률이 높습니다.</span>
-      </div>
-
-      {/* 6. 시작 */}
+      {/* 5. 시작 — 세 종류 모두 쓴다 */}
       <div className="flex flex-wrap gap-3">
         <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
           <label className={LABEL} htmlFor={id("startDate")}>
@@ -304,7 +221,7 @@ export default function ScheduleFields({
 
         <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
           <label className={LABEL} htmlFor={id("startTime")}>
-            시작시각 (선택)
+            시작시각
           </label>
           <input
             id={id("startTime")}
@@ -318,80 +235,88 @@ export default function ScheduleFields({
         </div>
       </div>
 
-      {/* 7. 끝 — 한번만은 종료일시, 반복은 소요시간 + 반복 종료일 */}
-      <div className="flex flex-wrap gap-3">
-        <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
-          <label className={LABEL} htmlFor={id("endDate")}>
-            {form.repeating ? "반복 종료일자 (선택)" : "종료일자 (선택)"}
-          </label>
-          <input
-            id={id("endDate")}
-            ref={ref("endDate")}
-            type="date"
-            className={box("endDate")}
-            value={form.endDate}
-            onChange={(e) => onChange({ endDate: e.target.value })}
-          />
-          <span className={HINT}>
-            {form.repeating
-              ? "비우면 계속 반복됩니다."
-              : "비우면 시작일자와 같은 날로 봅니다."}
-          </span>
-        </div>
-
-        {form.repeating ? (
-          <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
-            <label className={LABEL} htmlFor={id("durationHours")}>
-              소요시간 (선택)
-            </label>
-            <div className="flex items-center gap-1.5" ref={ref("duration")}>
+      {/* 6. 기간 — 끝과 마감 */}
+      {form.kind === "period" && (
+        <>
+          <div className="flex flex-wrap gap-3">
+            <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
+              <label className={LABEL} htmlFor={id("endDate")}>
+                종료일자
+              </label>
               <input
-                id={id("durationHours")}
-                type="number"
-                min={0}
-                max={Math.floor(maxHours)}
-                className={`${box("duration")} w-16`}
-                value={form.durationHours}
-                onChange={(e) => onChange({ durationHours: e.target.value })}
+                id={id("endDate")}
+                ref={ref("endDate")}
+                type="date"
+                className={box("endDate")}
+                value={form.endDate}
+                onChange={(e) => onChange({ endDate: e.target.value })}
               />
-              <span className="text-sm text-slate-500">시간</span>
-              <input
-                id={id("durationMins")}
-                type="number"
-                min={0}
-                max={59}
-                step={5}
-                className={`${box("duration")} w-16`}
-                value={form.durationMins}
-                onChange={(e) => onChange({ durationMins: e.target.value })}
-              />
-              <span className="text-sm text-slate-500">분</span>
+              <span className={HINT}>비우면 시작일자와 같은 날로 봅니다.</span>
             </div>
-            <span className={HINT}>
-              {endsAtHint ?? `다음 회차 전까지, 최대 ${maxHours}시간.`}
-            </span>
+
+            <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
+              <label className={LABEL} htmlFor={id("endTime")}>
+                종료시각
+              </label>
+              <input
+                id={id("endTime")}
+                ref={ref("endTime")}
+                type="time"
+                className={box("endTime")}
+                value={form.endTime}
+                onChange={(e) => onChange({ endTime: e.target.value })}
+              />
+            </div>
           </div>
-        ) : (
-          <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
-            <label className={LABEL} htmlFor={id("endTime")}>
-              종료시각 (선택)
+
+          <div className="flex flex-col gap-1.5">
+            <label className={LABEL} htmlFor={id("dueOn")}>
+              마감기한
             </label>
             <input
-              id={id("endTime")}
-              ref={ref("endTime")}
-              type="time"
-              className={box("endTime")}
-              value={form.endTime}
-              onChange={(e) => onChange({ endTime: e.target.value })}
+              id={id("dueOn")}
+              ref={ref("dueOn")}
+              type="date"
+              className={box("dueOn")}
+              value={form.dueOn}
+              onChange={(e) => onChange({ dueOn: e.target.value })}
             />
+            <span className={HINT}>
+              언제까지 해내야 하는지입니다. 시작일시와는 다릅니다.
+            </span>
           </div>
-        )}
-      </div>
+        </>
+      )}
+
+      {/* 7. 반복 — 주기 */}
+      {form.kind === "repeat" && (
+        <div className="flex flex-col gap-1.5">
+          <span className={LABEL}>주기 *</span>
+          <div ref={ref("freq")} className="flex items-center gap-1.5">
+            {FREQ.map(({ value: freq, label, ready }) => (
+              <button
+                key={freq}
+                type="button"
+                disabled={!ready}
+                title={ready ? undefined : "준비 중입니다"}
+                onClick={() => onChange({ freq })}
+                aria-pressed={form.freq === freq}
+                className={`${TOGGLE} disabled:cursor-not-allowed disabled:opacity-40 ${
+                  form.freq === freq ? TOGGLE_ON : TOGGLE_OFF
+                }`}
+              >
+                {label}
+                {!ready && " (준비 중)"}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 8. 매주 반복요일 */}
-      {form.repeating && form.freq === "WEEKLY" && (
+      {form.kind === "repeat" && form.freq === "WEEKLY" && (
         <div className="flex flex-col gap-1.5">
-          <span className={LABEL}>반복요일</span>
+          <span className={LABEL}>반복요일 *</span>
           <div
             ref={ref("byWeekday")}
             tabIndex={-1}
@@ -415,15 +340,14 @@ export default function ScheduleFields({
       )}
 
       {/* 9. 매월 반복일자 — 백엔드가 받기 전까지 자리만 */}
-      {form.repeating && form.freq === "MONTHLY" && (
+      {form.kind === "repeat" && form.freq === "MONTHLY" && (
         <div className="flex flex-col gap-1.5">
-          <span className={LABEL}>반복일자</span>
+          <span className={LABEL}>반복일자 *</span>
           <p className="rounded-md border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-400">
             매월 반복은 준비 중입니다.
           </p>
         </div>
       )}
-
     </div>
   );
 }
