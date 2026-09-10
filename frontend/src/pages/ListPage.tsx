@@ -233,6 +233,9 @@ export default function ListPage() {
                 onStep={(to) =>
                   setPeeked((seen) => ({ ...seen, [item.id]: to }))
                 }
+                onRewind={() =>
+                  setPeeked(({ [item.id]: _gone, ...rest }) => rest)
+                }
                 onToggle={(onDate) => void handleToggle(item, onDate)}
                 onEdit={() => setEditingId(item.id)}
                 onDelete={() => void handleDelete(item)}
@@ -357,6 +360,8 @@ interface RowProps {
   /** 반복이면 지금 보고 있는 회차 날짜. 화살표로 옮겨 다닌다 */
   shownOn?: string;
   onStep: (to: string) => void;
+  /** 넘겨 보던 것을 접고 지금 할 회차로 돌아간다 */
+  onRewind: () => void;
   onToggle: (onDate?: string) => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -376,6 +381,7 @@ function ListRow({
   depth,
   shownOn,
   onStep,
+  onRewind,
   onToggle,
   onEdit,
   onDelete,
@@ -514,6 +520,16 @@ function ListRow({
                     ‹
                   </StepButton>
                   <span className="tabular-nums">{shownOn}</span>
+                  <button
+                    type="button"
+                    aria-label={`${item.title} 지금 할 회차로`}
+                    title="지금 할 회차로 돌아가기"
+                    disabled={shownOn === item.occurrenceOn}
+                    onClick={onRewind}
+                    className="leading-none transition-colors enabled:text-brand-500 enabled:hover:text-brand-700 disabled:text-slate-300"
+                  >
+                    ◉
+                  </button>
                   <StepButton
                     label={`${item.title} 다음 회차`}
                     to={stepOccurrence(item.recurrence, shownOn, 1)}
