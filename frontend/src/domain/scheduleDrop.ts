@@ -77,7 +77,7 @@ export function planDrop(
   const moving = selfAndDescendantIds(items, draggedId);
   if (moving.has(targetId)) return null;
 
-  // 습관은 남의 밑에 서지 않아 오른쪽으로 밀어도 최상위에 머문다
+  // 반복은 남의 밑에 서지 않아 오른쪽으로 밀어도 최상위에 머문다
   const wanted = dragged.recurring ? 0 : level;
 
   const spot =
@@ -88,8 +88,8 @@ export function planDrop(
 
   const { parentId } = spot;
   if (parentId !== null) {
-    // 습관은 계층에 끼지 않는다. 서버도 같은 것을 막는다
-    if (dragged.recurring || isHabit(items, parentId)) return null;
+    // 반복은 완료 시각이 회차마다라 부모의 완료가 닿을 곳이 없다
+    if (dragged.recurring) return null;
     if (depthOf(items, parentId) >= DEEPEST) return null;
   }
 
@@ -140,10 +140,7 @@ function gapSpot(
   if (above === undefined) return { parentId: null, afterId: null, level: 0 };
 
   // 오른쪽으로 아무리 밀어도 바로 위 행보다 한 단 깊은 곳까지다
-  let wanted = Math.min(level, above.depth + 1, DEEPEST);
-
-  // 습관은 자식을 거느리지 못해 그 밑의 단은 처음부터 없는 자리다
-  if (wanted === above.depth + 1 && above.item.recurring) wanted--;
+  const wanted = Math.min(level, above.depth + 1, DEEPEST);
 
   if (wanted === above.depth + 1) {
     return { parentId: above.item.id, afterId: null, level: wanted };
@@ -178,10 +175,6 @@ export function planDropAtEnd(
   ids.push(draggedId);
 
   return { parentId: null, ids, level: 0 };
-}
-
-function isHabit(items: ScheduleListItem[], id: number): boolean {
-  return items.find((i) => i.id === id)?.recurring === true;
 }
 
 /** 최상위까지의 거리. 최상위 자신은 0이다 */

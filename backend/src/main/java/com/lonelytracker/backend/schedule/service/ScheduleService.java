@@ -184,10 +184,6 @@ public class ScheduleService {
         if (parentId != null) {
             getOwnedOrThrow(parentId);
 
-            if (recurRepository.existsById(parentId)) {
-                throw new IllegalArgumentException("습관은 다른 일정을 거느릴 수 없습니다");
-            }
-
             // 여기서 눌러 앉히면 요청한 무리가 아닌 곳에 서게 된다
             if (depthOf(parentId, null) >= DEEPEST) {
                 throw new IllegalArgumentException("3단보다 깊이 넣을 수 없습니다");
@@ -233,9 +229,9 @@ public class ScheduleService {
                 throw new IllegalArgumentException("자기 자신을 상위 일정으로 둘 수 없습니다");
             }
 
-            // 리스트가 습관을 계층에서 빼면 그 자식만 떠 있게 된다
+            // 반복은 완료 시각이 회차마다라 부모의 완료가 닿을 곳이 없다
             if (recurRepository.existsById(id)) {
-                throw new IllegalArgumentException("습관은 상위 일정을 가질 수 없습니다");
+                throw new IllegalArgumentException("반복 일정은 상위 일정을 가질 수 없습니다");
             }
 
             // 올라가다 자기를 만나면 순환이다. 이건 눌러서 풀 수 없다
@@ -330,11 +326,6 @@ public class ScheduleService {
         ScheduleUtil.validatePeriod(request.startAt(), request.endAt());
 
         ScheduleEntity schedule = getOwnedOrThrow(id);
-        // 습관이 되면 리스트에서 빠진다. 딸린 자식이 부모를 잃지 않게 먼저 막는다
-        if (request.recurrence() != null
-                && !scheduleRepository.findIdsByParentIdIn(List.of(id)).isEmpty()) {
-            throw new IllegalArgumentException("자식이 있는 일정은 습관으로 바꿀 수 없습니다");
-        }
 
         // 거부될 요청이 다른 칸을 먼저 바꿔 놓지 않도록 손대기 전에 검사한다
         Long parentId = resolveParent(id, request.parentId(), request.recurrence() != null);
@@ -438,9 +429,9 @@ public class ScheduleService {
             return null;
         }
 
-        // 리스트가 습관을 빼는데 습관이 계층에 끼면 그 자식만 떠 있게 된다
+        // 반복은 완료 시각이 회차마다라 부모의 완료가 닿을 곳이 없다
         if (selfRecurring) {
-            throw new IllegalArgumentException("습관은 상위 일정을 가질 수 없습니다");
+            throw new IllegalArgumentException("반복 일정은 상위 일정을 가질 수 없습니다");
         }
         if (parentId.equals(selfId)) {
             throw new IllegalArgumentException("자기 자신을 상위 일정으로 둘 수 없습니다");
@@ -448,10 +439,6 @@ public class ScheduleService {
 
         // 남의 일정은 없는 것으로 취급한다. 400을 내면 그 일정의 존재가 새어 나간다
         getOwnedOrThrow(parentId);
-
-        if (recurRepository.existsById(parentId)) {
-            throw new IllegalArgumentException("습관은 다른 일정을 거느릴 수 없습니다");
-        }
 
         // 올라가다 자기를 만나면 순환이다. 이건 눌러서 풀 수 없다
         depthOf(parentId, selfId);

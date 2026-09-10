@@ -93,16 +93,19 @@ class ScheduleListApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("자식이 있는 일정은 습관으로 바꿀 수 없다")
-    void refusesTurningAParentIntoAHabit() throws Exception {
+    @DisplayName("자식을 거느린 채로 반복이 될 수 있다")
+    void turnsAParentIntoARecurringOne() throws Exception {
         long parent = create("{\"title\":\"이사 준비\"}");
-        create("{\"title\":\"짐 싸기\",\"parentId\":" + parent + "}");
+        long child = create("{\"title\":\"짐 싸기\",\"parentId\":" + parent + "}");
 
-        // 습관은 자식을 거느리지 않는다
         mvc.perform(put(BASE + "/" + parent).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"이사 준비\",\"startAt\":\"2026-10-01T09:00:00\""
                                 + ",\"recurrence\":{\"freq\":\"DAILY\"}}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
+
+        // 자식이 부모를 잃지 않는다
+        mvc.perform(get(BASE + "/" + child))
+                .andExpect(jsonPath("$.parentId").value(parent));
     }
 
     @Test
@@ -220,14 +223,28 @@ class ScheduleListApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("습관은 데려와도 남의 밑에 서지 않는다")
-    void refusesHabitAsChild() throws Exception {
+    @DisplayName("반복 일정은 데려와도 남의 밑에 서지 않는다")
+    void refusesRecurringAsChild() throws Exception {
         long parent = create("{\"title\":\"이사 준비\"}");
-        long habit = create("{\"title\":\"매일 운동\",\"startAt\":\"2026-10-01T07:00:00\""
+        long recurring = create("{\"title\":\"매일 운동\",\"startAt\":\"2026-10-01T07:00:00\""
                 + ",\"recurrence\":{\"freq\":\"DAILY\"}}");
 
-        reorder("{\"parentId\":" + parent + ",\"ids\":[" + habit + "]}")
+        reorder("{\"parentId\":" + parent + ",\"ids\":[" + recurring + "]}")
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("반복 일정의 무리로도 데려올 수 있다")
+    void takesAnOutsiderUnderARecurringParent() throws Exception {
+        long recurring = create("{\"title\":\"매일 운동\",\"startAt\":\"2026-10-01T07:00:00\""
+                + ",\"recurrence\":{\"freq\":\"DAILY\"}}");
+        long loner = create("{\"title\":\"스트레칭 매트 사기\"}");
+
+        reorder("{\"parentId\":" + recurring + ",\"ids\":[" + loner + "]}")
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get(BASE + "/" + loner))
+                .andExpect(jsonPath("$.parentId").value(recurring));
     }
 
     @Test

@@ -143,7 +143,7 @@ class ScheduleHierarchyApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("습관은 상위 일정을 가질 수 없다")
+    @DisplayName("반복 일정은 상위 일정을 가질 수 없다")
     void rejectsParentOnRecurring() throws Exception {
         long parent = create("{\"title\":\"묶음\"}");
 
@@ -155,14 +155,15 @@ class ScheduleHierarchyApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("습관은 다른 일정을 거느릴 수 없다")
-    void rejectsRecurringAsParent() throws Exception {
-        long habit = create("{\"title\":\"매일 운동\",\"startAt\":\"2026-10-01T07:00:00\""
+    @DisplayName("반복 일정도 다른 일정을 거느린다")
+    void acceptsRecurringAsParent() throws Exception {
+        long recurring = create("{\"title\":\"매일 운동\",\"startAt\":\"2026-10-01T07:00:00\""
                 + ",\"recurrence\":{\"freq\":\"DAILY\"}}");
 
-        mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"딸린 일정\",\"parentId\":" + habit + "}"))
-                .andExpect(status().isBadRequest());
+        long child = create("{\"title\":\"딸린 일정\",\"parentId\":" + recurring + "}");
+
+        mvc.perform(get(BASE + "/" + child))
+                .andExpect(jsonPath("$.parentId").value(recurring));
     }
 
     @Test

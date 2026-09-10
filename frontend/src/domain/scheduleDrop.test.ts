@@ -179,17 +179,17 @@ describe("planDrop", () => {
     });
   });
 
-  it("습관 밑으로 밀어도 그 옆자리에 선다", () => {
+  it("반복 일정 밑으로도 들어간다", () => {
     const items = [item(1, { recurring: true }), item(2)];
 
-    expect(planDrop(items, 2, 1, "after", 2)).toEqual({
-      parentId: null,
-      ids: [1, 2],
-      level: 0,
+    expect(planDrop(items, 2, 1, "after", 1)).toEqual({
+      parentId: 1,
+      ids: [2],
+      level: 1,
     });
   });
 
-  it("습관을 끌면 오른쪽으로 밀어도 최상위에 남는다", () => {
+  it("반복 일정을 끌면 오른쪽으로 밀어도 최상위에 남는다", () => {
     const items = [item(1), item(2, { recurring: true })];
 
     expect(planDrop(items, 2, 1, "after", 2)).toEqual({
@@ -199,14 +199,24 @@ describe("planDrop", () => {
     });
   });
 
-  it("습관은 계층에 끼지 않는다", () => {
+  it("반복 일정은 남의 밑에 서지 않는다", () => {
     const items = [item(1), item(2, { recurring: true })];
 
+    // 완료 시각이 회차마다라 부모의 완료가 닿을 곳이 없다
     expect(planDrop(items, 2, 1, "inside", 0)).toBeNull();
-    expect(planDrop(items, 1, 2, "inside", 0)).toBeNull();
   });
 
-  it("습관도 최상위 무리에서는 자리를 옮긴다", () => {
+  it("반복 일정의 자식 무리에는 들어간다", () => {
+    const items = [item(1), item(2, { recurring: true })];
+
+    expect(planDrop(items, 1, 2, "inside", 0)).toEqual({
+      parentId: 2,
+      ids: [1],
+      level: 1,
+    });
+  });
+
+  it("반복 일정도 최상위 무리에서는 자리를 옮긴다", () => {
     const items = [item(1), item(2, { recurring: true })];
 
     expect(planDrop(items, 2, 1, "before", 0)).toEqual({
