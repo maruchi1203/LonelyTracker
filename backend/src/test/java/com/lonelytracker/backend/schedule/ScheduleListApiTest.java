@@ -451,6 +451,27 @@ class ScheduleListApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
+    @Test
+    @DisplayName("날짜를 안 준 반복은 오늘부터 시작한다")
+    void fillsTodayForARecurringWithoutAStart() throws Exception {
+        String today = java.time.LocalDate.now().toString();
+
+        create("{\"title\":\"복근 운동\",\"recurrence\":{\"freq\":\"DAILY\"}}");
+
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$[0].startAt").value(today + "T00:00:00"))
+                .andExpect(jsonPath("$[0].occurrenceOn").value(today));
+    }
+
+    @Test
+    @DisplayName("반복이 아니면 날짜를 채워 주지 않는다")
+    void leavesAOneOffWithoutAStart() throws Exception {
+        create("{\"title\":\"언젠가 할 일\"}");
+
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$[0].startAt").doesNotExist());
+    }
+
     /** 완료 여부 바꾸기 요청 */
     private org.springframework.test.web.servlet.ResultActions complete(
             long id, boolean completed) throws Exception {

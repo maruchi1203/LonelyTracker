@@ -373,13 +373,15 @@ public class ScheduleService {
         ScheduleUtil.validatePeriod(request.startAt(), request.endAt());
         Long parentId = resolveParent(null, request.parentId(), request.recurrence() != null);
 
+        LocalDateTime startAt = startOf(request.startAt(), request.recurrence() != null);
+
         ScheduleEntity schedule = scheduleRepository.save(ScheduleEntity.builder()
                 .user(currentUserProvider.get())
                 .title(request.title())
                 .description(request.description())
-                .startAt(request.startAt())
-                .durationMinutes(ScheduleUtil.toMinutes(request.startAt(), request.endAt()))
-                .allDay(Boolean.TRUE.equals(request.allDay()))
+                .startAt(startAt)
+                .durationMinutes(ScheduleUtil.toMinutes(startAt, request.endAt()))
+                .allDay(Boolean.TRUE.equals(request.allDay()) || filledIn(request.startAt(), startAt))
                 .tags(ScheduleUtil.normalizeTags(request.tags()))
                 .place(request.place())
                 .twoMinuteAction(request.twoMinuteAction())
@@ -413,12 +415,14 @@ public class ScheduleService {
                 ? null
                 : schedule.getStartAt().toLocalDate();
 
+        LocalDateTime startAt = startOf(request.startAt(), request.recurrence() != null);
+
         schedule.update(
                 request.title(),
                 request.description(),
-                request.startAt(),
-                ScheduleUtil.toMinutes(request.startAt(), request.endAt()),
-                Boolean.TRUE.equals(request.allDay()),
+                startAt,
+                ScheduleUtil.toMinutes(startAt, request.endAt()),
+                Boolean.TRUE.equals(request.allDay()) || filledIn(request.startAt(), startAt),
                 ScheduleUtil.normalizeTags(request.tags()),
                 request.place(),
                 request.twoMinuteAction(),
@@ -432,9 +436,7 @@ public class ScheduleService {
         applyRecurChange(schedule, request.recurrence());
 
         // 1회성 일정의 날짜를 옮기면 회차 기록의 onDate도 따라가야 한다
-        LocalDate newDate = (request.startAt() == null)
-                ? null
-                : request.startAt().toLocalDate();
+        LocalDate newDate = (startAt == null) ? null : startAt.toLocalDate();
         if (!recurRepository.existsById(id) && oldDate != null && newDate != null
                 && !oldDate.equals(newDate)) {
             progressRepository.findByScheduleIdAndOnDate(id, oldDate)
@@ -493,6 +495,24 @@ public class ScheduleService {
         return scheduleRepository.findById(id)
                 .filter(s -> s.getUser().getId().equals(userId))
                 .orElseThrow(() -> new NotFoundException("일정을 찾을 수 없습니다. id=" + id));
+    }
+
+    /**
+     * 저장할 시작일시.
+     * 반복은 첫 회차를 기준으로 펼치므로 날짜가 없으면 오늘부터 시작한 것으로 본다.
+     *
+     * @param recurring 이 요청이 끝난 뒤 반복이 되는지
+     */
+    private static LocalDateTime startOf(LocalDateTime startAt, boolean recurring) {
+        if (startAt != null || !recurring) {
+            return startAt;
+        }
+        return LocalDate.now().atStartOfDay();
+    }
+
+    /** 우리가 채워 넣은 날짜인지. 시각을 안 정한 것이라 하루 종일로 둔다 */
+    private static boolean filledIn(LocalDateTime asked, LocalDateTime startAt) {
+        return asked == null && startAt != null;
     }
 
     /**
