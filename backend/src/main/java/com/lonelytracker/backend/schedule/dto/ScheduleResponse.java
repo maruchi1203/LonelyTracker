@@ -20,6 +20,7 @@ public record ScheduleResponse(
                 String description,
                 LocalDateTime startAt,
                 LocalDateTime endAt,
+                LocalDate dueOn,
                 boolean allDay,
                 boolean recurring,
                 ScheduleStatus status,

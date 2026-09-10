@@ -49,6 +49,12 @@ public final class ScheduleInstanceExpander {
         Set<String> emitted = new HashSet<>();
 
         for (ScheduleEntity s : schedules) {
+            // 날짜를 안 정했어도 기한이 창에 들면 달력이 그 자리에 세운다
+            if (s.getStartAt() == null) {
+                result.add(withoutInstance(s));
+                continue;
+            }
+
             ScheduleRecurEntity recur = recurByScheduleId.get(s.getId());
             for (LocalDate date : instanceDatesOf(s, recur, from, to)) {
                 String k = key(s.getId(), date);
@@ -70,7 +76,9 @@ public final class ScheduleInstanceExpander {
             }
         }
 
-        result.sort(Comparator.comparing(ScheduleResponse::startAt));
+        // 기한만 있는 항목은 시작 시각이 없다. 뒤로 보낸다
+        result.sort(Comparator.comparing(ScheduleResponse::startAt,
+                Comparator.nullsLast(Comparator.naturalOrder())));
         return result;
     }
 
@@ -115,6 +123,7 @@ public final class ScheduleInstanceExpander {
                 s.getDescription(),
                 null,
                 null,
+                s.getDueOn(),
                 s.isAllDay(),
                 false,
                 statusOf(s),
@@ -152,6 +161,7 @@ public final class ScheduleInstanceExpander {
                 pick(p == null ? null : p.getDescription(), s.getDescription()),
                 startAt,
                 endAt,
+                s.getDueOn(),
                 s.isAllDay(),
                 recurring,
                 // 1회성의 완료는 일정 자체가 갖는다. 회차 상태는 습관 전용이다

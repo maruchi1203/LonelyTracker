@@ -41,6 +41,8 @@ export interface ScheduleResponse {
   /** "YYYY-MM-DDTHH:mm:ss". 타임존 표기가 없다. 없으면 리스트에만 있는 항목이다 */
   startAt?: string;
   endAt?: string;
+  /** "YYYY-MM-DD". 언제까지 해내야 하나. 시작과 다른 색으로 따로 선다 */
+  dueOn?: string;
   allDay: boolean;
   /** 습관(반복)의 회차인지. 완료를 어느 경로로 보낼지가 여기서 갈린다 */
   recurring: boolean;

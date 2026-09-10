@@ -26,16 +26,19 @@ public interface ScheduleRepository extends JpaRepository<ScheduleEntity, Long> 
       select s from ScheduleEntity s
       where s.user.id = :userId
         and (s.priority is null or s.priority <> :wont)
-        and s.startAt <= :to
         and (
-             exists (select 1 from ScheduleRecurEntity r
-                      where r.scheduleId = s.id
-                        and (r.endsOn is null or r.endsOn >= :fromDate))
-          or s.startAt >= :from
-          or exists (select 1 from ScheduleProgressEntity p
-                      where p.schedule.id = s.id
-                        and ((p.onDate between :fromDate and :toDate)
-                          or (p.startAt is not null and p.startAt between :from and :to)))
+             (s.startAt <= :to
+              and (
+                   exists (select 1 from ScheduleRecurEntity r
+                            where r.scheduleId = s.id
+                              and (r.endsOn is null or r.endsOn >= :fromDate))
+                or s.startAt >= :from
+                or exists (select 1 from ScheduleProgressEntity p
+                            where p.schedule.id = s.id
+                              and ((p.onDate between :fromDate and :toDate)
+                                or (p.startAt is not null and p.startAt between :from and :to)))
+              ))
+          or (s.dueOn between :fromDate and :toDate)
         )
       """)
   List<ScheduleEntity> findCandidates(@Param("userId") Long userId,

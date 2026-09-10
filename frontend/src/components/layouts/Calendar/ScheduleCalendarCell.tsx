@@ -54,7 +54,7 @@ export default function ScheduleCalendarCell({
       <ul className="flex list-none flex-col gap-0.5 p-0">
         {day.lanes.map((slot, lane) =>
           slot ? (
-            <Bar key={instanceKey(slot.instance)} slot={slot} />
+            <Bar key={`${instanceKey(slot.instance)}:${slot.kind}`} slot={slot} />
           ) : (
             // 빈 레인도 자리를 차지해야 옆 칸의 띠와 높이가 맞는다
             <li key={`empty-${lane}`} className="h-4" aria-hidden />
@@ -72,35 +72,46 @@ export default function ScheduleCalendarCell({
 }
 
 function Bar({ slot }: { slot: LaneSlot }) {
-  const { instance, isStart, isEnd } = slot;
+  const { instance, kind, isStart, isEnd } = slot;
   const done = instance.status === "DONE";
+  const due = kind === "due";
 
   const shape = [
     isStart ? "rounded-l-sm" : BLEED_LEFT,
     isEnd ? "rounded-r-sm" : BLEED_RIGHT,
   ].join(" ");
 
+  // 시작은 왼쪽에, 기한은 오른쪽에 굵은 선을 둔다. 색을 못 가려도 방향으로 갈린다
+  const tone = due
+    ? "border-r-2 border-r-amber-700 bg-amber-100 text-amber-900"
+    : "border-l-2 border-l-brand-500 bg-brand-100 text-brand-800";
+
   return (
     <li
       // 칸이 좁으므로 한 줄로 자르고, 전체 제목은 title 속성으로 보여준다
-      title={
-        isMoved(instance)
-          ? `${instance.title} · 원래 ${instance.instanceDate} 예정`
-          : instance.title
-      }
+      title={label(instance, due)}
       className={`${BAR} ${shape} ${
-        done
-          ? "bg-slate-100 text-slate-400 line-through"
-          : "bg-brand-100 text-brand-800"
+        done ? "bg-slate-100 text-slate-400 line-through" : tone
       }`}
     >
       {/* 제목은 띠가 시작하는 칸에만 적는다. 이어지는 칸은 띠만 보인다 */}
       {isStart && (
         <>
-          {isMoved(instance) && <span className="text-amber-600">↻ </span>}
+          {due && "~ "}
+          {!due && isMoved(instance) && (
+            <span className="text-amber-600">↻ </span>
+          )}
           {instance.title}
         </>
       )}
     </li>
   );
+}
+
+/** 띠에 올려두는 설명. 시작인지 기한인지부터 밝힌다 */
+function label(instance: LaneSlot["instance"], due: boolean): string {
+  if (due) return `${instance.title} · ${instance.dueOn} 까지`;
+  return isMoved(instance)
+    ? `${instance.title} · 원래 ${instance.instanceDate} 예정`
+    : instance.title;
 }

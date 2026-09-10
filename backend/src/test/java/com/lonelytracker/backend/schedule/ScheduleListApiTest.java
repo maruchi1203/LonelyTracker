@@ -428,6 +428,29 @@ class ScheduleListApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$[?(@.id == " + grandChild + ")].completedAt").isEmpty());
     }
 
+    @Test
+    @DisplayName("기한만 있는 일정도 달력 조회에 잡힌다")
+    void dueOnlyReachesTheCalendar() throws Exception {
+        create("{\"title\":\"서류 제출\",\"dueOn\":\"2026-10-15\"}");
+
+        // 시작 시각이 없어 예전 조회에서는 걸러졌다
+        mvc.perform(get(BASE + "?from=2026-10-01T00:00:00&to=2026-10-31T23:59:59"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value("서류 제출"))
+                .andExpect(jsonPath("$[0].dueOn").value("2026-10-15"))
+                .andExpect(jsonPath("$[0].startAt").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("기한이 창 밖이면 달력에 오지 않는다")
+    void dueOutsideTheWindowStaysOut() throws Exception {
+        create("{\"title\":\"서류 제출\",\"dueOn\":\"2026-12-01\"}");
+
+        mvc.perform(get(BASE + "?from=2026-10-01T00:00:00&to=2026-10-31T23:59:59"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
     /** 완료 여부 바꾸기 요청 */
     private org.springframework.test.web.servlet.ResultActions complete(
             long id, boolean completed) throws Exception {
