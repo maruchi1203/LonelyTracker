@@ -144,14 +144,9 @@ export default function CalendarPage() {
   // 칩 개수는 필터를 걸기 전의 창 전체로 센다
   const usage = useMemo(() => countByTag(instances), [instances]);
 
-  // 달력에 그릴 것 — 분류와 검색만 반영한다.
-  // 반복은 회차를 펼치지 않는다. 리스트와 같게 지금 할 것 하나만 선다
+  // 달력에 그릴 것 — 분류와 검색만 반영한다. 격자에는 회차가 전부 선다
   const forCalendar = useMemo(
-    () =>
-      nearestOccurrences(
-        applyFilters(instances, { tag, query }),
-        toLocalDate(new Date()),
-      ),
+    () => applyFilters(instances, { tag, query }),
     [instances, tag, query],
   );
 
@@ -161,7 +156,8 @@ export default function CalendarPage() {
     () =>
       selectedDate
         ? forCalendar.filter((o) => coversDate(o, selectedDate))
-        : forCalendar,
+        // 한 달 치가 다 오면 같은 반복이 여러 줄로 선다. 지금 할 회차만 남긴다
+        : nearestOccurrences(forCalendar, toLocalDate(new Date())),
     [forCalendar, selectedDate],
   );
 
