@@ -117,8 +117,9 @@ public class ScheduleService {
 
     /**
      * 1회성 일정을 완료하거나 되돌린다.
+     * 딸린 자손도 함께 따라간다.
      *
-     * @throws IllegalArgumentException 습관이면. 습관은 회차마다 상태를 갖는다
+     * @throws IllegalArgumentException 반복이면. 반복은 회차마다 상태를 갖는다
      */
     @Transactional
     public ScheduleResponse changeCompletion(Long id, boolean completed) {
@@ -126,12 +127,48 @@ public class ScheduleService {
         ScheduleEntity schedule = getOwnedOrThrow(id);
         if (recurRepository.existsById(id)) {
             throw new IllegalArgumentException(
-                    "습관은 회차마다 상태를 바꿔 주세요");
+                    "반복 일정은 회차마다 상태를 바꿔 주세요");
         }
 
-        schedule.changeCompletion(completed);
+        // 되돌릴 때 딸려 완료된 자손만 고르려면 바꾸기 전 시각이 필요하다
+        LocalDateTime mark = completed ? LocalDateTime.now() : schedule.getCompletedAt();
+
+        schedule.changeCompletion(completed, mark);
+        cascadeCompletion(id, completed, mark);
         scheduleRepository.saveAndFlush(schedule);
         return firstInstanceOf(schedule);
+    }
+
+    /**
+     * 자손도 함께 완료하거나 되돌린다.
+     * 되돌릴 때는 부모와 같은 시각에 딸려 완료된 자손만 푼다.
+     * 먼저 완료해 둔 자손은 시각이 달라 그대로 남는다.
+     *
+     * @param mark 완료면 새로 찍을 시각, 되돌리기면 부모가 갖고 있던 시각
+     */
+    private void cascadeCompletion(Long id, boolean completed, LocalDateTime mark) {
+        if (mark == null) {
+            return;
+        }
+
+        List<Long> descendants = descendantIdsOf(id);
+        if (descendants.isEmpty()) {
+            return;
+        }
+
+        scheduleRepository.findAllById(descendants).stream()
+                .filter(d -> completed || mark.equals(d.getCompletedAt()))
+                .forEach(d -> d.changeCompletion(completed, mark));
+    }
+
+    /** 그 일정 밑에 딸린 것 전부. 계층이 3단이라 두 번 내려가면 바닥이다 */
+    private List<Long> descendantIdsOf(Long id) {
+        List<Long> children = scheduleRepository.findIdsByParentIdIn(List.of(id));
+        if (children.isEmpty()) {
+            return List.of();
+        }
+        return Stream.concat(children.stream(),
+                scheduleRepository.findIdsByParentIdIn(children).stream()).toList();
     }
 
     /**

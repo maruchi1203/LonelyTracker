@@ -217,6 +217,16 @@ public class ScheduleEntity {
         this.completedAt = completed ? LocalDateTime.now() : null;
     }
 
+    /**
+     * 완료 시각을 지정해 바꾼다
+     * 부모와 자손이 같은 시각을 갖게 해 딸려 완료된 것을 나중에 골라낸다
+     *
+     * @param at 풀면 쓰이지 않는다
+     */
+    public void changeCompletion(boolean completed, LocalDateTime at) {
+        this.completedAt = completed ? at : null;
+    }
+
     public void update(String title, String description, LocalDateTime startAt,
             Integer durationMinutes, boolean allDay, Set<String> tags,
             String place, String twoMinuteAction, Long parentId, LocalDate dueOn,

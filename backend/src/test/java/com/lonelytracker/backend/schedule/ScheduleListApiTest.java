@@ -319,6 +319,61 @@ class ScheduleListApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$[0].title").value("할 일"));
     }
 
+    @Test
+    @DisplayName("부모를 완료하면 자손도 완료된다")
+    void completionRunsDown() throws Exception {
+        long parent = create("{\"title\":\"이사 준비\"}");
+        long child = create("{\"title\":\"짐 싸기\",\"parentId\":" + parent + "}");
+        long grandChild = create("{\"title\":\"박스 사기\",\"parentId\":" + child + "}");
+
+        complete(parent, true).andExpect(status().isOk());
+
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$[?(@.id == " + child + ")].completedAt")
+                        .value(org.hamcrest.Matchers.everyItem(
+                                org.hamcrest.Matchers.notNullValue())))
+                .andExpect(jsonPath("$[?(@.id == " + grandChild + ")].completedAt")
+                        .value(org.hamcrest.Matchers.everyItem(
+                                org.hamcrest.Matchers.notNullValue())));
+    }
+
+    @Test
+    @DisplayName("되돌리면 딸려 완료된 자손만 풀린다")
+    void undoSparesTheOnesDoneEarlier() throws Exception {
+        long parent = create("{\"title\":\"이사 준비\"}");
+        long early = create("{\"title\":\"미리 끝낸 일\",\"parentId\":" + parent + "}");
+        long late = create("{\"title\":\"같이 끝난 일\",\"parentId\":" + parent + "}");
+
+        // 먼저 끝낸 자식은 완료 시각이 부모와 다르다
+        complete(early, true).andExpect(status().isOk());
+        complete(parent, true).andExpect(status().isOk());
+        complete(parent, false).andExpect(status().isOk());
+
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$[?(@.id == " + early + ")].completedAt")
+                        .value(org.hamcrest.Matchers.everyItem(
+                                org.hamcrest.Matchers.notNullValue())))
+                .andExpect(jsonPath("$[?(@.id == " + late + ")].completedAt")
+                        .isEmpty());
+    }
+
+    @Test
+    @DisplayName("반복 일정은 완료 경로가 다르다")
+    void refusesCompletingARecurringOne() throws Exception {
+        long recurring = create("{\"title\":\"매일 운동\",\"startAt\":\"2026-10-01T07:00:00\""
+                + ",\"recurrence\":{\"freq\":\"DAILY\"}}");
+
+        complete(recurring, true).andExpect(status().isBadRequest());
+    }
+
+    /** 완료 여부 바꾸기 요청 */
+    private org.springframework.test.web.servlet.ResultActions complete(
+            long id, boolean completed) throws Exception {
+        return mvc.perform(patch(BASE + "/" + id + "/completion")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"completed\":" + completed + "}"));
+    }
+
     /** 순서 바꾸기 요청 */
     private org.springframework.test.web.servlet.ResultActions reorder(String body)
             throws Exception {
