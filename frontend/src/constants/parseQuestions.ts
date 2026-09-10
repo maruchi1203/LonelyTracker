@@ -23,9 +23,21 @@ export const PARSE_QUESTION_FIELD: Record<ParseQuestion, FormFieldId> = {
   TAG: 'tags',
 }
 
-/** 백엔드가 enum 을 늘려도 화면이 깨지지 않게 아는 것만 남긴다 */
+/**
+ * 폼에 칸이 있는 질문
+ * 장소와 반복 종료일은 폼에서 빠졌다. 눌러도 갈 곳이 없으면 묻지 않는 편이 낫다
+ */
+const ANSWERABLE: ParseQuestion[] = [
+  'START_TIME',
+  'DATE',
+  'WEEKDAY',
+  'TOO_VAGUE',
+  'TAG',
+]
+
+/** 백엔드가 enum 을 늘려도 화면이 깨지지 않게 답할 수 있는 것만 남긴다 */
 export function knownQuestions(questions: string[] | undefined): ParseQuestion[] {
-  return (questions ?? []).filter(
-    (q): q is ParseQuestion => q in PARSE_QUESTION_TEXT,
+  return (questions ?? []).filter((q): q is ParseQuestion =>
+    ANSWERABLE.includes(q as ParseQuestion),
   )
 }
