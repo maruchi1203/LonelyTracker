@@ -3,9 +3,12 @@ import type {
   DeleteScope,
   InstanceUpdateRequest,
   ScheduleCreateRequest,
+  ScheduleDetailResponse,
+  ScheduleListItem,
   ScheduleQuery,
   ScheduleResponse,
   ScheduleStatus,
+  ScheduleUpdateRequest,
 } from '../types/schedule'
 import { handle } from './http'
 
@@ -29,6 +32,16 @@ export async function fetchSchedules(
   return handle<ScheduleResponse[]>(await fetch(`${BASE}${suffix}`, { signal }))
 }
 
+/**
+ * 리스트 탭이 보는 일정 전부
+ * 습관은 빠지고, 날짜를 안 정한 항목도 함께 온다
+ */
+export async function fetchScheduleList(
+  signal?: AbortSignal,
+): Promise<ScheduleListItem[]> {
+  return handle<ScheduleListItem[]>(await fetch(`${BASE}/list`, { signal }))
+}
+
 export async function createSchedule(
   body: ScheduleCreateRequest,
 ): Promise<ScheduleResponse> {
@@ -41,6 +54,45 @@ export async function createSchedule(
 }
 
 /** 회차 하나의 상태를 바꾼다. 습관 전용이다 */
+/** 일정 자체의 값. 반복이면 규칙도 함께 온다 */
+export async function fetchSchedule(
+  id: number,
+  signal?: AbortSignal,
+): Promise<ScheduleDetailResponse> {
+  return handle<ScheduleDetailResponse>(await fetch(`${BASE}/${id}`, { signal }))
+}
+
+/** 앞으로의 회차를 전부 고친다. recurrence 를 빼면 반복이 지워진다 */
+export async function updateSchedule(
+  id: number,
+  body: ScheduleUpdateRequest,
+): Promise<ScheduleResponse> {
+  const res = await fetch(`${BASE}/${id}`, {
+    method: 'PUT',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  })
+  return handle<ScheduleResponse>(res)
+}
+
+/**
+ * 형제 무리의 순서를 통째로 다시 정한다
+ * 그 무리의 일정을 하나도 빠뜨리지 않고 보내야 한다
+ *
+ * @param parentId null 이면 최상위 무리
+ */
+export async function reorderSchedules(
+  parentId: number | null,
+  ids: number[],
+): Promise<void> {
+  const res = await fetch(`${BASE}/order`, {
+    method: 'PATCH',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ parentId, ids }),
+  })
+  return handle<void>(res)
+}
+
 export async function changeInstanceStatus(
   id: number,
   onDate: string,
@@ -87,17 +139,18 @@ export async function fetchTagNames(): Promise<string[]> {
 }
 
 /** 문장을 일정 초안으로 바꾼다. 저장하지는 않는다 */
+/** 문장 하나에 일정이 여럿 들어 있을 수 있다. 하나뿐이면 길이 1의 배열이다 */
 export async function parseSchedule(
   text: string,
   signal?: AbortSignal,
-): Promise<ParsedSchedule> {
+): Promise<ParsedSchedule[]> {
   const res = await fetch(`${BASE}/parse`, {
     method: 'POST',
     headers: JSON_HEADERS,
     body: JSON.stringify({ text }),
     signal,
   })
-  return handle<ParsedSchedule>(res)
+  return handle<ParsedSchedule[]>(res)
 }
 
 /** FUTURE 는 지난 기록을 남기고 앞으로만 지운다. 호출하는 쪽이 범위를 밝히게 한다 */

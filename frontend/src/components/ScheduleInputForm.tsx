@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ScheduleForm } from "../domain/scheduleForm";
+import type { FormVariant, ScheduleForm } from "../domain/scheduleForm";
 import { emptyForm, formToCreateRequest, formValidationError } from "../domain/scheduleForm";
 import type { ScheduleCreateRequest } from "../types/schedule";
 import { toLocalDate } from "../utils/datetime";
@@ -13,8 +13,9 @@ interface Props {
   defaultDate?: Date | null;
   /** AI가 문장을 못 읽었을 때 친 문장을 제목으로 넘겨받는다 */
   initialTitle?: string;
-  showTwoMinute?: boolean;
   disabled?: boolean;
+  /** 어느 탭의 폼인지. 날짜를 요구할지가 갈린다 */
+  variant?: FormVariant;
 }
 
 export default function ScheduleInputForm({
@@ -22,26 +23,30 @@ export default function ScheduleInputForm({
   knownTags,
   defaultDate,
   initialTitle,
-  showTwoMinute,
   disabled,
+  variant = "calendar",
 }: Props) {
   const [form, setForm] = useState<ScheduleForm>(() => ({
     ...emptyForm(defaultDate),
+    // 리스트는 날짜를 안 정한 채로 적는 곳이라 시작일자를 미리 채우지 않는다
+    ...(variant === "list" ? { startDate: "", startTime: "" } : {}),
     title: initialTitle ?? "",
   }));
 
   // 고른 날짜가 바뀌면 시작일자만 다시 잡는다. 나머지 입력은 그대로 둔다
   useEffect(() => {
+    if (variant === "list") return;
+
     setForm((prev) => ({
       ...prev,
       startDate: toLocalDate(defaultDate ?? new Date()),
     }));
-  }, [defaultDate]);
+  }, [defaultDate, variant]);
 
   const change = (patch: Partial<ScheduleForm>) =>
     setForm((prev) => ({ ...prev, ...patch }));
 
-  const problem = formValidationError(form);
+  const problem = formValidationError(form, variant);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); // 폼 기본 동작(페이지 새로고침)을 막는다
@@ -50,7 +55,12 @@ export default function ScheduleInputForm({
     const created = await onSubmit(formToCreateRequest(form));
 
     // 실패했는데 입력을 지우면 사용자가 처음부터 다시 써야 한다
-    if (created) setForm(emptyForm(defaultDate));
+    if (created) {
+      setForm({
+        ...emptyForm(defaultDate),
+        ...(variant === "list" ? { startDate: "", startTime: "" } : {}),
+      });
+    }
   };
 
   return (
@@ -63,7 +73,6 @@ export default function ScheduleInputForm({
         onChange={change}
         knownTags={knownTags}
         idPrefix="manual"
-        showTwoMinute={showTwoMinute}
       />
 
       {problem && <p className="text-sm text-red-600">{problem}</p>}

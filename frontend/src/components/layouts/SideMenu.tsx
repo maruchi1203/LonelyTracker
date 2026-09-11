@@ -14,9 +14,10 @@ interface MenuItem {
 
 const MENU: MenuItem[] = [
   { to: "/dashboard", label: "대시보드", comingSoon: true },
+  { to: "/list", label: "리스트" },
   { to: "/calendar", label: "달력" },
   { to: "/projects", label: "프로젝트", comingSoon: true },
-  { to: "/habits", label: "습관일지", comingSoon: true },
+  { to: "/habits", label: "습관일지" },
   { to: "/settings", label: "설정" },
 ];
 

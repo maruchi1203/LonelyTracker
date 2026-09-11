@@ -124,3 +124,53 @@ describe('레인 배정', () => {
     expect(laneOf(once, '2026-08-03', 3)).toBe(laneOf(twice, '2026-08-03', 3))
   })
 })
+
+describe("기한 띠", () => {
+  it("시작과 기한이 서로 다른 띠로 선다", () => {
+    const map = assignLanes(DAYS, [
+      span(1, "2026-08-03", undefined, { dueOn: "2026-08-07" }),
+    ]);
+
+    const start = map.get("2026-08-03")?.lanes[0];
+    const due = map.get("2026-08-07")?.lanes[0];
+
+    expect(start?.kind).toBe("span");
+    expect(due?.kind).toBe("due");
+    expect(due?.instance.id).toBe(1);
+  });
+
+  it("기한은 하루에만 선다", () => {
+    const map = assignLanes(DAYS, [
+      span(1, "2026-08-03", undefined, { dueOn: "2026-08-07" }),
+    ]);
+
+    expect(map.get("2026-08-06")?.lanes.filter(Boolean)).toHaveLength(0);
+  });
+
+  it("같은 날이면 기한이 시작 아래 레인에 선다", () => {
+    const map = assignLanes(DAYS, [
+      span(1, "2026-08-03", undefined, { dueOn: "2026-08-03" }),
+    ]);
+
+    const lanes = map.get("2026-08-03")?.lanes ?? [];
+    expect(lanes[0]?.kind).toBe("span");
+    expect(lanes[1]?.kind).toBe("due");
+  });
+
+  it("날짜를 안 정해도 기한만으로 자리를 잡는다", () => {
+    const dueOnly: ScheduleResponse = {
+      id: 9,
+      title: "서류 제출",
+      dueOn: "2026-08-11",
+      allDay: false,
+      recurring: false,
+      status: "PLANNED",
+      createdAt: "2026-08-01T00:00:00",
+      updatedAt: "2026-08-01T00:00:00",
+    };
+
+    const map = assignLanes(DAYS, [dueOnly]);
+
+    expect(map.get("2026-08-11")?.lanes[0]?.kind).toBe("due");
+  });
+});

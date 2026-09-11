@@ -16,6 +16,23 @@ final class ParsedScheduleSchema {
     private ParsedScheduleSchema() {
     }
 
+    /** 문장 하나에서 받을 수 있는 일정의 최대 개수. 응답 길이가 곧 토큰 비용이다 */
+    static final int MAX_SCHEDULES = 10;
+
+    /**
+     * 응답의 뿌리. 한 문장에 일정이 여럿 들어 있을 수 있어 배열로 받는다.
+     * 구조화 출력은 뿌리가 object 여야 해서 배열을 한 칸에 담아 감싼다.
+     */
+    static Map<String, Object> getRoot() {
+        return object(
+                Map.of("schedules", Map.of(
+                        "type", "array",
+                        "description", "문장에서 읽어낸 일정들. 하나뿐이면 길이 1의 배열",
+                        "maxItems", MAX_SCHEDULES,
+                        "items", getSchedule())),
+                List.of("schedules"));
+    }
+
     // 1회성 스케줄
     static Map<String, Object> getSchedule() {
         return object(
@@ -26,7 +43,9 @@ final class ParsedScheduleSchema {
                         "allDay", Map.of("type", "boolean"),
                         "tags", Map.of(
                                 "type", "array",
-                                "description", "일정의 분류. 후보에 없는 태그도 만들 수 있다. 없으면 빈 배열",
+                                "description", "일정의 분류. 후보에 맞는 것이 있으면 그것을 쓰고, "
+                                        + "없으면 한 단어로 새로 짓는다. 되도록 하나는 붙인다",
+                                "minItems", 1,
                                 "items", Map.of("type", "string")),
                         "place", nullableString("어디서 하는지. 문장에 없으면 null"),
                         "recurrence", getRecurringSchedule(),

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { fetchMe } from "../api/users";
 import OpenAiKeySection from "../components/settings/OpenAiKeySection";
-import TwoMinuteRuleSection from "../components/settings/TwoMinuteRuleSection";
+import HabitSection from "../components/settings/HabitSection";
 import type { UserResponse } from "../types/schedule";
 
 export default function SettingsPage() {
@@ -33,7 +33,7 @@ export default function SettingsPage() {
 
       <OpenAiKeySection autoFocus={params.get("focus") === "openai-key"} />
 
-      <TwoMinuteRuleSection />
+      <HabitSection />
     </div>
   );
 }

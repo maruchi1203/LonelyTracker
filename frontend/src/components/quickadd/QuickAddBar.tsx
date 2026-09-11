@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { HttpError } from "../../api/http";
 import { parseSchedule } from "../../api/schedules";
-import { fetchOpenAiKeyStatus, fetchSettings } from "../../api/users";
+import { fetchOpenAiKeyStatus } from "../../api/users";
 import { knownQuestions } from "../../constants/parseQuestions";
-import type { ScheduleForm } from "../../domain/scheduleForm";
+import type { FormVariant, ScheduleForm } from "../../domain/scheduleForm";
 import { draftFromParsed, formToCreateRequest } from "../../domain/scheduleForm";
 import type { ParseQuestion } from "../../types/parse";
 import type { ScheduleCreateRequest } from "../../types/schedule";
@@ -12,19 +12,29 @@ import ScheduleInputForm from "../ScheduleInputForm";
 import ParsedDraftCard from "./ParsedDraftCard";
 
 interface Props {
-  defaultDate: Date | null;
+  /** 달력에서 고른 날짜. 리스트처럼 날짜 개념이 없는 탭은 주지 않는다 */
+  defaultDate?: Date | null;
   knownTags: string[];
+  /** 어느 탭의 폼인지. 날짜를 요구할지가 갈린다 */
+  variant?: FormVariant;
   onCreate: (body: ScheduleCreateRequest) => Promise<boolean>;
   /** 저장에 성공했을 때. 띄워둔 패널을 닫는 데 쓴다 */
   onDone?: () => void;
   autoFocus?: boolean;
 }
 
+/** 카드 한 장. key 는 목록에서 지워도 안 흔들리는 자리표다 */
+interface Draft {
+  key: number;
+  form: ScheduleForm;
+  questions: ParseQuestion[];
+  saving: boolean;
+}
+
 type State =
   | { mode: "idle" }
   | { mode: "parsing" }
-  | { mode: "draft"; draft: ScheduleForm; questions: ParseQuestion[] }
-  | { mode: "saving"; draft: ScheduleForm; questions: ParseQuestion[] }
+  | { mode: "drafts"; drafts: Draft[] }
   | { mode: "error"; message: string; needsKey: boolean };
 
 /** 서버 읽기 타임아웃이 30초라 그보다 조금 뒤에 포기한다 */
@@ -35,8 +45,9 @@ const STEP_MS = 2_500;
 const DRAFT_TEXT_KEY = "quickadd-text";
 
 export default function QuickAddBar({
-  defaultDate,
+  defaultDate = null,
   knownTags,
+  variant = "calendar",
   onCreate,
   onDone,
   autoFocus,
@@ -48,15 +59,6 @@ export default function QuickAddBar({
   const [manual, setManual] = useState(false);
   const [step, setStep] = useState(0);
   const abort = useRef<AbortController | null>(null);
-  // 못 읽으면 켬으로 본다. 설정을 못 불러왔다고 칸이 사라지면 안 된다
-  const [showTwoMinute, setShowTwoMinute] = useState(true);
-
-  useEffect(() => {
-    void fetchSettings()
-      .then((s) => setShowTwoMinute(s.twoMinuteRule))
-      .catch(() => {});
-  }, []);
-
   const parsing = state.mode === "parsing";
 
   useEffect(() => {
@@ -68,6 +70,15 @@ export default function QuickAddBar({
     );
     return () => window.clearInterval(timer);
   }, [parsing]);
+
+  // 카드를 다 치우면 입력줄로 돌아간다. 상태를 고치는 자리에서 하면 두 번 돈다
+  const empty = state.mode === "drafts" && state.drafts.length === 0;
+  useEffect(() => {
+    if (!empty) return;
+    setText("");
+    setState({ mode: "idle" });
+    onDone?.();
+  }, [empty, onDone]);
 
   const stop = () => {
     abort.current?.abort();
@@ -88,9 +99,13 @@ export default function QuickAddBar({
     try {
       const parsed = await parseSchedule(sentence, controller.signal);
       setState({
-        mode: "draft",
-        draft: draftFromParsed(parsed, defaultDate),
-        questions: knownQuestions(parsed.questions),
+        mode: "drafts",
+        drafts: parsed.map((one, at) => ({
+          key: at,
+          form: draftFromParsed(one, defaultDate, variant),
+          questions: knownQuestions(one.questions),
+          saving: false,
+        })),
       });
       sessionStorage.removeItem(DRAFT_TEXT_KEY);
     } catch (e) {
@@ -121,19 +136,35 @@ export default function QuickAddBar({
     }
   };
 
-  const save = async () => {
-    if (state.mode !== "draft") return;
-    const { draft, questions } = state;
-    setState({ mode: "saving", draft, questions });
+  /** 그 카드만 바꾼다. 나머지는 그대로 둔다 */
+  const mapDraft = (key: number, change: (d: Draft) => Draft) =>
+    setState((prev) =>
+      prev.mode === "drafts"
+        ? {
+            ...prev,
+            drafts: prev.drafts.map((d) => (d.key === key ? change(d) : d)),
+          }
+        : prev,
+    );
 
-    const created = await onCreate(formToCreateRequest(draft));
-    if (created) {
-      setText("");
-      setState({ mode: "idle" });
-      onDone?.();
-    } else {
-      setState({ mode: "draft", draft, questions });
-    }
+  /** 카드를 목록에서 뺀다 */
+  const drop = (key: number) =>
+    setState((prev) =>
+      prev.mode === "drafts"
+        ? { ...prev, drafts: prev.drafts.filter((d) => d.key !== key) }
+        : prev,
+    );
+
+  const save = async (key: number) => {
+    if (state.mode !== "drafts") return;
+    const target = state.drafts.find((d) => d.key === key);
+    if (!target || target.saving) return;
+
+    mapDraft(key, (d) => ({ ...d, saving: true }));
+
+    const created = await onCreate(formToCreateRequest(target.form));
+    if (created) drop(key);
+    else mapDraft(key, (d) => ({ ...d, saving: false }));
   };
 
   const createManually = async (body: ScheduleCreateRequest) => {
@@ -142,10 +173,8 @@ export default function QuickAddBar({
     return created;
   };
 
-  const patch = (changes: Partial<ScheduleForm>) =>
-    setState((prev) =>
-      prev.mode === "draft" ? { ...prev, draft: { ...prev.draft, ...changes } } : prev,
-    );
+  const patch = (key: number, changes: Partial<ScheduleForm>) =>
+    mapDraft(key, (d) => ({ ...d, form: { ...d.form, ...changes } }));
 
   return (
     <section className="flex flex-col gap-3">
@@ -228,17 +257,28 @@ export default function QuickAddBar({
         </div>
       )}
 
-      {(state.mode === "draft" || state.mode === "saving") && (
-        <ParsedDraftCard
-          draft={state.draft}
-          questions={state.questions}
-          knownTags={knownTags}
-          saving={state.mode === "saving"}
-          onChange={patch}
-          showTwoMinute={showTwoMinute}
-          onSave={() => void save()}
-          onDiscard={() => setState({ mode: "idle" })}
-        />
+      {state.mode === "drafts" && (
+        <>
+          {state.drafts.length > 1 && (
+            <p className="text-sm text-slate-500">
+              일정 {state.drafts.length}개를 읽었습니다. 하나씩 확인해 주세요.
+            </p>
+          )}
+
+          {state.drafts.map((draft) => (
+            <ParsedDraftCard
+              key={draft.key}
+              draft={draft.form}
+              questions={draft.questions}
+              knownTags={knownTags}
+              saving={draft.saving}
+              onChange={(changes) => patch(draft.key, changes)}
+              variant={variant}
+              onSave={() => void save(draft.key)}
+              onDiscard={() => drop(draft.key)}
+            />
+          ))}
+        </>
       )}
 
       {manual && (
@@ -246,7 +286,7 @@ export default function QuickAddBar({
           onSubmit={createManually}
           knownTags={knownTags}
           defaultDate={defaultDate}
-          showTwoMinute={showTwoMinute}
+          variant={variant}
           // 문장을 못 읽었을 때 친 내용을 버리지 않는다
           initialTitle={state.mode === "error" ? text.trim() : undefined}
         />

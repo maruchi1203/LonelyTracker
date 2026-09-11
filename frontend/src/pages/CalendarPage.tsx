@@ -13,6 +13,8 @@ import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
 import ScheduleList from "../components/ScheduleList";
 import { applyFilters, countByTag } from "../domain/filter";
 import { coversDate } from "../domain/instance";
+import { nearestOccurrences } from "../domain/occurrence";
+import { toLocalDate } from "../utils/datetime";
 import { useCalendarViewState } from "../hooks/useCalendarViewState";
 import { useMonthInstances } from "../hooks/useMonthInstances";
 import type {
@@ -142,7 +144,7 @@ export default function CalendarPage() {
   // 칩 개수는 필터를 걸기 전의 창 전체로 센다
   const usage = useMemo(() => countByTag(instances), [instances]);
 
-  // 달력에 그릴 것 — 분류와 검색만 반영한다
+  // 달력에 그릴 것 — 분류와 검색만 반영한다. 격자에는 회차가 전부 선다
   const forCalendar = useMemo(
     () => applyFilters(instances, { tag, query }),
     [instances, tag, query],
@@ -154,7 +156,8 @@ export default function CalendarPage() {
     () =>
       selectedDate
         ? forCalendar.filter((o) => coversDate(o, selectedDate))
-        : forCalendar,
+        // 한 달 치가 다 오면 같은 반복이 여러 줄로 선다. 지금 할 회차만 남긴다
+        : nearestOccurrences(forCalendar, toLocalDate(new Date())),
     [forCalendar, selectedDate],
   );
 

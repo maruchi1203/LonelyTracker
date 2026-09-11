@@ -457,13 +457,14 @@ class ScheduleApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("시작일시 없이 반복을 걸면 400을 반환한다")
-    void rejectsRecurrenceWithoutStartAt() throws Exception {
+    @DisplayName("시작일시 없이 반복을 걸면 오늘부터 시작한다")
+    void fillsTodayForRecurrenceWithoutStartAt() throws Exception {
+        // 반복은 첫 회차를 기준으로 펼쳐 날짜가 있어야 한다. 없으면 오늘로 본다
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "title": "운동",
                                   "recurrence": { "freq": "DAILY" } }"""))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isCreated());
     }
 
     // --- 헬퍼 -------------------------------------------------------------

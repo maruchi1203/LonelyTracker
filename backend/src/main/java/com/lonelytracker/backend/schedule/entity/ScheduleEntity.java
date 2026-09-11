@@ -1,11 +1,14 @@
 package com.lonelytracker.backend.schedule.entity;
 
 import com.lonelytracker.backend.common.FieldLengths;
+import com.lonelytracker.backend.schedule.domain.SchedulePriority;
 import com.lonelytracker.backend.user.entity.UserEntity;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -24,6 +27,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -128,6 +132,37 @@ public class ScheduleEntity {
     private LocalDateTime completedAt;
 
     /**
+     * 상위 일정
+     * 연관이 아니라 id로 둔다. 응답이 id만 쓰고, 지연 로딩 사고를 만들지 않는다
+     * 부모가 지워지면 DB가 NULL로 되돌려 자식은 최상위가 된다
+     */
+    @Column(name = "parent_id")
+    private Long parentId;
+
+    /**
+     * 기한
+     * 언제까지 해내야 하는가. 언제 시작하는가({@code startAt})와는 다르다
+     */
+    @Column(name = "due_on")
+    private LocalDate dueOn;
+
+    /**
+     * MoSCoW 우선순위
+     * 없으면 COULD 로 본다. 기본값을 두지 않아 아직 안 정한 것과 구분된다
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 10)
+    private SchedulePriority priority;
+
+    /**
+     * 형제 사이의 순서
+     * 최상위끼리는 부모가 없는 한 무리로 본다
+     */
+    @Column(name = "display_order", nullable = false)
+    @Builder.Default
+    private int displayOrder = 0;
+
+    /**
      * 등록일시
      */
     @CreatedDate
@@ -152,19 +187,50 @@ public class ScheduleEntity {
      * @param tags            태그
      * @param place           수행 장소
      * @param twoMinuteAction 2분 행동
+     * @param parentId        상위 일정
+     * @param dueOn           기한
+     * @param priority        MoSCoW 우선순위
      */
     /**
      * 완료 여부를 바꾼다.
      *
      * @param completed 풀면 완료 시각이 지워진다
      */
+    /**
+     * 형제 사이의 자리를 바꾼다
+     * 무리 전체를 다시 매기므로 값 하나만 바뀌는 일은 없다
+     */
+    public void changeDisplayOrder(int displayOrder) {
+        this.displayOrder = displayOrder;
+    }
+
+    /**
+     * 상위를 바꾼다
+     *
+     * @param parentId null이면 최상위가 된다
+     */
+    public void changeParent(Long parentId) {
+        this.parentId = parentId;
+    }
+
     public void changeCompletion(boolean completed) {
         this.completedAt = completed ? LocalDateTime.now() : null;
     }
 
+    /**
+     * 완료 시각을 지정해 바꾼다
+     * 부모와 자손이 같은 시각을 갖게 해 딸려 완료된 것을 나중에 골라낸다
+     *
+     * @param at 풀면 쓰이지 않는다
+     */
+    public void changeCompletion(boolean completed, LocalDateTime at) {
+        this.completedAt = completed ? at : null;
+    }
+
     public void update(String title, String description, LocalDateTime startAt,
             Integer durationMinutes, boolean allDay, Set<String> tags,
-            String place, String twoMinuteAction) {
+            String place, String twoMinuteAction, Long parentId, LocalDate dueOn,
+            SchedulePriority priority) {
         this.title = title;
         this.description = description;
         this.startAt = startAt;
@@ -173,5 +239,8 @@ public class ScheduleEntity {
         this.tags = (tags == null) ? new HashSet<>() : new HashSet<>(tags);
         this.place = place;
         this.twoMinuteAction = twoMinuteAction;
+        this.parentId = parentId;
+        this.dueOn = dueOn;
+        this.priority = priority;
     }
 }

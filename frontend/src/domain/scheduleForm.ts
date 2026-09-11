@@ -1,10 +1,24 @@
 import type { ParsedSchedule } from "../types/parse";
 import type {
   RecurrenceFreq,
+  SchedulePriority,
   ScheduleCreateRequest,
+  ScheduleDetailResponse,
   Weekday,
 } from "../types/schedule";
 import { toLocalDate, toLocalDateTime } from "../utils/datetime";
+
+/**
+ * 탭마다 쓰는 칸이 달라 검증 절차와 화면이 이 값을 확인함
+ */
+export type FormVariant = "list" | "calendar" | "habit";
+
+/**
+ * 일정의 종류. 폼이 이걸로 갈라지고, 고른 종류가 안 쓰는 칸은 보내지도 않는다
+ *
+ * simple 한 번에 끝나는 일 · period 시작과 끝이 있는 일 · repeat 되풀이하는 일
+ */
+export type FormKind = "simple" | "period" | "repeat";
 
 /** 백엔드에 아직 MONTHLY 가 없다. 화면에서 자리만 잡아두고 보내지 않는다 */
 export type FormFreq = RecurrenceFreq | "MONTHLY";
@@ -21,7 +35,9 @@ export type FormFieldId =
   | "byWeekday"
   | "byMonthDay"
   | "place"
-  | "twoMinuteAction";
+  | "dueOn"
+  | "priority"
+  | "parentId";
 
 /**
  * 입력 폼이 다루는 모델. 날짜와 시각을 따로 둔다.
@@ -31,24 +47,43 @@ export type FormFieldId =
  */
 export interface ScheduleForm {
   title: string;
-  repeating: boolean;
+  kind: FormKind;
   freq: FormFreq;
   tags: string[];
   /** "YYYY-MM-DD" */
   startDate: string;
   /** "HH:mm". 비면 하루 종일 */
   startTime: string;
+  /** 기간에서만 쓴다. 언제 끝나는 일인가 */
   endDate: string;
   endTime: string;
-  /** 반복일 때만 쓴다. "HH" 와 "mm" 을 따로 받는다 */
+  /**
+   * 반복이 끝나는 날
+   * 폼에서는 빠졌지만 값은 계속 들고 다닌다. 안 실으면 이미 정해둔 끝이 지워진다
+   */
+  repeatEndsOn: string;
+  /**
+   * 반복 한 회차의 소요시간. "HH" 와 "mm" 을 따로 받는다
+   * 폼에서는 빠졌지만 같은 이유로 값은 들고 다닌다
+   */
   durationHours: string;
   durationMins: string;
   byWeekday: Weekday[];
   /** MONTHLY 용. 백엔드가 받기 전까지 쓰이지 않는다 */
   byMonthDay: number[];
   place: string;
-  /** 시작에 필요한 2분 이내의 미니 행동 */
+  /**
+   * 2분 행동
+   * 일정 폼에서는 빠졌지만 값은 계속 들고 다닌다
+   * PUT 이 통째로 덮어쓰므로 안 실으면 이미 적어둔 값이 지워진다
+   */
   twoMinuteAction: string;
+  /** "YYYY-MM-DD". 언제까지 해내야 하나 */
+  dueOn: string;
+  /** 상위 일정 id. 빈 문자열이면 최상위 */
+  parentId: string;
+  /** 빈 문자열이면 아직 안 정한 것이다. COULD 로 정한 것과 구분된다 */
+  priority: SchedulePriority | "";
 }
 
 /** 지금 이후의 가장 가까운 정각 */
@@ -61,19 +96,23 @@ function nextHourTime(): string {
 export function emptyForm(defaultDate?: Date | null): ScheduleForm {
   return {
     title: "",
-    repeating: false,
+    kind: "simple",
     freq: "WEEKLY",
     tags: [],
     startDate: toLocalDate(defaultDate ?? new Date()),
     startTime: nextHourTime(),
     endDate: "",
     endTime: "",
+    repeatEndsOn: "",
     durationHours: "",
     durationMins: "",
     byWeekday: [],
     byMonthDay: [],
     place: "",
     twoMinuteAction: "",
+    dueOn: "",
+    parentId: "",
+    priority: "",
   };
 }
 
@@ -81,10 +120,15 @@ export function emptyForm(defaultDate?: Date | null): ScheduleForm {
 const splitDateTime = (value: string | undefined): [string, string] =>
   value ? [value.slice(0, 10), value.slice(11, 16)] : ["", ""];
 
-//
+/**
+ * AI 가 읽은 문장을 폼 초안으로
+ *
+ * @param variant 리스트는 날짜 없이 둘 수 있다. 달력은 날짜가 없으면 화면에서 사라진다
+ */
 export function draftFromParsed(
   parsed: ParsedSchedule,
   fallbackDate: Date | null,
+  variant: FormVariant = "calendar",
 ): ScheduleForm {
   const base = emptyForm(fallbackDate);
   const [startDate, startTime] = splitDateTime(parsed.startAt);
@@ -94,20 +138,70 @@ export function draftFromParsed(
     ...base,
     title: parsed.title,
     tags: parsed.tags ?? [],
-    // 시작일을 비워두지 않는다. 못 채운 칸은 되물음이 따로 알려준다
-    startDate: startDate || base.startDate,
-    startTime: parsed.allDay ? "" : startTime || base.startTime,
-    // 반복이면 종료일자 칸은 반복이 끝나는 날을 뜻한다
-    endDate: parsed.recurrence ? (parsed.recurrence.endsOn ?? "") : endDate,
+    // 달력은 시작일을 비워두지 않는다. 못 채운 칸은 되물음이 따로 알려준다
+    // 리스트는 "언젠가 할 일"을 담는 곳이라 오늘로 채우면 없던 날짜가 생긴다
+    startDate: startDate || (variant === "list" ? "" : base.startDate),
+    startTime:
+      parsed.allDay || (variant === "list" && !startDate)
+        ? ""
+        : startTime || base.startTime,
+    endDate: parsed.recurrence ? "" : endDate,
     endTime: parsed.recurrence ? "" : endTime,
+    repeatEndsOn: parsed.recurrence?.endsOn ?? "",
     ...(parsed.recurrence
       ? splitDuration(minutesBetween(parsed.startAt, parsed.endAt))
       : { durationHours: "", durationMins: "" }),
-    repeating: Boolean(parsed.recurrence),
+    kind: kindOf(Boolean(parsed.recurrence), parsed.endAt, undefined),
     freq: parsed.recurrence?.freq ?? base.freq,
     byWeekday: parsed.recurrence?.byWeekday ?? [],
     place: parsed.place ?? "",
   };
+}
+
+/**
+ * 서버가 준 일정 하나를 폼으로 되돌린다
+ * 수정 폼이 지금 값을 띄우는 데 쓴다
+ */
+export function formFromDetail(detail: ScheduleDetailResponse): ScheduleForm {
+  const [startDate, startTime] = splitDateTime(detail.startAt);
+  const [endDate, endTime] = splitDateTime(detail.endAt);
+  const repeating = Boolean(detail.recurrence);
+
+  return {
+    ...emptyForm(),
+    title: detail.title,
+    kind: kindOf(repeating, detail.endAt, detail.dueOn),
+    freq: detail.recurrence?.freq ?? "WEEKLY",
+    tags: detail.tags ?? [],
+    // 날짜를 안 정한 항목이면 빈 칸으로 둔다. emptyForm 이 채운 오늘 날짜를 덮는다
+    startDate,
+    startTime: detail.allDay ? "" : startTime,
+    endDate: repeating ? "" : endDate,
+    endTime: repeating ? "" : endTime,
+    repeatEndsOn: detail.recurrence?.endsOn ?? "",
+    ...(repeating
+      ? splitDuration(minutesBetween(detail.startAt, detail.endAt))
+      : { durationHours: "", durationMins: "" }),
+    byWeekday: detail.recurrence?.byWeekday ?? [],
+    place: detail.place ?? "",
+    twoMinuteAction: detail.twoMinuteAction ?? "",
+    dueOn: detail.dueOn ?? "",
+    parentId: detail.parentId === undefined ? "" : String(detail.parentId),
+    priority: detail.priority ?? "",
+  };
+}
+
+/**
+ * 저장된 값에서 종류를 되짚는다
+ * 끝이나 마감이 있으면 기간이다. 둘 다 없으면 한 번에 끝나는 일로 본다
+ */
+function kindOf(
+  repeating: boolean,
+  endAt: string | undefined,
+  dueOn: string | undefined,
+): FormKind {
+  if (repeating) return "repeat";
+  return endAt || dueOn ? "period" : "simple";
 }
 
 /** 회차 사이의 가장 짧은 간격(시간). 반복 일정의 소요시간 상한이다 */
@@ -154,17 +248,29 @@ function splitDuration(total: number | undefined) {
   };
 }
 
-/** Form 먼저 확인 후 에러 띄우기 */
-export function formValidationError(form: ScheduleForm): string | null {
+/**
+ * Form 먼저 확인 후 에러 띄우기
+ *
+ * @param variant 리스트만 날짜 없이 저장할 수 있다
+ */
+export function formValidationError(
+  form: ScheduleForm,
+  variant: FormVariant = "calendar",
+): string | null {
   if (!form.title.trim()) return "제목을 채워 주세요.";
-  if (!form.startDate) return "시작일자를 채워 주세요.";
 
-  if (form.repeating) {
+  // 달력은 날짜가 없으면 회차가 0개라 화면에서 사라진다
+  // 반복은 첫 회차를 기준으로 펼치므로 리스트에서도 날짜가 필요하다
+  if (!form.startDate && (variant !== "list" || form.kind === "repeat")) {
+    return "시작일자를 채워 주세요.";
+  }
+
+  if (form.kind === "repeat") {
     if (form.freq === "MONTHLY") return "매월 반복은 아직 준비 중입니다.";
     if (form.freq === "WEEKLY" && form.byWeekday.length === 0) {
       return "반복할 요일을 하나 이상 골라 주세요.";
     }
-    if (form.endDate && form.endDate < form.startDate) {
+    if (form.repeatEndsOn && form.repeatEndsOn < form.startDate) {
       return "반복 종료일이 시작일보다 앞설 수 없습니다.";
     }
 
@@ -176,12 +282,16 @@ export function formValidationError(form: ScheduleForm): string | null {
         return `소요시간은 다음 회차가 시작하기 전에 끝나야 합니다. 최대 ${max / 60}시간.`;
       }
     }
-  } else if (form.endDate && form.endDate < form.startDate) {
-    return "종료일자가 시작일자보다 앞설 수 없습니다.";
+    return null;
   }
 
+  // 끝을 받는 것은 기간뿐이다. 간단은 시작만 적는다
+  if (form.kind !== "period") return null;
+
+  if (form.endDate && form.endDate < form.startDate) {
+    return "종료일자가 시작일자보다 앞설 수 없습니다.";
+  }
   if (
-    !form.repeating &&
     form.startTime &&
     form.endTime &&
     (form.endDate || form.startDate) === form.startDate &&
@@ -194,25 +304,34 @@ export function formValidationError(form: ScheduleForm): string | null {
 }
 
 export function formToCreateRequest(form: ScheduleForm): ScheduleCreateRequest {
-  const allDay = !form.startTime;
-  const startAt = `${form.startDate}T${form.startTime || "00:00"}:00`;
+  // 날짜를 안 정한 항목은 시작일시 없이 보낸다. 리스트에만 남는다
+  const dated = Boolean(form.startDate);
+  const allDay = dated && !form.startTime;
 
   return {
     title: form.title.trim(),
-    startAt,
+    startAt: dated
+      ? `${form.startDate}T${form.startTime || "00:00"}:00`
+      : undefined,
     endAt: endAtOf(form),
     allDay,
     tags: form.tags.length > 0 ? form.tags : undefined,
     place: form.place.trim() || undefined,
     twoMinuteAction: form.twoMinuteAction.trim() || undefined,
-    recurrence: form.repeating
-      ? {
-          // MONTHLY 는 검증에서 걸러진다
-          freq: form.freq as RecurrenceFreq,
-          byWeekday: form.freq === "WEEKLY" ? form.byWeekday : undefined,
-          endsOn: form.endDate || undefined,
-        }
-      : undefined,
+    // 마감을 받는 것은 기간뿐이다. 종류를 옮기면 적어둔 값도 함께 지운다
+    dueOn: form.kind === "period" ? form.dueOn || undefined : undefined,
+    parentId: form.parentId ? Number(form.parentId) : undefined,
+    // 빈 값을 그대로 보내면 "안 정함"이 사라진다
+    priority: form.priority || undefined,
+    recurrence:
+      form.kind === "repeat"
+        ? {
+            // MONTHLY 는 검증에서 걸러진다
+            freq: form.freq as RecurrenceFreq,
+            byWeekday: form.freq === "WEEKLY" ? form.byWeekday : undefined,
+            endsOn: form.repeatEndsOn || undefined,
+          }
+        : undefined,
   };
 }
 
@@ -222,7 +341,10 @@ export function formToCreateRequest(form: ScheduleForm): ScheduleCreateRequest {
  * 백엔드가 이걸 duration_minutes 로 바꿔 저장하므로 자정을 넘어도 된다
  */
 function endAtOf(form: ScheduleForm): string | undefined {
-  if (form.repeating) {
+  // 시작이 없으면 끝을 잴 기준이 없다. 백엔드도 같은 이유로 거부한다
+  if (!form.startDate) return undefined;
+
+  if (form.kind === "repeat") {
     const minutes = durationMinutesOf(form);
     if (minutes === undefined) return undefined;
     const end = new Date(`${form.startDate}T${form.startTime || "00:00"}:00`);
@@ -230,6 +352,8 @@ function endAtOf(form: ScheduleForm): string | undefined {
     return toLocalDateTime(end);
   }
 
+  // 간단은 끝을 안 받는다
+  if (form.kind !== "period") return undefined;
   if (!form.endDate && !form.endTime) return undefined;
 
   // 종료시각을 안 적었으면 그날 끝까지로 본다

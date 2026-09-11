@@ -48,6 +48,12 @@ public class ScheduleInstanceService {
 
         ScheduleProgressEntity progress = getOrCreate(scheduleId, onDate);
         progress.changeStatus(status);
+
+        // 이 회차가 끝나면 다음 회차가 올라온다. 그 밑의 일도 함께 다시 선다
+        if (status == ScheduleStatus.DONE) {
+            scheduleService.releaseDescendants(scheduleId);
+        }
+
         return toResponse(progressRepository.saveAndFlush(progress));
     }
 

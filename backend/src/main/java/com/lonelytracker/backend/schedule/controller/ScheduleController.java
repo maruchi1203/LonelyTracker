@@ -5,8 +5,10 @@ import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.schedule.dto.ScheduleCompletionRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleDetailResponse;
+import com.lonelytracker.backend.schedule.dto.ScheduleListItemResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleRecurringResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleParseRequest;
+import com.lonelytracker.backend.schedule.dto.ScheduleReorderRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleStatusRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleUpdateRequest;
@@ -76,6 +78,25 @@ public class ScheduleController {
     }
 
     /**
+     * 리스트 탭이 보는 일정
+     * 습관은 빠지고, 날짜를 안 정한 항목도 함께 온다
+     */
+    @GetMapping("/list")
+    public List<ScheduleListItemResponse> findForList() {
+        return scheduleService.findForList();
+    }
+
+    /**
+     * 형제 무리의 순서를 다시 정함
+     * 받은 차례대로 0부터 번호를 매김
+     */
+    @PatchMapping("/order")
+    public ResponseEntity<Void> reorder(@Valid @RequestBody ScheduleReorderRequest request) {
+        scheduleService.reorder(request.parentId(), request.ids());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
      * 반복 일정의 목록과 달성률
      */
     @GetMapping("/recurring")
@@ -103,7 +124,7 @@ public class ScheduleController {
      * @return
      */
     @PostMapping("/parse")
-    public ParsedSchedule parse(@Valid @RequestBody ScheduleParseRequest request) {
+    public List<ParsedSchedule> parse(@Valid @RequestBody ScheduleParseRequest request) {
         return scheduleParseService.parse(request.text());
     }
 

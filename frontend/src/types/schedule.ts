@@ -5,6 +5,12 @@ export type ScheduleStatus = "PLANNED" | "DONE" | "SKIPPED";
 export type RecurrenceFreq = "DAILY" | "WEEKLY";
 export type DeleteScope = "FUTURE" | "ALL";
 
+/**
+ * MoSCoW 우선순위
+ * 값이 없으면 COULD 로 본다. 기본값을 두지 않아 "아직 안 정함"과 구분된다
+ */
+export type SchedulePriority = "MUST" | "SHOULD" | "COULD" | "WONT";
+
 /** java.time.DayOfWeek에 대응되는 요일 이름 */
 export type Weekday =
   | "MONDAY"
@@ -35,6 +41,8 @@ export interface ScheduleResponse {
   /** "YYYY-MM-DDTHH:mm:ss". 타임존 표기가 없다. 없으면 리스트에만 있는 항목이다 */
   startAt?: string;
   endAt?: string;
+  /** "YYYY-MM-DD". 언제까지 해내야 하나. 시작과 다른 색으로 따로 선다 */
+  dueOn?: string;
   allDay: boolean;
   /** 습관(반복)의 회차인지. 완료를 어느 경로로 보낼지가 여기서 갈린다 */
   recurring: boolean;
@@ -44,6 +52,39 @@ export interface ScheduleResponse {
   /** 일정 단위 값이라 어느 회차를 봐도 같다 */
   place?: string;
   /** 시작에 필요한 2분 이내의 미니 행동. 이것도 일정 단위 값이다 */
+  twoMinuteAction?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * 리스트 탭의 한 줄. 회차가 아니라 일정 자체다.
+ * 습관은 이 목록에 오지 않아 회차도 상태도 없다.
+ */
+export interface ScheduleListItem {
+  id: number;
+  /** 상위 일정. 없으면 최상위다 */
+  parentId?: number;
+  /** 형제 사이의 순서. 아직 정한 적이 없으면 0이다 */
+  displayOrder: number;
+  title: string;
+  description?: string;
+  /** "YYYY-MM-DD". 언제까지 해내야 하나 */
+  dueOn?: string;
+  /** "YYYY-MM-DDTHH:mm:ss". 없으면 아직 언제 할지 안 정한 항목이다 */
+  startAt?: string;
+  /** 값이 있으면 완료다. 습관은 회차마다 상태를 가져 늘 비어 있다 */
+  completedAt?: string;
+  /** 반복 규칙이 붙었는지. 완료를 어느 경로로 보낼지가 여기서 갈린다 */
+  recurring: boolean;
+  /** "YYYY-MM-DD". 반복이면 아직 안 끝낸 가장 빠른 회차. 끝내면 다음 것이 올라온다 */
+  occurrenceOn?: string;
+  /** 반복이면 그 규칙. 규칙을 적고 회차를 앞뒤로 세는 데 쓴다 */
+  recurrence?: RecurrenceResponse;
+  /** 없으면 COULD 로 본다. WONT 은 흐리게 남고 달력에서는 빠진다 */
+  priority?: SchedulePriority;
+  tags?: string[];
+  place?: string;
   twoMinuteAction?: string;
   createdAt: string;
   updatedAt: string;
@@ -67,7 +108,52 @@ export interface ScheduleCreateRequest {
   tags?: string[];
   place?: string;
   twoMinuteAction?: string;
+  /** 상위 일정. 3단을 넘기면 서버가 들어갈 수 있는 자리로 눌러 앉힌다 */
+  parentId?: number;
+  /** "YYYY-MM-DD" */
+  dueOn?: string;
+  priority?: SchedulePriority;
   recurrence?: RecurrenceRequest;
+}
+
+/**
+ * 수정 요청. 만들기와 필드가 같다.
+ * 백엔드의 두 record 가 같은 모양이라 별칭으로 둔다.
+ *
+ * 준 것으로 통째로 덮어쓴다 — recurrence 를 빼면 반복이 지워진다
+ */
+export type ScheduleUpdateRequest = ScheduleCreateRequest;
+
+/** 반복 규칙. 요청과 같은 모양이라 읽은 값을 그대로 다시 보낼 수 있다 */
+export interface RecurrenceResponse {
+  freq: RecurrenceFreq;
+  byWeekday?: Weekday[];
+  endsOn?: string;
+}
+
+/**
+ * 일정 하나. 회차가 아니라 일정 자체의 값이고 수정 폼이 읽는다.
+ * 수정 요청에 읽기 전용 셋(id, createdAt, updatedAt)을 더한 것이다.
+ *
+ * endAt 은 저장된 값이 아니라 시작에 소요시간을 더한 계산값이다
+ */
+export interface ScheduleDetailResponse {
+  id: number;
+  title: string;
+  description?: string;
+  startAt?: string;
+  endAt?: string;
+  allDay: boolean;
+  tags?: string[];
+  place?: string;
+  twoMinuteAction?: string;
+  parentId?: number;
+  dueOn?: string;
+  priority?: SchedulePriority;
+  /** 없으면 1회성 일정이다 */
+  recurrence?: RecurrenceResponse;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /** 회차 하나만 고친다. 준 것만 바뀌고, 생략하면 일정의 값으로 되돌아간다 */

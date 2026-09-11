@@ -7,8 +7,15 @@ export const MAX_LANES = 4
 
 const DAYS_PER_WEEK = 7
 
+/** 같은 자리를 다툴 때의 차례. 시작이 기한보다 위에 선다 */
+const KIND_ORDER: Record<LaneKind, number> = { span: 0, due: 1 }
+
+/** 같은 일정이라도 시작과 기한은 서로 다른 띠로 선다 */
+export type LaneKind = 'span' | 'due'
+
 export interface LaneSlot {
   instance: ScheduleResponse
+  kind: LaneKind
   /** 이 주에서 띠가 시작하는 날 */
   isStart: boolean
   /** 이 주에서 띠가 끝나는 날 */
@@ -24,6 +31,7 @@ export interface DayLanes {
 
 interface Segment {
   instance: ScheduleResponse
+  kind: LaneKind
   /** 주 안에서의 칸 번호 (0~6) */
   from: number
   to: number
@@ -43,18 +51,27 @@ export function assignLanes(
 ): Map<string, DayLanes> {
   const result = new Map<string, DayLanes>()
 
-  // 회차 하나가 걸치는 날짜를 미리 구해둔다
-  const spans = instances.map((instance) => ({
-    instance,
-    keys: new Set(instanceDateKeys(instance)),
-  }))
+  // 회차 하나가 걸치는 날짜를 미리 구해둔다.
+  // 기한은 걸치지 않고 하루에만 서므로 따로 담는다
+  const spans = instances.flatMap((instance) => {
+    const parts: { instance: ScheduleResponse; kind: LaneKind; keys: Set<string> }[] = []
+
+    const covered = instanceDateKeys(instance)
+    if (covered.length > 0) {
+      parts.push({ instance, kind: 'span', keys: new Set(covered) })
+    }
+    if (instance.dueOn) {
+      parts.push({ instance, kind: 'due', keys: new Set([instance.dueOn]) })
+    }
+    return parts
+  })
 
   for (let offset = 0; offset < days.length; offset += DAYS_PER_WEEK) {
     const week = days.slice(offset, offset + DAYS_PER_WEEK)
     const weekKeys = week.map(toLocalDate)
 
     const segments: Segment[] = []
-    for (const { instance, keys } of spans) {
+    for (const { instance, kind, keys } of spans) {
       const covered = weekKeys
         .map((key, i) => (keys.has(key) ? i : -1))
         .filter((i) => i >= 0)
@@ -62,6 +79,7 @@ export function assignLanes(
       if (covered.length > 0) {
         segments.push({
           instance,
+          kind,
           from: covered[0],
           to: covered[covered.length - 1],
         })
@@ -85,7 +103,9 @@ function place(
     (a, b) =>
       a.from - b.from ||
       b.to - b.from - (a.to - a.from) ||
-      instanceKey(a.instance).localeCompare(instanceKey(b.instance)),
+      instanceKey(a.instance).localeCompare(instanceKey(b.instance)) ||
+      // 같은 날이면 시작이 위, 기한이 아래다. 읽는 차례와 맞춘다
+      KIND_ORDER[a.kind] - KIND_ORDER[b.kind],
   )
 
   const taken: boolean[][] = []
@@ -110,6 +130,7 @@ function place(
       while (lanes.length <= lane) lanes.push(null)
       lanes[lane] = {
         instance: segment.instance,
+        kind: segment.kind,
         isStart: i === segment.from,
         isEnd: i === segment.to,
       }

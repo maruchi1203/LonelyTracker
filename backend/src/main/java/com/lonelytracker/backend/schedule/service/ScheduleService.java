@@ -4,6 +4,7 @@ import com.lonelytracker.backend.common.exception.NotFoundException;
 import com.lonelytracker.backend.schedule.dto.ScheduleRecurrenceRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleDetailResponse;
+import com.lonelytracker.backend.schedule.dto.ScheduleListItemResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleRecurringResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleUpdateRequest;
@@ -16,14 +17,19 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import com.lonelytracker.backend.schedule.domain.ScheduleDeleteScope;
 import com.lonelytracker.backend.schedule.domain.ScheduleInstanceExpander;
 import com.lonelytracker.backend.schedule.domain.ScheduleStatsCounter;
 import com.lonelytracker.backend.schedule.domain.ScheduleUtil;
+import com.lonelytracker.backend.schedule.domain.SchedulePriority;
 import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
 import com.lonelytracker.backend.schedule.entity.ScheduleEntity;
 import com.lonelytracker.backend.schedule.entity.ScheduleProgressEntity;
@@ -46,6 +52,12 @@ public class ScheduleService {
 
     /** 조회 조건이 없을 때 이번 주 월요일부터 볼 주 수 */
     private static final int DEFAULT_WEEKS = 4;
+
+    /** 계층의 최대 깊이. 최상위부터 손자까지다 */
+    private static final int MAX_DEPTH = 3;
+
+    /** 가장 깊이 앉을 수 있는 자리. 최상위를 0으로 센다 */
+    private static final int DEEPEST = MAX_DEPTH - 1;
 
     private final ScheduleRepository scheduleRepository;
     private final ScheduleRecurRepository recurRepository;
@@ -79,7 +91,8 @@ public class ScheduleService {
 
         // 조건에 맞는 일정 후보 전체 검색
         List<ScheduleEntity> candidates = scheduleRepository.findCandidates(
-                userId, windowFrom, windowTo, windowFrom.toLocalDate(), windowTo.toLocalDate());
+                userId, SchedulePriority.WONT,
+                windowFrom, windowTo, windowFrom.toLocalDate(), windowTo.toLocalDate());
         if (candidates.isEmpty()) {
             return List.of();
         }
@@ -103,24 +116,210 @@ public class ScheduleService {
     }
 
     /**
-     * 반복 일정 전부와 최근 성적
-     */
-    /**
      * 1회성 일정을 완료하거나 되돌린다.
+     * 딸린 자손도 함께 따라간다.
      *
-     * @throws IllegalArgumentException 습관이면. 습관은 회차마다 상태를 갖는다
+     * @throws IllegalArgumentException 반복이면. 반복은 회차마다 상태를 갖는다
      */
     @Transactional
     public ScheduleResponse changeCompletion(Long id, boolean completed) {
+        //
         ScheduleEntity schedule = getOwnedOrThrow(id);
         if (recurRepository.existsById(id)) {
             throw new IllegalArgumentException(
-                    "습관은 회차마다 상태를 바꿔 주세요");
+                    "반복 일정은 회차마다 상태를 바꿔 주세요");
         }
 
-        schedule.changeCompletion(completed);
+        // 되돌릴 때 딸려 완료된 자손만 고르려면 바꾸기 전 시각이 필요하다
+        LocalDateTime mark = completed ? LocalDateTime.now() : schedule.getCompletedAt();
+
+        schedule.changeCompletion(completed, mark);
+        cascadeCompletion(id, completed, mark);
         scheduleRepository.saveAndFlush(schedule);
         return firstInstanceOf(schedule);
+    }
+
+    /**
+     * 자손도 함께 완료하거나 되돌린다.
+     * 되돌릴 때는 부모와 같은 시각에 딸려 완료된 자손만 푼다.
+     * 먼저 완료해 둔 자손은 시각이 달라 그대로 남는다.
+     *
+     * @param mark 완료면 새로 찍을 시각, 되돌리기면 부모가 갖고 있던 시각
+     */
+    private void cascadeCompletion(Long id, boolean completed, LocalDateTime mark) {
+        if (mark == null) {
+            return;
+        }
+
+        List<Long> descendants = descendantIdsOf(id);
+        if (descendants.isEmpty()) {
+            return;
+        }
+
+        scheduleRepository.findAllById(descendants).stream()
+                .filter(d -> completed || mark.equals(d.getCompletedAt()))
+                .forEach(d -> d.changeCompletion(completed, mark));
+    }
+
+    /**
+     * 딸린 자손의 완료를 모두 푼다.
+     * 반복이 다음 회차로 넘어가면 그 밑의 일도 다시 해야 한다.
+     * 언제 끝냈는지는 보지 않는다. 회차가 바뀌면 지난 회차의 완료는 뜻을 잃는다.
+     */
+    @Transactional
+    void releaseDescendants(Long id) {
+        List<Long> descendants = descendantIdsOf(id);
+        if (descendants.isEmpty()) {
+            return;
+        }
+
+        scheduleRepository.findAllById(descendants)
+                .forEach(d -> d.changeCompletion(false, null));
+    }
+
+    /** 그 일정 밑에 딸린 것 전부. 계층이 3단이라 두 번 내려가면 바닥이다 */
+    private List<Long> descendantIdsOf(Long id) {
+        List<Long> children = scheduleRepository.findIdsByParentIdIn(List.of(id));
+        if (children.isEmpty()) {
+            return List.of();
+        }
+        return Stream.concat(children.stream(),
+                scheduleRepository.findIdsByParentIdIn(children).stream()).toList();
+    }
+
+    /**
+     * 리스트 탭이 보는 일정. 습관은 빠진다.
+     * 회차가 아니라 일정 자체라 날짜를 안 정한 항목도 함께 온다.
+     */
+    public List<ScheduleListItemResponse> findForList() {
+        List<ScheduleEntity> schedules = scheduleRepository
+                .findForList(currentUserProvider.get().getId());
+
+        // 규칙이 있어야 회차를 셀 수 있다. 없으면 1회성이라 완료 시각 하나로 끝난다
+        Map<Long, ScheduleRecurEntity> recurs = recurRepository
+                .findByScheduleIds(schedules.stream().map(ScheduleEntity::getId).toList())
+                .stream()
+                .collect(Collectors.toMap(ScheduleRecurEntity::getScheduleId, r -> r));
+
+        LocalDate today = LocalDate.now();
+        Map<Long, Set<LocalDate>> doneDates = doneDatesFrom(recurs.keySet(), today);
+
+        return schedules.stream()
+                .sorted(LIST_ORDER)
+                .map(s -> {
+                    ScheduleRecurEntity recur = recurs.get(s.getId());
+                    return ScheduleListItemResponse.from(s, recur,
+                            ScheduleUtil.currentOccurrence(s, recur,
+                                    doneDates.getOrDefault(s.getId(), Set.of()), today));
+                })
+                .toList();
+    }
+
+    /**
+     * 오늘 이후로 이미 끝낸 회차 날짜.
+     * 지난 회차는 보지 않는다. 리스트가 세는 회차가 오늘부터라 쓸 데가 없다.
+     */
+    private Map<Long, Set<LocalDate>> doneDatesFrom(Set<Long> recurringIds, LocalDate today) {
+        if (recurringIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return progressRepository
+                .findByScheduleIdInAndOnDateGreaterThanEqual(List.copyOf(recurringIds), today)
+                .stream()
+                .filter(p -> p.getStatus() == ScheduleStatus.DONE)
+                .collect(Collectors.groupingBy(
+                        p -> p.getSchedule().getId(),
+                        Collectors.mapping(ScheduleProgressEntity::getOnDate,
+                                Collectors.toSet())));
+    }
+
+    /**
+     * 리스트가 늘어놓는 순서. 사용자가 세운 순서 그대로다.
+     * 날짜로 줄 세우는 것은 화면이 켜고 끄는 보기 방식이라 여기서 섞지 않는다.
+     * <p>
+     * 이 순서로 두면 화면이 부모로 묶을 때 무리 안의 순서가 그대로 보존된다.
+     * 아직 순서를 정한 적이 없으면 값이 모두 0이라 만든 순서로 남는다.
+     */
+    private static final Comparator<ScheduleEntity> LIST_ORDER =
+            Comparator.comparingInt(ScheduleEntity::getDisplayOrder)
+                    .thenComparing(ScheduleEntity::getId);
+
+    /**
+     * 형제 무리를 다시 세운다.
+     * 받은 차례대로 0부터 부여한다. 사이 값을 쓰지 않아 값이 촘촘해질 일이 없다.
+     * <p>
+     * ids는 그 무리의 최종 구성원이다. 밖에 있던 일정이 섞여 있으면 이 무리로 데려온다.
+     * 무리를 떠나는 일은 데려가는 쪽 요청이 맡는다. 그래야 어느 요청에도 안 담기는 일정이 없다.
+     *
+     * @param parentId null이면 최상위 무리
+     * @throws IllegalArgumentException 원래 있던 일정이 빠졌거나, 데려올 수 없는 일정이 섞였을 때
+     */
+    @Transactional
+    public void reorder(Long parentId, List<Long> ids) {
+        Long userId = currentUserProvider.get().getId();
+
+        // 상위를 먼저 확인한다. 남의 일정 밑을 들여다볼 수 없어야 한다
+        if (parentId != null) {
+            getOwnedOrThrow(parentId);
+
+            // 여기서 눌러 앉히면 요청한 무리가 아닌 곳에 서게 된다
+            if (depthOf(parentId, null) >= DEEPEST) {
+                throw new IllegalArgumentException("3단보다 깊이 넣을 수 없습니다");
+            }
+        }
+
+        Set<Long> wanted = new HashSet<>(ids);
+        if (wanted.size() != ids.size()) {
+            throw new IllegalArgumentException("같은 일정을 두 번 보낼 수 없습니다");
+        }
+
+        List<ScheduleEntity> siblings = scheduleRepository.findSiblings(userId, parentId);
+        Map<Long, ScheduleEntity> byId = new HashMap<>();
+        siblings.forEach(s -> byId.put(s.getId(), s));
+
+        // 원래 있던 것이 빠지면 그 자리가 비어 어디에 설지 정할 수 없다
+        if (!wanted.containsAll(byId.keySet())) {
+            throw new IllegalArgumentException(
+                    "그 무리의 일정 전부를 한 번에 보내 주세요");
+        }
+
+        List<ScheduleEntity> group = ids.stream()
+                .map(id -> byId.containsKey(id) ? byId.get(id) : moveIn(id, parentId))
+                .toList();
+
+        for (int i = 0; i < group.size(); i++) {
+            group.get(i).changeDisplayOrder(i);
+        }
+        scheduleRepository.saveAll(group);
+    }
+
+    /**
+     * 다른 무리에 있던 일정을 이 무리로 데려온다.
+     * 딸린 자손이 함께 내려와 3단을 넘치면 끌어올린다.
+     *
+     * @param parentId null이면 최상위로 꺼내는 것이라 걸릴 것이 없다
+     */
+    private ScheduleEntity moveIn(Long id, Long parentId) {
+        ScheduleEntity moving = getOwnedOrThrow(id);
+
+        if (parentId != null) {
+            if (id.equals(parentId)) {
+                throw new IllegalArgumentException("자기 자신을 상위 일정으로 둘 수 없습니다");
+            }
+
+            // 반복은 완료 시각이 회차마다라 부모의 완료가 닿을 곳이 없다
+            if (recurRepository.existsById(id)) {
+                throw new IllegalArgumentException("반복 일정은 상위 일정을 가질 수 없습니다");
+            }
+
+            // 올라가다 자기를 만나면 순환이다. 이건 눌러서 풀 수 없다
+            depthOf(parentId, id);
+        }
+
+        moving.changeParent(parentId);
+        flattenBelow(id, parentId);
+        return moving;
     }
 
     /** 이미 쓴 적 있는 태그 이름. 입력 자동완성이 쓴다 */
@@ -172,17 +371,23 @@ public class ScheduleService {
     @Transactional
     public ScheduleResponse create(ScheduleCreateRequest request) {
         ScheduleUtil.validatePeriod(request.startAt(), request.endAt());
+        Long parentId = resolveParent(null, request.parentId(), request.recurrence() != null);
+
+        LocalDateTime startAt = startOf(request.startAt(), request.recurrence() != null);
 
         ScheduleEntity schedule = scheduleRepository.save(ScheduleEntity.builder()
                 .user(currentUserProvider.get())
                 .title(request.title())
                 .description(request.description())
-                .startAt(request.startAt())
-                .durationMinutes(ScheduleUtil.toMinutes(request.startAt(), request.endAt()))
-                .allDay(Boolean.TRUE.equals(request.allDay()))
+                .startAt(startAt)
+                .durationMinutes(ScheduleUtil.toMinutes(startAt, request.endAt()))
+                .allDay(Boolean.TRUE.equals(request.allDay()) || filledIn(request.startAt(), startAt))
                 .tags(ScheduleUtil.normalizeTags(request.tags()))
                 .place(request.place())
                 .twoMinuteAction(request.twoMinuteAction())
+                .parentId(parentId)
+                .dueOn(request.dueOn())
+                .priority(request.priority())
                 .build());
 
         if (request.recurrence() != null) {
@@ -202,26 +407,36 @@ public class ScheduleService {
         ScheduleUtil.validatePeriod(request.startAt(), request.endAt());
 
         ScheduleEntity schedule = getOwnedOrThrow(id);
+
+        // 거부될 요청이 다른 칸을 먼저 바꿔 놓지 않도록 손대기 전에 검사한다
+        Long parentId = resolveParent(id, request.parentId(), request.recurrence() != null);
+
         LocalDate oldDate = (schedule.getStartAt() == null)
                 ? null
                 : schedule.getStartAt().toLocalDate();
 
+        LocalDateTime startAt = startOf(request.startAt(), request.recurrence() != null);
+
         schedule.update(
                 request.title(),
                 request.description(),
-                request.startAt(),
-                ScheduleUtil.toMinutes(request.startAt(), request.endAt()),
-                Boolean.TRUE.equals(request.allDay()),
+                startAt,
+                ScheduleUtil.toMinutes(startAt, request.endAt()),
+                Boolean.TRUE.equals(request.allDay()) || filledIn(request.startAt(), startAt),
                 ScheduleUtil.normalizeTags(request.tags()),
                 request.place(),
-                request.twoMinuteAction());
+                request.twoMinuteAction(),
+                parentId,
+                request.dueOn(),
+                request.priority());
+
+        // 딸린 자손이 함께 내려가 3단을 넘길 수 있다
+        flattenBelow(id, parentId);
 
         applyRecurChange(schedule, request.recurrence());
 
         // 1회성 일정의 날짜를 옮기면 회차 기록의 onDate도 따라가야 한다
-        LocalDate newDate = (request.startAt() == null)
-                ? null
-                : request.startAt().toLocalDate();
+        LocalDate newDate = (startAt == null) ? null : startAt.toLocalDate();
         if (!recurRepository.existsById(id) && oldDate != null && newDate != null
                 && !oldDate.equals(newDate)) {
             progressRepository.findByScheduleIdAndOnDate(id, oldDate)
@@ -260,6 +475,10 @@ public class ScheduleService {
             return;
         }
 
+        // DB의 ON DELETE SET NULL을 Hibernate는 모른다. 딸린 일정을 먼저 최상위로 올린다
+        scheduleRepository.findAllById(scheduleRepository.findIdsByParentIdIn(List.of(id)))
+                .forEach(child -> child.changeParent(null));
+
         // DB의 ON DELETE CASCADE를 Hibernate는 모른다. 자식을 먼저 지워야 flush에서 안 터진다
         progressRepository.deleteByScheduleId(id);
         if (recur != null) {
@@ -276,6 +495,123 @@ public class ScheduleService {
         return scheduleRepository.findById(id)
                 .filter(s -> s.getUser().getId().equals(userId))
                 .orElseThrow(() -> new NotFoundException("일정을 찾을 수 없습니다. id=" + id));
+    }
+
+    /**
+     * 저장할 시작일시.
+     * 반복은 첫 회차를 기준으로 펼치므로 날짜가 없으면 오늘부터 시작한 것으로 본다.
+     *
+     * @param recurring 이 요청이 끝난 뒤 반복이 되는지
+     */
+    private static LocalDateTime startOf(LocalDateTime startAt, boolean recurring) {
+        if (startAt != null || !recurring) {
+            return startAt;
+        }
+        return LocalDate.now().atStartOfDay();
+    }
+
+    /** 우리가 채워 넣은 날짜인지. 시각을 안 정한 것이라 하루 종일로 둔다 */
+    private static boolean filledIn(LocalDateTime asked, LocalDateTime startAt) {
+        return asked == null && startAt != null;
+    }
+
+    /**
+     * 실제로 앉을 상위를 정한다.
+     * 깊이는 거부하지 않고 눌러 맞춘다. 나머지는 눌러도 말이 되지 않아 막는다.
+     *
+     * @param selfId        만드는 중이면 null
+     * @param selfRecurring 이 요청이 끝난 뒤 습관이 되는지
+     * @return 3단 안으로 눌러 앉힌 상위. 최상위면 null
+     */
+    private Long resolveParent(Long selfId, Long parentId, boolean selfRecurring) {
+        if (parentId == null) {
+            return null;
+        }
+
+        // 반복은 완료 시각이 회차마다라 부모의 완료가 닿을 곳이 없다
+        if (selfRecurring) {
+            throw new IllegalArgumentException("반복 일정은 상위 일정을 가질 수 없습니다");
+        }
+        if (parentId.equals(selfId)) {
+            throw new IllegalArgumentException("자기 자신을 상위 일정으로 둘 수 없습니다");
+        }
+
+        // 남의 일정은 없는 것으로 취급한다. 400을 내면 그 일정의 존재가 새어 나간다
+        getOwnedOrThrow(parentId);
+
+        // 올라가다 자기를 만나면 순환이다. 이건 눌러서 풀 수 없다
+        depthOf(parentId, selfId);
+
+        return clampParent(parentId);
+    }
+
+    /**
+     * 3단 안으로 눌러 앉힌 상위.
+     * 지정한 자리가 너무 깊으면 그 위로 올라가 들어갈 수 있는 첫 자리를 쓴다.
+     */
+    private Long clampParent(Long parentId) {
+        Long cursor = parentId;
+        while (cursor != null && depthOf(cursor, null) >= DEEPEST) {
+            cursor = parentIdOf(cursor);
+        }
+        return cursor;
+    }
+
+    /**
+     * 옮겨 간 자리에서 넘치는 자손을 끌어올린다.
+     * 넘친 것은 자기 위쪽에서 깊이 1인 조상의 자식이 된다.
+     *
+     * @param parentId 눌러 앉힌 뒤의 상위. null이면 최상위라 넘칠 일이 없다
+     */
+    private void flattenBelow(Long selfId, Long parentId) {
+        if (parentId == null) {
+            return;
+        }
+        int depth = depthOf(parentId, null) + 1;
+
+        List<Long> children = scheduleRepository.findIdsByParentIdIn(List.of(selfId));
+        if (children.isEmpty()) {
+            return;
+        }
+        List<Long> grandChildren = scheduleRepository.findIdsByParentIdIn(children);
+
+        // 1단에 앉으면 손자부터, 2단에 앉으면 자식부터 넘친다
+        List<Long> overflow = (depth < DEEPEST)
+                ? grandChildren
+                : Stream.concat(children.stream(), grandChildren.stream()).toList();
+        if (overflow.isEmpty()) {
+            return;
+        }
+
+        // 1단에 앉았으면 자기가, 2단에 앉았으면 자기 상위가 깊이 1이다
+        Long anchor = (depth < DEEPEST) ? selfId : parentId;
+        scheduleRepository.findAllById(overflow)
+                .forEach(descendant -> descendant.changeParent(anchor));
+    }
+
+    /**
+     * 최상위까지의 거리. 최상위 자신은 0이다.
+     *
+     * @param selfId 올라가다 이것을 만나면 순환이다
+     * @throws IllegalArgumentException 순환일 때
+     */
+    private int depthOf(Long id, Long selfId) {
+        int depth = 0;
+        Long cursor = parentIdOf(id);
+
+        // 3단을 넘는 사슬은 만들어질 수 없다. 상한을 두어 깨진 데이터에도 멈춘다
+        while (cursor != null && depth < MAX_DEPTH) {
+            if (cursor.equals(selfId)) {
+                throw new IllegalArgumentException("상위 일정이 서로를 가리킬 수 없습니다");
+            }
+            depth++;
+            cursor = parentIdOf(cursor);
+        }
+        return depth;
+    }
+
+    private Long parentIdOf(Long id) {
+        return scheduleRepository.findById(id).map(ScheduleEntity::getParentId).orElse(null);
     }
 
     /** 그 일정이 그 날짜에 회차를 내는가. */
