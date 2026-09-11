@@ -264,10 +264,11 @@ describe('날짜 없는 리스트 항목', () => {
     expect(formValidationError(form({ startDate: '' }))).toMatch('시작일자')
   })
 
-  it('리스트라도 반복이면 시작일자가 필요하다', () => {
+  it('리스트에서는 반복도 시작일자 없이 넘어간다', () => {
+    // 날짜가 없으면 서버가 오늘로 채운다
     const f = form({ startDate: '', kind: 'repeat' as const, freq: 'DAILY' })
 
-    expect(formValidationError(f, 'list')).toMatch('시작일자')
+    expect(formValidationError(f, 'list')).toBeNull()
   })
 
   it('날짜를 비우면 startAt 도 endAt 도 보내지 않는다', () => {

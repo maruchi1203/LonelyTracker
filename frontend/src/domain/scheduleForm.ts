@@ -260,8 +260,7 @@ export function formValidationError(
   if (!form.title.trim()) return "제목을 채워 주세요.";
 
   // 달력은 날짜가 없으면 회차가 0개라 화면에서 사라진다
-  // 반복은 첫 회차를 기준으로 펼치므로 리스트에서도 날짜가 필요하다
-  if (!form.startDate && (variant !== "list" || form.kind === "repeat")) {
+  if (!form.startDate && variant !== "list") {
     return "시작일자를 채워 주세요.";
   }
 
