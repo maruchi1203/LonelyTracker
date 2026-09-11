@@ -25,15 +25,14 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
  * 재시도 규칙을 가짜 HTTP 서버에 붙여 실제 상태 코드로 검증한다.
  * Spring 컨텍스트를 띄우지 않으므로 Docker 없이 돈다.
  */
-class OpenAiRetryTest {
+class ChatCompletionsRetryTest {
 
-    private static final String ENDPOINT = "http://ai.test/responses";
+    private static final String ENDPOINT = "http://ai.test/chat/completions";
 
-    /** 성공 응답의 최소 형태. 봉투 모양은 OpenAiResponseShapeTest 가 본다. */
+    /** 성공 응답의 최소 형태. 봉투 모양은 ChatCompletionsShapeTest 가 본다. */
     private static final String OK_BODY = """
-            { "output": [ { "type": "message", "content": [
-                { "type": "output_text",
-                  "text": "{\\"schedules\\":[{\\"title\\":\\"운동\\",\\"startAt\\":\\"2026-09-01T07:00:00\\"}]}" } ] } ] }""";
+            { "choices": [ { "finish_reason": "stop", "message": { "role": "assistant",
+                "content": "{\\"schedules\\":[{\\"title\\":\\"운동\\",\\"startAt\\":\\"2026-09-01T07:00:00\\"}]}" } } ] }""";
 
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -42,7 +41,7 @@ class OpenAiRetryTest {
     void retriesOnTooManyRequests() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        OpenAiScheduleParser parser = parserWith(builder, 1);
+        AiScheduleParser parser = parserWith(builder, 1);
 
         server.expect(requestTo(ENDPOINT))
                 .andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
@@ -60,7 +59,7 @@ class OpenAiRetryTest {
     void doesNotRetryOnBadRequest() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        OpenAiScheduleParser parser = parserWith(builder, 2);
+        AiScheduleParser parser = parserWith(builder, 2);
 
         server.expect(requestTo(ENDPOINT)).andRespond(withStatus(HttpStatus.BAD_REQUEST));
 
@@ -72,11 +71,48 @@ class OpenAiRetryTest {
     }
 
     @Test
+    @DisplayName("거절 사유를 그대로 실어 준다")
+    void carriesRejectionReason() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        AiScheduleParser parser = parserWith(builder, 2);
+
+        String error = """
+                { "error": { "message": "Unsupported parameter: 'response_format'", "type": "invalid_request_error" } }""";
+        server.expect(requestTo(ENDPOINT))
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST)
+                        .body(error).contentType(MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> parser.parse(command()))
+                .isInstanceOf(AiParseException.class)
+                .hasMessageContaining("response_format");
+
+        server.verify();
+    }
+
+    @Test
+    @DisplayName("본문이 JSON 이 아니어도 원문을 줄여 싣는다")
+    void carriesPlainTextReason() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        AiScheduleParser parser = parserWith(builder, 2);
+
+        server.expect(requestTo(ENDPOINT))
+                .andRespond(withStatus(HttpStatus.BAD_REQUEST).body("model not found"));
+
+        assertThatThrownBy(() -> parser.parse(command()))
+                .isInstanceOf(AiParseException.class)
+                .hasMessageContaining("model not found");
+
+        server.verify();
+    }
+
+    @Test
     @DisplayName("401이면 재시도하지 않는다")
     void doesNotRetryOnUnauthorized() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        OpenAiScheduleParser parser = parserWith(builder, 2);
+        AiScheduleParser parser = parserWith(builder, 2);
 
         server.expect(requestTo(ENDPOINT)).andRespond(withStatus(HttpStatus.UNAUTHORIZED));
 
@@ -91,7 +127,7 @@ class OpenAiRetryTest {
     void givesUpAfterMaxRetries() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        OpenAiScheduleParser parser = parserWith(builder, 1);
+        AiScheduleParser parser = parserWith(builder, 1);
 
         // maxRetries=1 이면 최초 1회 + 재시도 1회 = 2회
         server.expect(requestTo(ENDPOINT))
@@ -109,7 +145,7 @@ class OpenAiRetryTest {
     void noRetryWhenDisabled() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        OpenAiScheduleParser parser = parserWith(builder, 0);
+        AiScheduleParser parser = parserWith(builder, 0);
 
         server.expect(requestTo(ENDPOINT))
                 .andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
@@ -124,7 +160,7 @@ class OpenAiRetryTest {
     void parsesSuccessfulResponse() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        OpenAiScheduleParser parser = parserWith(builder, 2);
+        AiScheduleParser parser = parserWith(builder, 2);
 
         server.expect(requestTo(ENDPOINT))
                 .andRespond(withSuccess(OK_BODY, MediaType.APPLICATION_JSON));
@@ -139,13 +175,13 @@ class OpenAiRetryTest {
     // --- 헬퍼 -------------------------------------------------------------
 
     /** 주어진 재시도 횟수로 파서를 만든다. 백오프가 실제로 잠들므로 횟수를 작게 잡는다. */
-    private OpenAiScheduleParser parserWith(RestClient.Builder builder, int maxRetries) {
+    private AiScheduleParser parserWith(RestClient.Builder builder, int maxRetries) {
         AppProperties properties = new AppProperties(
                 new AppProperties.UserDefaults("default"),
                 new AppProperties.AiSetting("http://ai.test", "test-model",
                         Duration.ofSeconds(5), Duration.ofSeconds(30), maxRetries),
                 new AppProperties.Security("test-key"));
-        return new OpenAiScheduleParser(properties, mapper,
+        return new AiScheduleParser(properties, mapper,
                 builder.baseUrl("http://ai.test").build());
     }
 

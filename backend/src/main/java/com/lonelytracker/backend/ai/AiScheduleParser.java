@@ -6,6 +6,7 @@ import com.lonelytracker.backend.common.exception.AiUnavailableException;
 import com.lonelytracker.backend.schedule.domain.ScheduleRecurrenceFreq;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -13,6 +14,8 @@ import org.springframework.web.client.RestClientException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,15 +23,19 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * OpenAI Responses API 로 자연어를 일정 초안으로 바꾼다.
+ * 자연어를 일정 초안으로 바꾼다.
  * 이 프로젝트에서 HTTP 를 직접 다루는 유일한 클래스다.
+ *
+ * <p>규약이 다른 부분만 {@link AiProtocol} 이 들고, 재시도·검증·변환은 여기서 공유한다.
+ * 규약이 같은 제공자는 base-url 과 model 로 갈리므로 구현이 늘지 않는다.
  */
 @Component
-public class OpenAiScheduleParser implements ScheduleParser {
+public class AiScheduleParser implements ScheduleParser {
 
     /** 재시도 간격의 시작값 */
     private static final long BACKOFF_MILLIS = 1_000L;
@@ -36,18 +43,33 @@ public class OpenAiScheduleParser implements ScheduleParser {
     private final AppProperties.AiSetting setting; // AI용 기본 세팅
     private final ObjectMapper mapper; // JSON 직렬/역직렬용 객체
     private final RestClient client;
+    private final AiProtocol protocol;
 
-    /** @param client 배선은 {@link OpenAiClientConfig} 가 맡는다 */
-    public OpenAiScheduleParser(AppProperties properties, ObjectMapper mapper, RestClient client) {
+    /** @param client 배선은 {@link AiClientConfig} 가 맡는다 */
+    public AiScheduleParser(AppProperties properties, ObjectMapper mapper, RestClient client) {
         this.setting = properties.ai();
         this.mapper = mapper;
         this.client = client;
+        this.protocol = protocolFor(setting.baseUrl());
+    }
+
+    /**
+     * 주소를 보고 규약을 고른다
+     * Claude 는 호환 계층이 strict 를 무시해 네이티브로만 부른다
+     */
+    static AiProtocol protocolFor(String baseUrl) {
+        String host = (baseUrl == null) ? "" : baseUrl.toLowerCase(Locale.ROOT);
+        return host.contains("api.anthropic.com")
+                ? new ClaudeMessagesProtocol()
+                : new ChatCompletionsProtocol();
     }
 
     @Override
     public List<ParsedSchedule> parse(AiParseCommand command) {
-        String responseBody = callWithRetry(requestBody(command), command.apiKey());
-        return toParsedList(extractOutput(responseBody));
+        Map<String, Object> body = protocol.body(setting.model(),
+                systemPrompt(command.now(), command.knownTags()), command.text());
+
+        return toParsedList(extractOutput(callWithRetry(body, command.apiKey())));
     }
 
     // --- HTTP ------------------------------------------------------------
@@ -58,18 +80,20 @@ public class OpenAiScheduleParser implements ScheduleParser {
 
         for (int attempt = 0; attempt <= setting.maxRetries(); attempt++) {
             try {
-                return client.post()
-                        .uri("/responses")
-                        .header("Authorization", "Bearer " + apiKey)
-                        .contentType(MediaType.APPLICATION_JSON)
+                RestClient.RequestBodySpec request = client.post()
+                        .uri(protocol.path())
+                        .contentType(MediaType.APPLICATION_JSON);
+                protocol.authHeaders(apiKey).forEach(request::header);
+
+                return request
                         .body(body)
                         .retrieve()
                         // 429 는 일시적 실패라 아래 catch 로 흘려보낸다
                         .onStatus(status -> status.is4xxClientError()
                                 && status.value() != HttpStatus.TOO_MANY_REQUESTS.value(),
                                 (req, res) -> {
-                                    throw new AiParseException(
-                                            "AI 요청이 거부되었습니다 (" + res.getStatusCode().value() + ")");
+                                    throw new AiParseException("AI 요청이 거부되었습니다 ("
+                                            + res.getStatusCode().value() + ") " + reasonOf(res));
                                 })
                         .body(String.class);
             } catch (AiParseException e) {
@@ -81,6 +105,32 @@ public class OpenAiScheduleParser implements ScheduleParser {
         }
 
         throw new AiUnavailableException("AI 응답을 받지 못했습니다", lastFailure);
+    }
+
+    /**
+     * 거절한 쪽이 남긴 이유
+     * 제공자마다 본문 모양이 달라 message 를 먼저 보고 없으면 원문을 줄여 싣는다
+     */
+    private String reasonOf(ClientHttpResponse response) {
+        String body;
+        try {
+            body = new String(response.getBody().readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            return "(이유를 읽지 못했습니다)";
+        }
+        if (body.isBlank()) {
+            return "(본문 없음)";
+        }
+
+        try {
+            String message = mapper.readTree(body).path("error").path("message").asString("");
+            if (!message.isBlank()) {
+                return hint(message);
+            }
+        } catch (RuntimeException ignored) {
+            // JSON 이 아니면 원문을 그대로 줄여 싣는다
+        }
+        return hint(body);
     }
 
     /** 재시도 간격을 1초 → 2초 → 4초로 늘려 가며 기다린다 */
@@ -95,8 +145,9 @@ public class OpenAiScheduleParser implements ScheduleParser {
 
     /**
      * 응답 봉투에서 결과 JSON을 꺼낸다.
+     * 봉투 모양은 규약이 알고, 여기서는 그 안의 문자열을 트리로 만든다.
      *
-     * @param envelope Responses API 응답 원문
+     * @param envelope 응답 원문
      * @throws com.lonelytracker.backend.common.exception.AiParseException 결과를 못 찾았을
      *                                                                     때
      */
@@ -109,24 +160,7 @@ public class OpenAiScheduleParser implements ScheduleParser {
             throw new AiParseException("AI 응답을 읽지 못했습니다", e);
         }
 
-        for (JsonNode item : root.path("output")) {
-            if (!"message".equals(item.path("type").asString(""))) {
-                continue;
-            }
-            for (JsonNode part : item.path("content")) {
-                if ("output_text".equals(part.path("type").asString(""))) {
-                    String text = part.path("text").asString("");
-                    if (!text.isBlank()) {
-                        return readOutputJson(text);
-                    }
-                }
-            }
-        }
-
-        List<String> types = new ArrayList<>();
-        root.path("output").forEach(item -> types.add(item.path("type").asString("?")));
-        throw new AiParseException(
-                "AI 응답에서 결과를 찾지 못했습니다. output 항목: " + types);
+        return readOutputJson(protocol.resultTextOf(root));
     }
 
     /** 봉투 안의 결과 문자열을 JSON 트리로 만든다 */
@@ -139,19 +173,6 @@ public class OpenAiScheduleParser implements ScheduleParser {
     }
 
     // --- 요청 조립 --------------------------------------------------------
-    private Map<String, Object> requestBody(AiParseCommand command) {
-        return Map.of(
-                "model", setting.model(),
-                "input", List.of(
-                        Map.of("role", "system", "content",
-                                systemPrompt(command.now(), command.knownTags())),
-                        Map.of("role", "user", "content", command.text())),
-                "text", Map.of("format", Map.of(
-                        "type", "json_schema",
-                        "name", "parsed_schedules",
-                        "strict", true,
-                        "schema", ParsedScheduleSchema.getRoot())));
-    }
 
     /** 규칙과 예시를 담은 system 메시지를 만든다. 칸별 규칙은 {@link ParsedScheduleSchema} 에 있다. */
     private String systemPrompt(LocalDateTime now, List<String> knownTags) {

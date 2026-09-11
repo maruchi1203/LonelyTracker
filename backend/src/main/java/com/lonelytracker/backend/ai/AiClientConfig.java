@@ -8,13 +8,13 @@ import org.springframework.web.client.RestClient;
 
 import java.net.http.HttpClient;
 
-/** OpenAI 호출용 {@link RestClient} 배선 */
+/** AI 호출용 {@link RestClient} 배선 */
 @Configuration
-public class OpenAiClientConfig {
+public class AiClientConfig {
 
     /** 연결·읽기 타임아웃과 기본 주소를 건 RestClient 를 만든다. */
     @Bean
-    public RestClient openAiRestClient(AppProperties properties) {
+    public RestClient aiRestClient(AppProperties properties) {
         AppProperties.AiSetting setting = properties.ai();
         RestClient.Builder builder = RestClient.builder();
 
