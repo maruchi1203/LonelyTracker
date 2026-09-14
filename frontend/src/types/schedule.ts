@@ -180,10 +180,28 @@ export interface UserResponse {
   createdAt: string;
 }
 
-/** 등록 여부와 마스킹된 꼬리 네 자리만 온다. 키 원문은 서버가 절대 돌려주지 않는다 */
-export interface OpenAiKeyStatus {
-  registered: boolean;
-  masked?: string;
+/** AI 제공자 하나의 자격 증명. 키 원문은 서버가 절대 돌려주지 않는다 */
+export interface AiCredential {
+  id: number;
+  baseUrl: string;
+  model: string;
+  /** 끝 네 자리만 */
+  masked: string;
+  /** 지금 이 자격 증명으로 부르는지 */
+  active: boolean;
+}
+
+export interface AiCredentialList {
+  credentials: AiCredential[];
+  /** 고른 것이 없어도 서버 설정(.env)의 키로 부를 수 있는지 */
+  serverConfigured: boolean;
+}
+
+export interface AiCredentialRequest {
+  baseUrl: string;
+  model: string;
+  /** 이미 있는 주소를 고칠 때 비우면 기존 키를 그대로 둔다 */
+  apiKey?: string;
 }
 
 /** 사용자 설정 (GET/PUT /api/users/me/settings) */

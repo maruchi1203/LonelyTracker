@@ -12,7 +12,7 @@ import java.net.http.HttpClient;
 @Configuration
 public class AiClientConfig {
 
-    /** 연결·읽기 타임아웃과 기본 주소를 건 RestClient 를 만든다. */
+    /** 연결·읽기 타임아웃을 건 RestClient 를 만든다. 주소는 호출마다 사용자 것을 쓴다 */
     @Bean
     public RestClient aiRestClient(AppProperties properties) {
         AppProperties.AiSetting setting = properties.ai();
@@ -28,7 +28,6 @@ public class AiClientConfig {
 
         return builder
                 .requestFactory(factory)
-                .baseUrl(setting.baseUrl())
                 .build();
     }
 }

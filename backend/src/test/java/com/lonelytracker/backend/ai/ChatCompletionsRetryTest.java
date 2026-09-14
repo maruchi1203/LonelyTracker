@@ -178,7 +178,7 @@ class ChatCompletionsRetryTest {
     private AiScheduleParser parserWith(RestClient.Builder builder, int maxRetries) {
         AppProperties properties = new AppProperties(
                 new AppProperties.UserDefaults("default"),
-                new AppProperties.AiSetting("http://ai.test", "test-model",
+                new AppProperties.AiSetting("http://ai.test", "test-model", null,
                         Duration.ofSeconds(5), Duration.ofSeconds(30), maxRetries),
                 new AppProperties.Security("test-key"));
         return new AiScheduleParser(properties, mapper,
@@ -187,6 +187,7 @@ class ChatCompletionsRetryTest {
 
     private AiParseCommand command() {
         return new AiParseCommand("내일 7시 운동",
-                LocalDateTime.parse("2026-08-31T09:00:00"), List.of("육체"), "sk-test");
+                LocalDateTime.parse("2026-08-31T09:00:00"), List.of("육체"),
+                "http://ai.test", "test-model", "sk-test");
     }
 }

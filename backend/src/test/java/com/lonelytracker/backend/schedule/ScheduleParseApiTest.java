@@ -61,13 +61,28 @@ class ScheduleParseApiTest extends IntegrationTest {
         registerKey("sk-test-abcdefgh");
     }
 
+    private static final String CREDENTIALS = "/api/users/me/ai-credentials";
+    private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai";
+
     /** 파싱은 사용자 키가 있어야 동작한다. 서버 설정이 아니다. */
     private void registerKey(String apiKey) throws Exception {
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                .put("/api/users/me/openai-key")
+                .put(CREDENTIALS)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"apiKey\":\"" + apiKey + "\"}"))
+                .content("{\"baseUrl\":\"" + BASE_URL + "\",\"model\":\"gemini-2.5-flash\",\"apiKey\":\""
+                        + apiKey + "\"}"))
                 .andExpect(status().isOk());
+    }
+
+    /** 등록한 자격 증명을 모두 지운다 */
+    private void clearKeys() throws Exception {
+        String body = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .get(CREDENTIALS)).andReturn().getResponse().getContentAsString();
+        List<Integer> ids = com.jayway.jsonpath.JsonPath.read(body, "$.credentials[*].id");
+        for (Integer id : ids) {
+            mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                    .delete(CREDENTIALS + "/" + id)).andExpect(status().isNoContent());
+        }
     }
 
     @Test
@@ -199,14 +214,16 @@ class ScheduleParseApiTest extends IntegrationTest {
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"운동\"}")).andExpect(status().isOk());
 
-        // 서버 설정이 아니라 이 사용자의 키다
+        // 서버 설정이 아니라 이 사용자의 키와 주소다
         assertThat(parser.lastApiKey).isEqualTo("sk-test-abcdefgh");
+        assertThat(parser.lastBaseUrl).isEqualTo(BASE_URL);
+        assertThat(parser.lastModel).isEqualTo("gemini-2.5-flash");
     }
 
     @Test
     @DisplayName("키를 등록하지 않은 사용자는 503을 받는다")
     void returnsServiceUnavailableWithoutKey() throws Exception {
-        registerKey(""); // 등록 해제
+        clearKeys();
 
         // 사용자 잘못이 아니므로 4xx 가 아니다. 나머지 기능은 그대로 쓴다
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
@@ -317,12 +334,16 @@ class ScheduleParseApiTest extends IntegrationTest {
         LocalDateTime lastNow;
         List<String> lastKnownTags;
         String lastApiKey;
+        String lastBaseUrl;
+        String lastModel;
 
         void reset() {
             behavior = null;
             lastNow = null;
             lastKnownTags = null;
             lastApiKey = null;
+            lastBaseUrl = null;
+            lastModel = null;
         }
 
         void willReturn(ParsedSchedule... results) {
@@ -341,6 +362,8 @@ class ScheduleParseApiTest extends IntegrationTest {
             this.lastNow = command.now();
             this.lastKnownTags = command.knownTags();
             this.lastApiKey = command.apiKey();
+            this.lastBaseUrl = command.baseUrl();
+            this.lastModel = command.model();
             return behavior.apply(command.text());
         }
     }

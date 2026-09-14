@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { fetchMe } from "../api/users";
-import OpenAiKeySection from "../components/settings/OpenAiKeySection";
+import AiCredentialSection from "../components/settings/AiCredentialSection";
 import HabitSection from "../components/settings/HabitSection";
 import type { UserResponse } from "../types/schedule";
 
@@ -31,7 +31,7 @@ export default function SettingsPage() {
         </p>
       </section>
 
-      <OpenAiKeySection autoFocus={params.get("focus") === "openai-key"} />
+      <AiCredentialSection autoFocus={params.get("focus") === "ai-key"} />
 
       <HabitSection />
     </div>

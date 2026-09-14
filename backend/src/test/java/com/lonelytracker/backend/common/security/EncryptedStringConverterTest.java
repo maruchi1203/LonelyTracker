@@ -91,7 +91,7 @@ class EncryptedStringConverterTest {
     private EncryptedStringConverter converterWith(String masterKey) {
         return new EncryptedStringConverter(new AppProperties(
                 new AppProperties.UserDefaults("default"),
-                new AppProperties.AiSetting("http://localhost", "test-model",
+                new AppProperties.AiSetting("http://localhost", "test-model", null,
                         Duration.ofSeconds(5), Duration.ofSeconds(30), 2),
                 new AppProperties.Security(masterKey)));
     }

@@ -43,14 +43,12 @@ public class AiScheduleParser implements ScheduleParser {
     private final AppProperties.AiSetting setting; // AI용 기본 세팅
     private final ObjectMapper mapper; // JSON 직렬/역직렬용 객체
     private final RestClient client;
-    private final AiProtocol protocol;
 
     /** @param client 배선은 {@link AiClientConfig} 가 맡는다 */
     public AiScheduleParser(AppProperties properties, ObjectMapper mapper, RestClient client) {
         this.setting = properties.ai();
         this.mapper = mapper;
         this.client = client;
-        this.protocol = protocolFor(setting.baseUrl());
     }
 
     /**
@@ -66,22 +64,24 @@ public class AiScheduleParser implements ScheduleParser {
 
     @Override
     public List<ParsedSchedule> parse(AiParseCommand command) {
-        Map<String, Object> body = protocol.body(setting.model(),
+        AiProtocol protocol = protocolFor(command.baseUrl());
+        Map<String, Object> body = protocol.body(command.model(),
                 systemPrompt(command.now(), command.knownTags()), command.text());
 
-        return toParsedList(extractOutput(callWithRetry(body, command.apiKey())));
+        String envelope = callWithRetry(protocol, command.baseUrl(), body, command.apiKey());
+        return toParsedList(extractOutput(protocol, envelope));
     }
 
     // --- HTTP ------------------------------------------------------------
 
     /** 요청을 보내고 응답 본문을 돌려준다. 일시적 실패(5xx·429)면 백오프 후 재시도한다. */
-    private String callWithRetry(Map<String, Object> body, String apiKey) {
+    private String callWithRetry(AiProtocol protocol, String baseUrl, Map<String, Object> body, String apiKey) {
         RestClientException lastFailure = null;
 
         for (int attempt = 0; attempt <= setting.maxRetries(); attempt++) {
             try {
                 RestClient.RequestBodySpec request = client.post()
-                        .uri(protocol.path())
+                        .uri(stripTrailingSlash(baseUrl) + protocol.path())
                         .contentType(MediaType.APPLICATION_JSON);
                 protocol.authHeaders(apiKey).forEach(request::header);
 
@@ -105,6 +105,11 @@ public class AiScheduleParser implements ScheduleParser {
         }
 
         throw new AiUnavailableException("AI 응답을 받지 못했습니다", lastFailure);
+    }
+
+    /** 주소 끝의 / 와 규약 경로의 / 가 겹치지 않게 한다 */
+    private static String stripTrailingSlash(String baseUrl) {
+        return baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
     }
 
     /**
@@ -151,7 +156,7 @@ public class AiScheduleParser implements ScheduleParser {
      * @throws com.lonelytracker.backend.common.exception.AiParseException 결과를 못 찾았을
      *                                                                     때
      */
-    JsonNode extractOutput(String envelope) {
+    JsonNode extractOutput(AiProtocol protocol, String envelope) {
         JsonNode root;
 
         try {

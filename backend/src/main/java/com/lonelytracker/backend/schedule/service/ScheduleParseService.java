@@ -4,9 +4,8 @@ import com.lonelytracker.backend.ai.AiParseCommand;
 import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.ai.ScheduleParser;
 import com.lonelytracker.backend.common.exception.AiParseException;
-import com.lonelytracker.backend.common.exception.AiUnavailableException;
-import com.lonelytracker.backend.user.service.UserProvider;
-import com.lonelytracker.backend.user.entity.UserEntity;
+import com.lonelytracker.backend.user.service.AiCredentialService;
+import com.lonelytracker.backend.user.service.AiTarget;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +22,7 @@ public class ScheduleParseService {
 
     private final ScheduleParser scheduleParser;
     private final ScheduleService scheduleService;
-    private final UserProvider currentUserProvider;
+    private final AiCredentialService credentialService;
 
     /**
      * 문장 하나를 초안 목록으로 바꾼다.
@@ -32,19 +31,14 @@ public class ScheduleParseService {
      */
     public List<ParsedSchedule> parse(String text) {
         // 짧은 트랜잭션. 여기서 닫힌다
-        UserEntity user = currentUserProvider.get();
-        if (!user.hasOpenAiApiKey()) {
-            // 서버 설정이 아니라 이 사용자가 키를 등록하지 않은 것이다
-            throw new AiUnavailableException(
-                    "OpenAI API 키를 먼저 등록해 주세요. 등록 전에는 직접 입력해 주세요");
-        }
-        String apiKey = user.getOpenAiApiKey();
+        AiTarget target = credentialService.resolve();
 
         List<String> knownTags = scheduleService.findTagNames();
 
         // 트랜잭션 밖에서 호출
         List<ParsedSchedule> parsed = scheduleParser.parse(
-                new AiParseCommand(text, LocalDateTime.now(), knownTags, apiKey));
+                new AiParseCommand(text, LocalDateTime.now(), knownTags,
+                        target.baseUrl(), target.model(), target.apiKey()));
 
         // LLM 응답을 사용자 입력과 같은 등급으로 검증한다.
         // 하나가 어긋났다고 나머지까지 버리지 않는다

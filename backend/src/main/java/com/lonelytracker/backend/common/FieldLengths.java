@@ -27,6 +27,12 @@ public final class FieldLengths {
     /** 화면에 보여줄 이름 */
     public static final int DISPLAY_NAME = 50;
 
+    /** AI 제공자 주소 */
+    public static final int AI_BASE_URL = 300;
+
+    /** AI 모델 이름 */
+    public static final int AI_MODEL = 100;
+
     /** #RRGGBB 형식을 기대하지만 강제하지는 않는다 */
     public static final int COLOR = 20;
 

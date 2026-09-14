@@ -1,7 +1,5 @@
 package com.lonelytracker.backend.user.controller;
 
-import com.lonelytracker.backend.user.dto.OpenAiKeyRequest;
-import com.lonelytracker.backend.user.dto.OpenAiKeyStatus;
 import com.lonelytracker.backend.user.dto.UserCreateRequest;
 import com.lonelytracker.backend.user.dto.UserResponse;
 import com.lonelytracker.backend.user.dto.UserSettingsRequest;
@@ -33,18 +31,6 @@ public class UserController {
     @GetMapping("/me")
     public UserResponse me() {
         return UserResponse.from(currentUserProvider.get());
-    }
-
-    /** 키 등록 여부. 키 자체는 돌려주지 않는다 */
-    @GetMapping("/me/openai-key")
-    public OpenAiKeyStatus openAiKeyStatus() {
-        return userService.openAiKeyStatus();
-    }
-
-    /** OpenAI API 키를 등록하거나 해제한다. DB에는 암호화되어 저장된다 */
-    @PutMapping("/me/openai-key")
-    public OpenAiKeyStatus changeOpenAiKey(@Valid @RequestBody OpenAiKeyRequest request) {
-        return userService.changeOpenAiKey(request.apiKey());
     }
 
     /** 사용자 설정 */

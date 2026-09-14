@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { HttpError } from "../../api/http";
 import { parseSchedule } from "../../api/schedules";
-import { fetchOpenAiKeyStatus } from "../../api/users";
+import { fetchAiCredentials } from "../../api/users";
 import { knownQuestions } from "../../constants/parseQuestions";
 import type { FormVariant, ScheduleForm } from "../../domain/scheduleForm";
 import { draftFromParsed, formToCreateRequest } from "../../domain/scheduleForm";
@@ -120,8 +120,8 @@ export default function QuickAddBar({
       // 503 은 키 없음 말고도 서버 암호화 문제일 수 있어 상태를 한 번 더 확인한다
       let needsKey = false;
       if (e instanceof HttpError && e.status === 503) {
-        needsKey = await fetchOpenAiKeyStatus()
-          .then((s) => !s.registered)
+        needsKey = await fetchAiCredentials()
+          .then((l) => !l.serverConfigured && !l.credentials.some((c) => c.active))
           .catch(() => false);
         if (needsKey) sessionStorage.setItem(DRAFT_TEXT_KEY, sentence);
       }
@@ -237,7 +237,7 @@ export default function QuickAddBar({
           <p>{state.message}</p>
           {state.needsKey ? (
             <Link
-              to="/settings?focus=openai-key"
+              to="/settings?focus=ai-key"
               className="rounded-md bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600"
             >
               설정에서 키 등록하기

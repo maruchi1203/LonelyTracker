@@ -75,6 +75,35 @@
 
 ---
 
+## AI 설정
+
+자연어 입력을 쓰려면 AI 제공자의 API 키가 필요하다. 편한 쪽을 쓴다.
+
+**1. `.env` — clone 해서 바로 쓸 때**
+
+`backend/.env` 에 세 줄을 넣는다. **따옴표를 붙이지 않는다** (properties 형식으로 읽혀 따옴표가 값에 들어간다).
+
+```properties
+AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+AI_MODEL=gemini-2.5-flash
+AI_API_KEY=발급받은-키
+```
+
+**2. 설정 화면 — 제공자를 오가며 쓸 때**
+
+제공자마다 키를 따로 저장하고 전환한다. 화면에서 고른 것이 `.env` 보다 먼저다.
+키를 DB 에 암호화해 저장하므로 `LONELYTRACKER_ENCRYPTION_KEY` 가 있어야 한다.
+
+| 제공자 | `AI_BASE_URL`                                             | `AI_MODEL` 예               |
+| ------ | --------------------------------------------------------- | --------------------------- |
+| OpenAI | `https://api.openai.com/v1`                               | `gpt-5.6-luna`              |
+| Gemini | `https://generativelanguage.googleapis.com/v1beta/openai` | `gemini-2.5-flash`          |
+| Claude | `https://api.anthropic.com/v1`                            | `claude-haiku-4-5-20251001` |
+
+OpenAI 호환 주소면 목록에 없는 제공자도 쓸 수 있다. Claude 는 주소를 보고 네이티브 규약으로 자동 전환된다.
+
+---
+
 ## 기술 스택
 
 | 계층        | 기술                                | 선택 이유                                                   |

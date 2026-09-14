@@ -130,7 +130,7 @@ class ClaudeMessagesTest {
   private AiScheduleParser parserWith(RestClient.Builder builder) {
     AppProperties properties = new AppProperties(
         new AppProperties.UserDefaults("default"),
-        new AppProperties.AiSetting(BASE, "claude-opus-5",
+        new AppProperties.AiSetting(BASE, "claude-opus-5", null,
             Duration.ofSeconds(5), Duration.ofSeconds(30), 0),
         new AppProperties.Security("test-key"));
     return new AiScheduleParser(properties, mapper, builder.baseUrl(BASE).build());
@@ -138,6 +138,7 @@ class ClaudeMessagesTest {
 
   private AiParseCommand command() {
     return new AiParseCommand("내일 7시 운동",
-        LocalDateTime.parse("2026-08-31T09:00:00"), List.of("육체"), "sk-test");
+        LocalDateTime.parse("2026-08-31T09:00:00"), List.of("육체"),
+        BASE, "claude-opus-5", "sk-test");
   }
 }
