@@ -110,6 +110,24 @@ class ChatCompletionsShapeTest {
   }
 
   @Test
+  @DisplayName("completion_tokens 밖에 있는 생각 토큰은 total_tokens 에서 되찾아 출력에 넣는다")
+  void countsThinkingOutsideCompletion() {
+    AiUsage usage = new ChatCompletionsProtocol().usageOf(mapper.readTree("""
+        { "usage": { "prompt_tokens": 758, "completion_tokens": 102, "total_tokens": 1725 } }"""));
+
+    assertThat(usage).isEqualTo(new AiUsage(758, 967));
+  }
+
+  @Test
+  @DisplayName("total_tokens 가 없으면 completion_tokens 를 그대로 쓴다")
+  void missingTotalKeepsCompletion() {
+    AiUsage usage = new ChatCompletionsProtocol().usageOf(mapper.readTree("""
+        { "usage": { "prompt_tokens": 120, "completion_tokens": 45 } }"""));
+
+    assertThat(usage).isEqualTo(new AiUsage(120, 45));
+  }
+
+  @Test
   @DisplayName("사용량이 없는 응답이면 0 으로 본다")
   void missingUsageIsZero() {
     assertThat(new ChatCompletionsProtocol().usageOf(mapper.readTree("{}")))

@@ -59,12 +59,17 @@ class ChatCompletionsProtocol implements AiProtocol {
                 "AI 응답에서 결과를 찾지 못했습니다. 종료 사유: " + finishReasons(envelope));
     }
 
+    /**
+     * 출력 토큰은 생각 토큰까지 포함한 값
+     * completion_tokens 에 생각 토큰을 넣지 않고 total_tokens 에만 넣는 제공자가 있어 둘 중 큰 쪽을 씀
+     */
     @Override
     public AiUsage usageOf(JsonNode envelope) {
         JsonNode usage = envelope.path("usage");
-        return new AiUsage(
-                usage.path("prompt_tokens").asInt(0),
-                usage.path("completion_tokens").asInt(0));
+        int prompt = usage.path("prompt_tokens").asInt(0);
+        int completion = usage.path("completion_tokens").asInt(0);
+        int total = usage.path("total_tokens").asInt(0);
+        return new AiUsage(prompt, Math.max(completion, total - prompt));
     }
 
     /** 응답이 왜 비었는지 알려 줄 단서. 길이 초과면 length 가 온다 */
