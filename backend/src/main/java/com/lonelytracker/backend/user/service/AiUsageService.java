@@ -1,6 +1,8 @@
 package com.lonelytracker.backend.user.service;
 
+import com.lonelytracker.backend.ai.AiBaseUrls;
 import com.lonelytracker.backend.ai.AiUsage;
+import com.lonelytracker.backend.ai.AiUsageRecorder;
 import com.lonelytracker.backend.user.dto.AiUsageSummaryResponse;
 import com.lonelytracker.backend.user.entity.AiUsageEntity;
 import com.lonelytracker.backend.user.entity.UserEntity;
@@ -21,7 +23,7 @@ import java.time.Period;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class AiUsageService {
+public class AiUsageService implements AiUsageRecorder {
 
     /** 이보다 오래된 기록은 지운다 */
     static final Period RETENTION = Period.ofMonths(3);
@@ -30,6 +32,7 @@ public class AiUsageService {
     private final UserProvider currentUserProvider;
 
     /** 호출 한 번을 적고, 석 달이 지난 기록을 지운다 */
+    @Override
     @Transactional
     public void record(String baseUrl, String model, AiUsage usage) {
         UserEntity user = currentUserProvider.get();
@@ -59,7 +62,7 @@ public class AiUsageService {
      */
     private static String providerKeyOf(String baseUrl) {
         try {
-            return AiCredentialService.normalizeBaseUrl(baseUrl);
+            return AiBaseUrls.normalize(baseUrl);
         } catch (IllegalArgumentException e) {
             return baseUrl;
         }

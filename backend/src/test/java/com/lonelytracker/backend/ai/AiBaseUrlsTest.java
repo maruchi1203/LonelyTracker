@@ -1,4 +1,4 @@
-package com.lonelytracker.backend.user.service;
+package com.lonelytracker.backend.ai;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -12,7 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 같은 서버를 가리키는 표기가 두 줄로 갈리면 키를 바꿨는데 옛 줄로 부르는 일이 생긴다.
  * Spring 컨텍스트를 띄우지 않으므로 Docker 없이 돈다.
  */
-class NormalizeBaseUrlTest {
+class AiBaseUrlsTest {
 
     @ParameterizedTest(name = "\"{0}\" -> {1}")
     @DisplayName("같은 서버를 가리키는 표기는 한 모양이 된다")
@@ -29,7 +29,7 @@ class NormalizeBaseUrlTest {
             "https://x.test/v1/%EB%AC%B8%EC%84%9C                       | https://x.test/v1/%EB%AC%B8%EC%84%9C",
     })
     void normalizes(String raw, String expected) {
-        assertThat(AiCredentialService.normalizeBaseUrl(raw)).isEqualTo(expected);
+        assertThat(AiBaseUrls.normalize(raw)).isEqualTo(expected);
     }
 
     @ParameterizedTest(name = "\"{0}\" -> {1}")
@@ -47,7 +47,7 @@ class NormalizeBaseUrlTest {
             "''                             | http 또는 https",
     })
     void rejects(String raw, String reason) {
-        assertThatThrownBy(() -> AiCredentialService.normalizeBaseUrl(raw))
+        assertThatThrownBy(() -> AiBaseUrls.normalize(raw))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining(reason);
     }

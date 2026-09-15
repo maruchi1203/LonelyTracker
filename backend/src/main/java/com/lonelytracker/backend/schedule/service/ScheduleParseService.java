@@ -1,13 +1,13 @@
 package com.lonelytracker.backend.schedule.service;
 
 import com.lonelytracker.backend.ai.AiParseCommand;
+import com.lonelytracker.backend.ai.AiTarget;
+import com.lonelytracker.backend.ai.AiTargetResolver;
+import com.lonelytracker.backend.ai.AiUsageRecorder;
 import com.lonelytracker.backend.ai.ParseResult;
 import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.ai.ScheduleParser;
 import com.lonelytracker.backend.common.exception.AiParseException;
-import com.lonelytracker.backend.user.service.AiCredentialService;
-import com.lonelytracker.backend.user.service.AiTarget;
-import com.lonelytracker.backend.user.service.AiUsageService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,8 +28,8 @@ public class ScheduleParseService {
 
     private final ScheduleParser scheduleParser;
     private final ScheduleService scheduleService;
-    private final AiCredentialService credentialService;
-    private final AiUsageService usageService;
+    private final AiTargetResolver targetResolver;
+    private final AiUsageRecorder usageRecorder;
 
     /**
      * 문장 하나를 초안 목록으로 바꾼다.
@@ -38,7 +38,7 @@ public class ScheduleParseService {
      */
     public List<ParsedSchedule> parse(String text) {
         // 짧은 트랜잭션. 여기서 닫힌다
-        AiTarget target = credentialService.resolve();
+        AiTarget target = targetResolver.resolve();
 
         List<String> knownTags = scheduleService.findTagNames();
 
@@ -50,7 +50,7 @@ public class ScheduleParseService {
         // 결과를 받았으면 토큰은 쓴 것이다. 쓸 만한 초안이 없어도 적는다
         // 기록이 실패해도 초안은 돌려준다
         try {
-            usageService.record(target.baseUrl(), target.model(), result.usage());
+            usageRecorder.record(target.baseUrl(), target.model(), result.usage());
         } catch (RuntimeException e) {
             log.warn("AI 사용량을 기록하지 못함", e);
         }
