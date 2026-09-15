@@ -59,6 +59,14 @@ class ChatCompletionsProtocol implements AiProtocol {
                 "AI 응답에서 결과를 찾지 못했습니다. 종료 사유: " + finishReasons(envelope));
     }
 
+    @Override
+    public AiUsage usageOf(JsonNode envelope) {
+        JsonNode usage = envelope.path("usage");
+        return new AiUsage(
+                usage.path("prompt_tokens").asInt(0),
+                usage.path("completion_tokens").asInt(0));
+    }
+
     /** 응답이 왜 비었는지 알려 줄 단서. 길이 초과면 length 가 온다 */
     private static List<String> finishReasons(JsonNode envelope) {
         List<String> reasons = new ArrayList<>();

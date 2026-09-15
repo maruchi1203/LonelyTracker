@@ -100,6 +100,22 @@ class ChatCompletionsShapeTest {
         .isInstanceOf(AiParseException.class);
   }
 
+  @Test
+  @DisplayName("사용량은 prompt_tokens 와 completion_tokens 에서 읽는다")
+  void readsUsage() {
+    AiUsage usage = new ChatCompletionsProtocol().usageOf(mapper.readTree("""
+        { "usage": { "prompt_tokens": 120, "completion_tokens": 45, "total_tokens": 165 } }"""));
+
+    assertThat(usage).isEqualTo(new AiUsage(120, 45));
+  }
+
+  @Test
+  @DisplayName("사용량이 없는 응답이면 0 으로 본다")
+  void missingUsageIsZero() {
+    assertThat(new ChatCompletionsProtocol().usageOf(mapper.readTree("{}")))
+        .isEqualTo(AiUsage.NONE);
+  }
+
   private JsonNode extract(String envelope) {
     return parser.extractOutput(new ChatCompletionsProtocol(), envelope);
   }

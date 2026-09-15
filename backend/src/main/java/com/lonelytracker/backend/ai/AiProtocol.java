@@ -29,4 +29,7 @@ interface AiProtocol {
      * @throws com.lonelytracker.backend.common.exception.AiParseException 결과가 없을 때
      */
     String resultTextOf(JsonNode envelope);
+
+    /** 이 호출이 쓴 토큰. 필드 이름이 규약마다 다르다 */
+    AiUsage usageOf(JsonNode envelope);
 }

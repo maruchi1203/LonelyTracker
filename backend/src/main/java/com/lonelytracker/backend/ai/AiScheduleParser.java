@@ -63,13 +63,14 @@ public class AiScheduleParser implements ScheduleParser {
     }
 
     @Override
-    public List<ParsedSchedule> parse(AiParseCommand command) {
+    public ParseResult parse(AiParseCommand command) {
         AiProtocol protocol = protocolFor(command.baseUrl());
         Map<String, Object> body = protocol.body(command.model(),
                 systemPrompt(command.now(), command.knownTags()), command.text());
 
         String envelope = callWithRetry(protocol, command.baseUrl(), body, command.apiKey());
-        return toParsedList(extractOutput(protocol, envelope));
+        List<ParsedSchedule> schedules = toParsedList(extractOutput(protocol, envelope));
+        return new ParseResult(schedules, usageOf(protocol, envelope));
     }
 
     // --- HTTP ------------------------------------------------------------
@@ -105,6 +106,15 @@ public class AiScheduleParser implements ScheduleParser {
         }
 
         throw new AiUnavailableException("AI 응답을 받지 못했습니다", lastFailure);
+    }
+
+    /** 사용량을 못 읽어도 파싱 결과는 살린다 */
+    private AiUsage usageOf(AiProtocol protocol, String envelope) {
+        try {
+            return protocol.usageOf(mapper.readTree(envelope));
+        } catch (RuntimeException e) {
+            return AiUsage.NONE;
+        }
     }
 
     /** 주소 끝의 / 와 규약 경로의 / 가 겹치지 않게 한다 */

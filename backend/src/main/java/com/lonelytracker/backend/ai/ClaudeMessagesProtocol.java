@@ -62,6 +62,14 @@ class ClaudeMessagesProtocol implements AiProtocol {
                         + ", 블록: " + blockTypes(envelope));
     }
 
+    @Override
+    public AiUsage usageOf(JsonNode envelope) {
+        JsonNode usage = envelope.path("usage");
+        return new AiUsage(
+                usage.path("input_tokens").asInt(0),
+                usage.path("output_tokens").asInt(0));
+    }
+
     /** 텍스트가 없을 때 무엇이 왔는지 알려 줄 단서 */
     private static List<String> blockTypes(JsonNode envelope) {
         List<String> types = new ArrayList<>();

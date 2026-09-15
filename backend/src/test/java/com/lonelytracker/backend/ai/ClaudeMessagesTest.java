@@ -63,7 +63,7 @@ class ClaudeMessagesTest {
         .andExpect(jsonPath("$.output_config.format.type").value("json_schema"))
         .andRespond(withSuccess(OK_BODY, MediaType.APPLICATION_JSON));
 
-    assertThat(parserWith(builder).parse(command()).get(0).title()).isEqualTo("운동");
+    assertThat(parserWith(builder).parse(command()).schedules().get(0).title()).isEqualTo("운동");
     server.verify();
   }
 
@@ -123,6 +123,15 @@ class ClaudeMessagesTest {
         .hasMessageContaining("max_tokens: required");
 
     server.verify();
+  }
+
+  @Test
+  @DisplayName("사용량은 input_tokens 와 output_tokens 에서 읽는다")
+  void readsNativeUsage() {
+    AiUsage usage = new ClaudeMessagesProtocol().usageOf(mapper.readTree("""
+        { "usage": { "input_tokens": 461, "output_tokens": 50 } }"""));
+
+    assertThat(usage).isEqualTo(new AiUsage(461, 50));
   }
 
   // --- 헬퍼 -------------------------------------------------------------

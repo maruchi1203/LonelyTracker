@@ -48,7 +48,7 @@ class ChatCompletionsRetryTest {
         server.expect(requestTo(ENDPOINT))
                 .andRespond(withSuccess(OK_BODY, MediaType.APPLICATION_JSON));
 
-        ParsedSchedule parsed = parser.parse(command()).get(0);
+        ParsedSchedule parsed = parser.parse(command()).schedules().get(0);
 
         assertThat(parsed.title()).isEqualTo("운동");
         server.verify();
@@ -165,7 +165,7 @@ class ChatCompletionsRetryTest {
         server.expect(requestTo(ENDPOINT))
                 .andRespond(withSuccess(OK_BODY, MediaType.APPLICATION_JSON));
 
-        ParsedSchedule parsed = parser.parse(command()).get(0);
+        ParsedSchedule parsed = parser.parse(command()).schedules().get(0);
 
         assertThat(parsed.title()).isEqualTo("운동");
         assertThat(parsed.startAt()).isEqualTo(LocalDateTime.parse("2026-09-01T07:00:00"));

@@ -1,6 +1,8 @@
 package com.lonelytracker.backend.schedule;
 
 import com.lonelytracker.backend.ai.AiParseCommand;
+import com.lonelytracker.backend.ai.AiUsage;
+import com.lonelytracker.backend.ai.ParseResult;
 import com.lonelytracker.backend.ai.ParseQuestion;
 import com.lonelytracker.backend.ai.ParsedRecurringSchedule;
 import com.lonelytracker.backend.ai.ParsedSchedule;
@@ -221,6 +223,24 @@ class ScheduleParseApiTest extends IntegrationTest {
     }
 
     @Test
+    @DisplayName("파싱하면 그 호출의 토큰이 제공자별로 적힌다")
+    void recordsUsageAfterParsing() throws Exception {
+        parser.willReturn(draft("운동", "2026-09-08T15:00:00", null, null));
+
+        mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"운동\"}")).andExpect(status().isOk());
+
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .get("/api/users/me/ai-usage"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.week[0].baseUrl").value(BASE_URL))
+                .andExpect(jsonPath("$.week[0].calls").value(1))
+                .andExpect(jsonPath("$.week[0].inputTokens").value(12))
+                .andExpect(jsonPath("$.week[0].outputTokens").value(34))
+                .andExpect(jsonPath("$.month[0].calls").value(1));
+    }
+
+    @Test
     @DisplayName("키를 등록하지 않은 사용자는 503을 받는다")
     void returnsServiceUnavailableWithoutKey() throws Exception {
         clearKeys();
@@ -358,13 +378,13 @@ class ScheduleParseApiTest extends IntegrationTest {
         }
 
         @Override
-        public List<ParsedSchedule> parse(AiParseCommand command) {
+        public ParseResult parse(AiParseCommand command) {
             this.lastNow = command.now();
             this.lastKnownTags = command.knownTags();
             this.lastApiKey = command.apiKey();
             this.lastBaseUrl = command.baseUrl();
             this.lastModel = command.model();
-            return behavior.apply(command.text());
+            return new ParseResult(behavior.apply(command.text()), new AiUsage(12, 34));
         }
     }
 
