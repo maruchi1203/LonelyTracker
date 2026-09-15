@@ -12,7 +12,7 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route index element={<Navigate to="/calendar" replace />} />
+        <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="list" element={<ListPage />} />
         <Route path="calendar" element={<CalendarPage />} />

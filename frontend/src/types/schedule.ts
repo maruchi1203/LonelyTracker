@@ -197,6 +197,21 @@ export interface AiCredentialList {
   serverConfigured: boolean;
 }
 
+/** 제공자 하나의 기간 사용량 */
+export interface ProviderUsage {
+  baseUrl: string;
+  /** 호출 수 */
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/** 이번 주(월요일부터)와 이번 달의 제공자별 사용량. 호출이 많은 제공자가 앞 */
+export interface AiUsageSummary {
+  week: ProviderUsage[];
+  month: ProviderUsage[];
+}
+
 export interface AiCredentialRequest {
   baseUrl: string;
   model: string;

@@ -2,6 +2,7 @@ import type {
   AiCredential,
   AiCredentialList,
   AiCredentialRequest,
+  AiUsageSummary,
   UserResponse,
   UserSettings,
 } from "../types/schedule";
@@ -52,6 +53,11 @@ export async function saveAiCredential(
 export async function activateAiCredential(id: number): Promise<AiCredential> {
   const res = await fetch(`${CREDENTIALS}/${id}/active`, { method: "PUT" });
   return handle<AiCredential>(res);
+}
+
+/** 이번 주와 이번 달의 제공자별 호출 수·토큰 */
+export async function fetchAiUsage(): Promise<AiUsageSummary> {
+  return handle<AiUsageSummary>(await fetch(`${BASE}/ai-usage`));
 }
 
 export async function deleteAiCredential(id: number): Promise<void> {
