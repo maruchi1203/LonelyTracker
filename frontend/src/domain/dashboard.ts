@@ -1,7 +1,13 @@
 import type { Habit } from "../types/habit";
-import type { ScheduleListItem, ScheduleResponse } from "../types/schedule";
+import type {
+  AiProvider,
+  ProviderUsage,
+  ScheduleListItem,
+  ScheduleResponse,
+} from "../types/schedule";
 import { toLocalDate } from "../utils/datetime";
 import { groupByCategory, streakOf } from "./habit";
+import { sameBaseUrl } from "../constants/aiPresets";
 
 /** "YYYY-MM-DD" 두 개로 닫힌 기간 */
 export interface DayRange {
@@ -135,4 +141,17 @@ export function habitSummary(habits: Habit[], today: string): HabitSummary {
       .filter((g) => g.habits.length === 0)
       .map((g) => g.label),
   };
+}
+
+/** 한도의 몇 할을 썼는지. 한도를 정하지 않은 제공자면 null */
+export function limitRatio(
+  usage: ProviderUsage,
+  providers: AiProvider[],
+): number | null {
+  const limit = providers.find((p) =>
+    sameBaseUrl(p.baseUrl, usage.baseUrl),
+  )?.monthlyTokenLimit;
+  if (!limit) return null;
+
+  return Math.min((usage.inputTokens + usage.outputTokens) / limit, 1);
 }

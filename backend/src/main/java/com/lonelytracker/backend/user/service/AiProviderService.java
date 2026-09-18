@@ -4,6 +4,7 @@ import com.lonelytracker.backend.ai.AiBaseUrls;
 import com.lonelytracker.backend.ai.AiTarget;
 import com.lonelytracker.backend.ai.AiTargetResolver;
 import com.lonelytracker.backend.common.AppProperties;
+import com.lonelytracker.backend.common.exception.AiLimitExceededException;
 import com.lonelytracker.backend.common.exception.AiUnavailableException;
 import com.lonelytracker.backend.common.exception.NotFoundException;
 import com.lonelytracker.backend.user.dto.AiProviderListResponse;
@@ -12,14 +13,18 @@ import com.lonelytracker.backend.user.dto.AiProviderResponse;
 import com.lonelytracker.backend.user.entity.AiProviderEntity;
 import com.lonelytracker.backend.user.entity.UserEntity;
 import com.lonelytracker.backend.user.repository.AiProviderRepository;
+import com.lonelytracker.backend.user.repository.AiUsageRepository;
 import com.lonelytracker.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * AI 제공자별 제공자 설정을 다룬다.
+ * AI 제공자 설정을 다룬다.
  * 키 원본은 {@link #resolve()} 로 파서에 넘길 때만 나가고 어떤 응답에도 실리지 않는다.
  */
 @Service
@@ -30,6 +35,7 @@ public class AiProviderService implements AiTargetResolver {
     private final AiProviderRepository providerRepository;
     private final UserRepository userRepository;
     private final UserProvider currentUserProvider;
+    private final AiUsageRepository usageRepository;
     private final AppProperties properties;
 
     public AiProviderListResponse list() {
@@ -55,6 +61,7 @@ public class AiProviderService implements AiTargetResolver {
                 .findByUserIdAndBaseUrl(user.getId(), baseUrl)
                 .map(existing -> {
                     existing.changeModel(model);
+                    existing.changeMonthlyTokenLimit(request.monthlyTokenLimit());
                     // 모델만 바꿀 때 키를 다시 넣게 하지 않는다
                     if (!apiKey.isEmpty()) {
                         existing.changeApiKey(apiKey);
@@ -66,7 +73,8 @@ public class AiProviderService implements AiTargetResolver {
                         throw new IllegalArgumentException("API 키를 넣어 주세요");
                     }
                     return AiProviderEntity.builder()
-                            .user(user).baseUrl(baseUrl).model(model).apiKey(apiKey).build();
+                            .user(user).baseUrl(baseUrl).model(model).apiKey(apiKey)
+                            .monthlyTokenLimit(request.monthlyTokenLimit()).build();
                 });
 
         providerRepository.saveAndFlush(provider);
@@ -109,9 +117,10 @@ public class AiProviderService implements AiTargetResolver {
         Long activeId = user.getActiveAiProviderId();
 
         if (activeId != null) {
-            return providerRepository.findByIdAndUserId(activeId, user.getId())
-                    .map(c -> new AiTarget(c.getBaseUrl(), c.getModel(), c.getApiKey()))
+            AiProviderEntity provider = providerRepository.findByIdAndUserId(activeId, user.getId())
                     .orElseThrow(AiProviderService::noKey);
+            checkMonthlyLimit(user.getId(), provider);
+            return new AiTarget(provider.getBaseUrl(), provider.getModel(), provider.getApiKey());
         }
 
         AppProperties.AiSetting server = properties.ai();
@@ -119,6 +128,25 @@ public class AiProviderService implements AiTargetResolver {
             return new AiTarget(server.baseUrl(), server.model(), server.apiKey());
         }
         throw noKey();
+    }
+
+    /**
+     * 이번 달에 쓴 토큰이 한도에 닿았으면 부르지 않는다
+     *
+     * @throws AiLimitExceededException 한도를 다 썼을 때
+     */
+    private void checkMonthlyLimit(Long userId, AiProviderEntity provider) {
+        Integer limit = provider.getMonthlyTokenLimit();
+        if (limit == null) {
+            return;
+        }
+
+        LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+        long used = usageRepository.sumTokens(userId, provider.getBaseUrl(), monthStart);
+        if (used >= limit) {
+            throw new AiLimitExceededException(
+                    "이번 달 한도(%,d 토큰)를 다 썼습니다. 설정에서 한도를 늘리거나 직접 입력해 주세요".formatted(limit));
+        }
     }
 
     private AiProviderEntity getOwnedOrThrow(Long id, UserEntity user) {

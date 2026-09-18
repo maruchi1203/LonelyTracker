@@ -6,14 +6,19 @@ import {
   fetchScheduleList,
   fetchSchedules,
 } from "../api/schedules";
-import { fetchAiUsage } from "../api/users";
+import { fetchAiProviders, fetchAiUsage } from "../api/users";
 import AgendaPanel from "../components/dashboard/AgendaPanel";
 import { PendingCard } from "../components/dashboard/DashboardCard";
 import HabitPanel from "../components/dashboard/HabitPanel";
 import UsagePanel from "../components/dashboard/UsagePanel";
 import { weekOf } from "../domain/dashboard";
 import type { Habit } from "../types/habit";
-import type { AiUsageSummary, ScheduleListItem, ScheduleResponse } from "../types/schedule";
+import type {
+  AiProvider,
+  AiUsageSummary,
+  ScheduleListItem,
+  ScheduleResponse,
+} from "../types/schedule";
 import { toLocalDate } from "../utils/datetime";
 
 /** 연속일을 셀 만큼 거슬러 받는 날 수 */
@@ -24,6 +29,7 @@ interface Data {
   items: ScheduleListItem[];
   habits: Habit[];
   usage: AiUsageSummary;
+  providers: AiProvider[];
 }
 
 export default function DashboardPage() {
@@ -44,13 +50,14 @@ export default function DashboardPage() {
     since.setDate(since.getDate() - HABIT_HISTORY_DAYS);
 
     try {
-      const [instances, items, habits, usage] = await Promise.all([
+      const [instances, items, habits, usage, providers] = await Promise.all([
         fetchSchedules({ from: `${week.from}T00:00:00`, to: `${week.to}T23:59:59` }),
         fetchScheduleList(),
         fetchHabits(toLocalDate(since), now),
         fetchAiUsage(),
+        fetchAiProviders(),
       ]);
-      setData({ instances, items, habits, usage });
+      setData({ instances, items, habits, usage, providers: providers.providers });
       setError(null);
     } catch (e) {
       fail(e, "대시보드를 불러오지 못했습니다");
@@ -104,7 +111,7 @@ export default function DashboardPage() {
         <p className="px-5 py-8 text-center text-sm text-slate-400">불러오는 중입니다…</p>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
-          <UsagePanel usage={data.usage} />
+          <UsagePanel usage={data.usage} providers={data.providers} />
           <PendingCard
             title="주간 목표"
             summary="ver.2 에서 만듭니다. 이번 주 목표와 진행을 보여 줍니다."

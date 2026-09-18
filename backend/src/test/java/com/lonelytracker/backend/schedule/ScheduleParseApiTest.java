@@ -76,6 +76,16 @@ class ScheduleParseApiTest extends IntegrationTest {
                 .andExpect(status().isOk());
     }
 
+    /** 한도가 있는 제공자 설정으로 바꾼다 */
+    private void registerKeyWithLimit(int limit) throws Exception {
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .put(CREDENTIALS)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"baseUrl\":\"" + BASE_URL + "\",\"model\":\"gemini-2.5-flash\","
+                        + "\"apiKey\":\"sk-test-abcdefgh\",\"monthlyTokenLimit\":" + limit + "}"))
+                .andExpect(status().isOk());
+    }
+
     /** 등록한 제공자 설정을 모두 지운다 */
     private void clearKeys() throws Exception {
         String body = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -349,6 +359,29 @@ class ScheduleParseApiTest extends IntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.schedules.length()").value(0))
                 .andExpect(jsonPath("$.notice").value("일정으로 읽을 수 없는 문장입니다. 직접 입력해 주세요"));
+    }
+
+    @Test
+    @DisplayName("이번 달 한도를 다 쓰면 AI 를 부르지 않고 안내 문구를 준다")
+    void stopsCallingWhenMonthlyLimitIsSpent() throws Exception {
+        // 가짜 파서가 호출마다 46 토큰을 쓴 것으로 적는다
+        registerKeyWithLimit(40);
+        parser.willReturn(draft("운동", "2026-09-08T15:00:00", null, null));
+
+        mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"내일 3시 운동\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.schedules.length()").value(1));
+
+        parser.lastBaseUrl = null;
+        mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"text\":\"모레 3시 운동\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.schedules.length()").value(0))
+                .andExpect(jsonPath("$.notice").value(org.hamcrest.Matchers.containsString("한도")));
+
+        // 막혔으면 토큰을 더 쓰지 않아야 한다
+        assertThat(parser.lastBaseUrl).isNull();
     }
 
     /** 정해진 답을 돌려주는 가짜. 실제 API 를 부르지 않는다. */

@@ -189,6 +189,8 @@ export interface AiProvider {
   masked: string;
   /** 지금 이 제공자 설정으로 부르는지 */
   active: boolean;
+  /** 이번 달 토큰 한도. 없으면 제한 없음 */
+  monthlyTokenLimit?: number;
 }
 
 export interface AiProviderList {
@@ -217,6 +219,8 @@ export interface AiProviderRequest {
   model: string;
   /** 이미 있는 주소를 고칠 때 비우면 기존 키를 그대로 둔다 */
   apiKey?: string;
+  /** 비우면 한도 없음 */
+  monthlyTokenLimit?: number;
 }
 
 /** 사용자 설정 (GET/PUT /api/users/me/settings) */

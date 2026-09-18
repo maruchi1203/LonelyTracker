@@ -7,8 +7,10 @@ import com.lonelytracker.backend.user.entity.AiProviderEntity;
  *
  * @param masked 끝 네 자리만. 예: {@code "****abcd"}
  * @param active 지금 이 제공자 설정으로 부르는지
+ * @param monthlyTokenLimit 이번 달 토큰 한도. null 이면 한도 없음
  */
-public record AiProviderResponse(Long id, String baseUrl, String model, String masked, boolean active) {
+public record AiProviderResponse(Long id, String baseUrl, String model, String masked, boolean active,
+                                 Integer monthlyTokenLimit) {
 
     private static final int VISIBLE_TAIL = 4;
 
@@ -18,7 +20,8 @@ public record AiProviderResponse(Long id, String baseUrl, String model, String m
                 provider.getBaseUrl(),
                 provider.getModel(),
                 mask(provider.getApiKey()),
-                provider.getId().equals(activeId));
+                provider.getId().equals(activeId),
+                provider.getMonthlyTokenLimit());
     }
 
     private static String mask(String apiKey) {

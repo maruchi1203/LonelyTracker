@@ -7,6 +7,7 @@ import com.lonelytracker.backend.ai.AiUsageRecorder;
 import com.lonelytracker.backend.ai.ParseResult;
 import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.ai.ScheduleParser;
+import com.lonelytracker.backend.common.exception.AiLimitExceededException;
 import com.lonelytracker.backend.schedule.dto.ScheduleParseResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -38,7 +39,13 @@ public class ScheduleParseService {
      */
     public ScheduleParseResponse parse(String text) {
         // 짧은 트랜잭션. 여기서 닫힌다
-        AiTarget target = targetResolver.resolve();
+        AiTarget target;
+        try {
+            target = targetResolver.resolve();
+        } catch (AiLimitExceededException e) {
+            // 사용자가 정해 둔 한도다. 오류가 아니라 안내로 내보낸다
+            return ScheduleParseResponse.notice(e.getMessage());
+        }
 
         List<String> knownTags = scheduleService.findTagNames();
 

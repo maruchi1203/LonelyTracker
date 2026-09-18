@@ -40,6 +40,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
   const [baseUrl, setBaseUrl] = useState(AI_PRESETS[0].baseUrl);
   const [model, setModel] = useState(AI_PRESETS[0].model);
   const [apiKey, setApiKey] = useState("");
+  const [limit, setLimit] = useState("");
   const [allowHttp, setAllowHttp] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +76,12 @@ export default function AiProviderSection({ autoFocus }: Props) {
     (existing !== undefined || apiKey.trim() !== "") &&
     // http 는 막지 않되 사용자가 알고 고르게 한다
     (!insecure || allowHttp);
+
+  // 이미 등록한 제공자를 고르면 그 한도를 보여 준다. 비운 채로 저장해 지워지지 않게
+  const savedLimit = existing?.monthlyTokenLimit;
+  useEffect(() => {
+    setLimit(savedLimit === undefined ? "" : String(savedLimit));
+  }, [savedLimit]);
 
   const choosePreset = (id: string) => {
     const next = AI_PRESETS.find((p) => p.id === id) ?? AI_PRESETS[0];
@@ -198,6 +205,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
               baseUrl: baseUrl.trim(),
               model: model.trim(),
               apiKey: apiKey.trim() || undefined,
+              monthlyTokenLimit: limit.trim() === "" ? undefined : Number(limit),
             });
             // 저장한 키를 화면에 남겨두지 않는다
             setApiKey("");
@@ -231,6 +239,20 @@ export default function AiProviderSection({ autoFocus }: Props) {
             />
           </label>
         </div>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-semibold text-slate-500">
+            이번 달 토큰 한도
+          </span>
+          <input
+            type="number"
+            min={1}
+            value={limit}
+            onChange={(e) => setLimit(e.target.value)}
+            placeholder="비우면 한도 없음. 넘으면 AI 를 부르지 않습니다"
+            className={INPUT}
+          />
+        </label>
 
         {custom && (
           <label className="flex flex-col gap-1">

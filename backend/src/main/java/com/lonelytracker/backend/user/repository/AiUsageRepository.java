@@ -23,5 +23,14 @@ public interface AiUsageRepository extends JpaRepository<AiUsageEntity, Long> {
             """)
     List<ProviderUsageResponse> sumByProvider(@Param("userId") Long userId, @Param("since") LocalDateTime since);
 
+    /** 제공자 하나가 그 시각 이후에 쓴 토큰 합. 기록이 없으면 0 */
+    @Query("""
+            select coalesce(sum(u.inputTokens + u.outputTokens), 0)
+            from AiUsageEntity u
+            where u.user.id = :userId and u.baseUrl = :baseUrl and u.createdAt >= :since
+            """)
+    long sumTokens(@Param("userId") Long userId, @Param("baseUrl") String baseUrl,
+                   @Param("since") LocalDateTime since);
+
     void deleteByUserIdAndCreatedAtBefore(Long userId, LocalDateTime before);
 }

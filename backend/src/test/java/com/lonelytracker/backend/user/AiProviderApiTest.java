@@ -226,6 +226,36 @@ class AiProviderApiTest extends IntegrationTest {
                         + "\",\"apiKey\":\"" + apiKey + "\"}"));
     }
 
+    private ResultActions saveWithLimit(String baseUrl, String apiKey, Integer limit) throws Exception {
+        return mvc.perform(put(PATH).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"baseUrl\":\"" + baseUrl + "\",\"model\":\"m\",\"apiKey\":\""
+                        + apiKey + "\",\"monthlyTokenLimit\":" + limit + "}"));
+    }
+
+    @Test
+    @DisplayName("한도를 넣지 않으면 한도 없음으로 둔다")
+    void limitIsOptional() throws Exception {
+        save(OPENAI, "gpt-5.6-luna", SAMPLE_KEY)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.monthlyTokenLimit").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("한도를 넣으면 목록에도 실려 온다")
+    void savesMonthlyTokenLimit() throws Exception {
+        saveWithLimit(OPENAI, SAMPLE_KEY, 50_000).andExpect(status().isOk())
+                .andExpect(jsonPath("$.monthlyTokenLimit").value(50_000));
+
+        mvc.perform(get(PATH))
+                .andExpect(jsonPath("$.providers[0].monthlyTokenLimit").value(50_000));
+    }
+
+    @Test
+    @DisplayName("0 이하의 한도는 거절한다")
+    void rejectsNonPositiveLimit() throws Exception {
+        saveWithLimit(OPENAI, SAMPLE_KEY, 0).andExpect(status().isBadRequest());
+    }
+
     private long idOf(ResultActions result) throws Exception {
         String body = result.andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         return ((Number) JsonPath.read(body, "$.id")).longValue();

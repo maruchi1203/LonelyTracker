@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { habitSummary, todayAgenda, weekOf, weekStats } from "./dashboard";
+import { habitSummary, limitRatio, todayAgenda, weekOf, weekStats } from "./dashboard";
 import type { Habit } from "../types/habit";
-import type { ScheduleListItem, ScheduleResponse } from "../types/schedule";
+import type {
+  AiProvider,
+  ProviderUsage,
+  ScheduleListItem,
+  ScheduleResponse,
+} from "../types/schedule";
 
 const TODAY = "2026-09-15"; // 화요일
 
@@ -201,5 +206,46 @@ describe("habitSummary", () => {
       [2, 1],
     ]);
     expect(summary.emptyCategories).toEqual(["부업", "학습", "인간관계"]);
+  });
+});
+
+describe("limitRatio", () => {
+  const usage: ProviderUsage = {
+    baseUrl: "https://api.openai.com/v1",
+    calls: 3,
+    inputTokens: 300,
+    outputTokens: 100,
+  };
+
+  function provider(overrides: Partial<AiProvider> = {}): AiProvider {
+    return {
+      id: 1,
+      baseUrl: "https://api.openai.com/v1",
+      model: "m",
+      masked: "****abcd",
+      active: true,
+      ...overrides,
+    };
+  }
+
+  it("한도를 정하지 않은 제공자면 막대가 없다", () => {
+    expect(limitRatio(usage, [provider()])).toBeNull();
+  });
+
+  it("목록에 없는 제공자면 막대가 없다", () => {
+    expect(limitRatio(usage, [])).toBeNull();
+  });
+
+  it("주소 표기가 달라도 같은 제공자로 본다", () => {
+    const written = provider({
+      baseUrl: "HTTPS://API.OPENAI.COM/v1/",
+      monthlyTokenLimit: 1000,
+    });
+
+    expect(limitRatio(usage, [written])).toBe(0.4);
+  });
+
+  it("한도를 넘겨도 1을 넘지 않는다", () => {
+    expect(limitRatio(usage, [provider({ monthlyTokenLimit: 100 })])).toBe(1);
   });
 });

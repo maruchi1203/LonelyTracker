@@ -2,12 +2,14 @@ package com.lonelytracker.backend.user.dto;
 
 import com.lonelytracker.backend.common.FieldLengths;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 /**
  * @param baseUrl 제공자 주소. 같은 주소가 이미 있으면 그 줄을 고친다
  * @param model   모델 이름. 이름은 제공자마다 다르다
  * @param apiKey  이미 있는 주소를 고칠 때 비우면 기존 키를 그대로 둔다
+ * @param monthlyTokenLimit 이번 달 토큰 한도. 비우면 한도 없음
  */
 public record AiProviderRequest(
         @NotBlank(message = "제공자 주소를 넣어 주세요")
@@ -19,6 +21,9 @@ public record AiProviderRequest(
         String model,
 
         @Size(max = 300, message = "apiKey는 300자를 넘을 수 없습니다")
-        String apiKey
+        String apiKey,
+
+        @Positive(message = "한도는 1 이상이어야 합니다")
+        Integer monthlyTokenLimit
 ) {
 }

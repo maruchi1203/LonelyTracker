@@ -1,16 +1,22 @@
 import { useState } from "react";
 import { providerLabel } from "../../constants/aiPresets";
-import type { AiUsageSummary, ProviderUsage } from "../../types/schedule";
+import { limitRatio } from "../../domain/dashboard";
+import type {
+  AiProvider,
+  AiUsageSummary,
+  ProviderUsage,
+} from "../../types/schedule";
 import DashboardCard, { SegmentToggle } from "./DashboardCard";
 
 type Period = "week" | "month";
 
 interface Props {
   usage: AiUsageSummary;
+  providers: AiProvider[];
 }
 
 /** 제공자별 AI 호출 수와 토큰. 이번 주와 이번 달을 오간다 */
-export default function UsagePanel({ usage }: Props) {
+export default function UsagePanel({ usage, providers }: Props) {
   const [period, setPeriod] = useState<Period>("week");
   const rows: ProviderUsage[] = usage[period];
 
@@ -51,6 +57,8 @@ export default function UsagePanel({ usage }: Props) {
                   입력 {r.inputTokens.toLocaleString()} · 출력 {r.outputTokens.toLocaleString()}
                 </span>
               </div>
+
+              <LimitBar usage={r} providers={providers} period={period} />
             </li>
           ))}
         </ul>
@@ -58,5 +66,36 @@ export default function UsagePanel({ usage }: Props) {
 
       <p className="text-[11px] text-slate-400">석 달이 지난 기록은 지웁니다.</p>
     </DashboardCard>
+  );
+}
+
+/** 이번 달 한도를 정해 둔 제공자에만 보이는 막대. 8할을 넘으면 색이 바뀐다 */
+function LimitBar({
+  usage,
+  providers,
+  period,
+}: {
+  usage: ProviderUsage;
+  providers: AiProvider[];
+  period: Period;
+}) {
+  // 한도는 달 단위라 이번 주 보기에서는 견줄 대상이 아니다
+  const ratio = period === "month" ? limitRatio(usage, providers) : null;
+  if (ratio === null) return null;
+
+  const near = ratio >= 0.8;
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100">
+        <div
+          className={`h-full rounded-full ${near ? "bg-amber-500" : "bg-brand-500"}`}
+          style={{ width: `${Math.round(ratio * 100)}%` }}
+        />
+      </div>
+      <span className={`shrink-0 text-[11px] ${near ? "text-amber-600" : "text-slate-400"}`}>
+        한도의 {Math.round(ratio * 100)}%
+      </span>
+    </div>
   );
 }

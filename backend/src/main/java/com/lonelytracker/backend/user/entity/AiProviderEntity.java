@@ -63,6 +63,10 @@ public class AiProviderEntity {
     @Column(name = "api_key", nullable = false, length = 500)
     private String apiKey;
 
+    /** 이번 달 토큰 한도. null 이면 제한 없음 */
+    @Column(name = "monthly_token_limit")
+    private Integer monthlyTokenLimit;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -77,5 +81,9 @@ public class AiProviderEntity {
 
     public void changeApiKey(String apiKey) {
         this.apiKey = apiKey;
+    }
+
+    public void changeMonthlyTokenLimit(Integer monthlyTokenLimit) {
+        this.monthlyTokenLimit = monthlyTokenLimit;
     }
 }
