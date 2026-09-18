@@ -241,9 +241,9 @@ public class ScheduleService {
      * 이 순서로 두면 화면이 부모로 묶을 때 무리 안의 순서가 그대로 보존된다.
      * 아직 순서를 정한 적이 없으면 값이 모두 0이라 만든 순서로 남는다.
      */
-    private static final Comparator<ScheduleEntity> LIST_ORDER =
-            Comparator.comparingInt(ScheduleEntity::getDisplayOrder)
-                    .thenComparing(ScheduleEntity::getId);
+    private static final Comparator<ScheduleEntity> LIST_ORDER = Comparator
+            .comparingInt(ScheduleEntity::getDisplayOrder)
+            .thenComparing(ScheduleEntity::getId);
 
     /**
      * 형제 무리를 다시 세운다.

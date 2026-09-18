@@ -1,7 +1,6 @@
 package com.lonelytracker.backend.schedule.controller;
 
 import com.lonelytracker.backend.schedule.dto.ScheduleInstanceUpdateRequest;
-import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.schedule.dto.ScheduleCompletionRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleCreateRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleDetailResponse;

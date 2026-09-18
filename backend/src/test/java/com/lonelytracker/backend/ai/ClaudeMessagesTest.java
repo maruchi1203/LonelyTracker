@@ -8,12 +8,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -80,11 +81,11 @@ class ClaudeMessagesTest {
   @Test
   @DisplayName("없을 수 있는 칸은 required 에서 빠진다")
   void optionalFieldsAreNotRequired() {
-    @SuppressWarnings("unchecked")
-    Map<String, Object> item = (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) ParsedScheduleSchema
-        .getRootWithOptionalFields().get("properties")).get("schedules")).get("items");
+    JsonNode item = new ObjectMapper()
+        .valueToTree(ParsedScheduleSchema.getRootWithOptionalFields())
+        .path("properties").path("schedules").path("items");
 
-    assertThat((List<Object>) item.get("required"))
+    assertThat(item.path("required").valueStream().map(JsonNode::asString))
         .doesNotContain("title", "startAt", "recurrence")
         .contains("allDay", "tags");
   }
