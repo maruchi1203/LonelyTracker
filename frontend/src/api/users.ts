@@ -1,7 +1,7 @@
 import type {
-  AiCredential,
-  AiCredentialList,
-  AiCredentialRequest,
+  AiProvider,
+  AiProviderList,
+  AiProviderRequest,
   AiUsageSummary,
   UserResponse,
   UserSettings,
@@ -30,29 +30,29 @@ export async function changeSettings(
   return handle<UserSettings>(res);
 }
 
-const CREDENTIALS = `${BASE}/ai-credentials`;
+const CREDENTIALS = `${BASE}/ai-providers`;
 
-/** 등록한 자격 증명들. 키는 마스킹된 꼬리만 온다 */
-export async function fetchAiCredentials(): Promise<AiCredentialList> {
-  return handle<AiCredentialList>(await fetch(CREDENTIALS));
+/** 등록한 제공자 설정들. 키는 마스킹된 꼬리만 온다 */
+export async function fetchAiProviders(): Promise<AiProviderList> {
+  return handle<AiProviderList>(await fetch(CREDENTIALS));
 }
 
 /** 주소가 같으면 고치고 없으면 만든다. 저장한 것을 바로 쓴다 */
-export async function saveAiCredential(
-  body: AiCredentialRequest,
-): Promise<AiCredential> {
+export async function saveAiProvider(
+  body: AiProviderRequest,
+): Promise<AiProvider> {
   const res = await fetch(CREDENTIALS, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  return handle<AiCredential>(res);
+  return handle<AiProvider>(res);
 }
 
-/** 이 자격 증명으로 부르게 한다 */
-export async function activateAiCredential(id: number): Promise<AiCredential> {
+/** 이 제공자 설정으로 부르게 한다 */
+export async function activateAiProvider(id: number): Promise<AiProvider> {
   const res = await fetch(`${CREDENTIALS}/${id}/active`, { method: "PUT" });
-  return handle<AiCredential>(res);
+  return handle<AiProvider>(res);
 }
 
 /** 이번 주와 이번 달의 제공자별 호출 수·토큰 */
@@ -60,7 +60,7 @@ export async function fetchAiUsage(): Promise<AiUsageSummary> {
   return handle<AiUsageSummary>(await fetch(`${BASE}/ai-usage`));
 }
 
-export async function deleteAiCredential(id: number): Promise<void> {
+export async function deleteAiProvider(id: number): Promise<void> {
   const res = await fetch(`${CREDENTIALS}/${id}`, { method: "DELETE" });
   return handle<void>(res);
 }

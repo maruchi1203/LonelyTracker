@@ -23,5 +23,5 @@ public interface AiUsageRepository extends JpaRepository<AiUsageEntity, Long> {
             """)
     List<ProviderUsageResponse> sumByProvider(@Param("userId") Long userId, @Param("since") LocalDateTime since);
 
-    void deleteByUser_IdAndCreatedAtBefore(Long userId, LocalDateTime before);
+    void deleteByUserIdAndCreatedAtBefore(Long userId, LocalDateTime before);
 }

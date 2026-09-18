@@ -180,19 +180,19 @@ export interface UserResponse {
   createdAt: string;
 }
 
-/** AI 제공자 하나의 자격 증명. 키 원문은 서버가 절대 돌려주지 않는다 */
-export interface AiCredential {
+/** AI 제공자 하나의 제공자 설정. 키 원문은 서버가 절대 돌려주지 않는다 */
+export interface AiProvider {
   id: number;
   baseUrl: string;
   model: string;
   /** 끝 네 자리만 */
   masked: string;
-  /** 지금 이 자격 증명으로 부르는지 */
+  /** 지금 이 제공자 설정으로 부르는지 */
   active: boolean;
 }
 
-export interface AiCredentialList {
-  credentials: AiCredential[];
+export interface AiProviderList {
+  providers: AiProvider[];
   /** 고른 것이 없어도 서버 설정(.env)의 키로 부를 수 있는지 */
   serverConfigured: boolean;
 }
@@ -212,7 +212,7 @@ export interface AiUsageSummary {
   month: ProviderUsage[];
 }
 
-export interface AiCredentialRequest {
+export interface AiProviderRequest {
   baseUrl: string;
   model: string;
   /** 이미 있는 주소를 고칠 때 비우면 기존 키를 그대로 둔다 */

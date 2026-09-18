@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  activateAiCredential,
-  deleteAiCredential,
-  fetchAiCredentials,
-  saveAiCredential,
+  activateAiProvider,
+  deleteAiProvider,
+  fetchAiProviders,
+  saveAiProvider,
 } from "../../api/users";
 import { HttpError } from "../../api/http";
 import {
@@ -13,7 +13,7 @@ import {
   providerLabel,
   sameBaseUrl,
 } from "../../constants/aiPresets";
-import type { AiCredentialList } from "../../types/schedule";
+import type { AiProviderList } from "../../types/schedule";
 
 interface Props {
   /** 다른 화면에서 키를 등록하라고 보냈을 때 입력칸으로 바로 데려간다 */
@@ -34,8 +34,8 @@ function describe(e: unknown, fallback: string): string {
   return e instanceof Error ? e.message : fallback;
 }
 
-export default function AiCredentialSection({ autoFocus }: Props) {
-  const [list, setList] = useState<AiCredentialList | null>(null);
+export default function AiProviderSection({ autoFocus }: Props) {
+  const [list, setList] = useState<AiProviderList | null>(null);
   const [presetId, setPresetId] = useState(AI_PRESETS[0].id);
   const [baseUrl, setBaseUrl] = useState(AI_PRESETS[0].baseUrl);
   const [model, setModel] = useState(AI_PRESETS[0].model);
@@ -48,9 +48,9 @@ export default function AiCredentialSection({ autoFocus }: Props) {
 
   const load = useCallback(async () => {
     try {
-      setList(await fetchAiCredentials());
+      setList(await fetchAiProviders());
     } catch (e) {
-      setError(describe(e, "자격 증명을 불러오지 못했습니다"));
+      setError(describe(e, "제공자 설정을 불러오지 못했습니다"));
     }
   }, []);
 
@@ -64,10 +64,10 @@ export default function AiCredentialSection({ autoFocus }: Props) {
 
   const preset = AI_PRESETS.find((p) => p.id === presetId) ?? AI_PRESETS[0];
   const custom = preset.id === CUSTOM_PRESET_ID;
-  const credentials = list?.credentials ?? [];
-  const active = credentials.find((c) => c.active);
+  const providers = list?.providers ?? [];
+  const active = providers.find((c) => c.active);
   // 같은 주소가 이미 있으면 키를 비워도 모델만 바뀐다
-  const existing = credentials.find((c) => sameBaseUrl(c.baseUrl, baseUrl));
+  const existing = providers.find((c) => sameBaseUrl(c.baseUrl, baseUrl));
   const insecure = isInsecureUrl(baseUrl);
   const canSave =
     baseUrl.trim() !== "" &&
@@ -134,9 +134,9 @@ export default function AiCredentialSection({ autoFocus }: Props) {
         </p>
       )}
 
-      {credentials.length > 0 && (
+      {providers.length > 0 && (
         <ul className="flex list-none flex-col gap-1 p-0">
-          {credentials.map((c) => (
+          {providers.map((c) => (
             <li
               key={c.id}
               className="flex flex-wrap items-center gap-2 rounded-md border border-slate-100 px-3 py-2 text-sm"
@@ -159,7 +159,7 @@ export default function AiCredentialSection({ autoFocus }: Props) {
                   disabled={busy}
                   onClick={() =>
                     void run(
-                      () => activateAiCredential(c.id),
+                      () => activateAiProvider(c.id),
                       `${providerLabel(c.baseUrl)}(으)로 전환했습니다.`,
                     )
                   }
@@ -176,7 +176,7 @@ export default function AiCredentialSection({ autoFocus }: Props) {
                   if (!window.confirm(`${providerLabel(c.baseUrl)} 키를 지울까요?`)) {
                     return;
                   }
-                  void run(() => deleteAiCredential(c.id), "키를 지웠습니다.");
+                  void run(() => deleteAiProvider(c.id), "키를 지웠습니다.");
                 }}
                 className="rounded-md border border-transparent px-2 py-1 text-xs text-red-500 transition-colors hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
               >
@@ -194,7 +194,7 @@ export default function AiCredentialSection({ autoFocus }: Props) {
           if (!canSave) return;
           const label = providerLabel(baseUrl.trim());
           void run(async () => {
-            await saveAiCredential({
+            await saveAiProvider({
               baseUrl: baseUrl.trim(),
               model: model.trim(),
               apiKey: apiKey.trim() || undefined,

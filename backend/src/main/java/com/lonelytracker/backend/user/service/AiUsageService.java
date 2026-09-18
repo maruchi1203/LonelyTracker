@@ -44,7 +44,7 @@ public class AiUsageService implements AiUsageRecorder {
                 .inputTokens(usage.inputTokens())
                 .outputTokens(usage.outputTokens())
                 .build());
-        usageRepository.deleteByUser_IdAndCreatedAtBefore(user.getId(), LocalDateTime.now().minus(RETENTION));
+        usageRepository.deleteByUserIdAndCreatedAtBefore(user.getId(), LocalDateTime.now().minus(RETENTION));
     }
 
     public AiUsageSummaryResponse summary() {

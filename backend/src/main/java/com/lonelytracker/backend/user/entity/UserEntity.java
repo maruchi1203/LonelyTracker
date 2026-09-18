@@ -54,10 +54,10 @@ public class UserEntity {
     private LocalDateTime updatedAt;
 
     /**
-     * 지금 쓰는 AI 자격 증명. 비어 있으면 서버 설정을 쓴다
+     * 지금 쓰는 AI 제공자 설정. 비어 있으면 서버 설정을 쓴다
      */
-    @Column(name = "active_ai_credential_id")
-    private Long activeAiCredentialId;
+    @Column(name = "active_ai_provider_id")
+    private Long activeAiProviderId;
 
     /**
      * 2분 행동 칸을 폼에 띄울지
@@ -67,9 +67,9 @@ public class UserEntity {
     @Column(name = "two_minute_rule", nullable = false)
     private boolean twoMinuteRule = true;
 
-    /** @param credentialId null 이면 서버 설정으로 돌아간다 */
-    public void changeActiveAiCredential(Long credentialId) {
-        this.activeAiCredentialId = credentialId;
+    /** @param providerId null 이면 서버 설정으로 돌아간다 */
+    public void changeActiveAiProvider(Long providerId) {
+        this.activeAiProviderId = providerId;
     }
 
     public void changeTwoMinuteRule(boolean twoMinuteRule) {

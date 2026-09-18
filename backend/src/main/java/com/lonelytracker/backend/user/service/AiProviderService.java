@@ -6,12 +6,12 @@ import com.lonelytracker.backend.ai.AiTargetResolver;
 import com.lonelytracker.backend.common.AppProperties;
 import com.lonelytracker.backend.common.exception.AiUnavailableException;
 import com.lonelytracker.backend.common.exception.NotFoundException;
-import com.lonelytracker.backend.user.dto.AiCredentialListResponse;
-import com.lonelytracker.backend.user.dto.AiCredentialRequest;
-import com.lonelytracker.backend.user.dto.AiCredentialResponse;
-import com.lonelytracker.backend.user.entity.AiCredentialEntity;
+import com.lonelytracker.backend.user.dto.AiProviderListResponse;
+import com.lonelytracker.backend.user.dto.AiProviderRequest;
+import com.lonelytracker.backend.user.dto.AiProviderResponse;
+import com.lonelytracker.backend.user.entity.AiProviderEntity;
 import com.lonelytracker.backend.user.entity.UserEntity;
-import com.lonelytracker.backend.user.repository.AiCredentialRepository;
+import com.lonelytracker.backend.user.repository.AiProviderRepository;
 import com.lonelytracker.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
@@ -19,24 +19,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * AI 제공자별 자격 증명을 다룬다.
+ * AI 제공자별 제공자 설정을 다룬다.
  * 키 원본은 {@link #resolve()} 로 파서에 넘길 때만 나가고 어떤 응답에도 실리지 않는다.
  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class AiCredentialService implements AiTargetResolver {
+public class AiProviderService implements AiTargetResolver {
 
-    private final AiCredentialRepository credentialRepository;
+    private final AiProviderRepository providerRepository;
     private final UserRepository userRepository;
     private final UserProvider currentUserProvider;
     private final AppProperties properties;
 
-    public AiCredentialListResponse list() {
+    public AiProviderListResponse list() {
         UserEntity user = currentUserProvider.get();
-        return new AiCredentialListResponse(
-                credentialRepository.findAllByUser_IdOrderByCreatedAtAsc(user.getId()).stream()
-                        .map(c -> AiCredentialResponse.of(c, user.getActiveAiCredentialId()))
+        return new AiProviderListResponse(
+                providerRepository.findAllByUserIdOrderByCreatedAtAsc(user.getId()).stream()
+                        .map(c -> AiProviderResponse.of(c, user.getActiveAiProviderId()))
                         .toList(),
                 properties.ai().hasApiKey());
     }
@@ -45,14 +45,14 @@ public class AiCredentialService implements AiTargetResolver {
      * 주소가 같은 줄이 있으면 고치고 없으면 만든다. 저장한 것을 바로 쓰는 것으로 고른다
      */
     @Transactional
-    public AiCredentialResponse save(AiCredentialRequest request) {
+    public AiProviderResponse save(AiProviderRequest request) {
         UserEntity user = currentUserProvider.get();
         String baseUrl = AiBaseUrls.normalize(request.baseUrl());
         String model = request.model().strip();
         String apiKey = (request.apiKey() == null) ? "" : request.apiKey().strip();
 
-        AiCredentialEntity credential = credentialRepository
-                .findByUser_IdAndBaseUrl(user.getId(), baseUrl)
+        AiProviderEntity provider = providerRepository
+                .findByUserIdAndBaseUrl(user.getId(), baseUrl)
                 .map(existing -> {
                     existing.changeModel(model);
                     // 모델만 바꿀 때 키를 다시 넣게 하지 않는다
@@ -65,53 +65,53 @@ public class AiCredentialService implements AiTargetResolver {
                     if (apiKey.isEmpty()) {
                         throw new IllegalArgumentException("API 키를 넣어 주세요");
                     }
-                    return AiCredentialEntity.builder()
+                    return AiProviderEntity.builder()
                             .user(user).baseUrl(baseUrl).model(model).apiKey(apiKey).build();
                 });
 
-        credentialRepository.saveAndFlush(credential);
-        user.changeActiveAiCredential(credential.getId());
+        providerRepository.saveAndFlush(provider);
+        user.changeActiveAiProvider(provider.getId());
         userRepository.saveAndFlush(user);
-        return AiCredentialResponse.of(credential, credential.getId());
+        return AiProviderResponse.of(provider, provider.getId());
     }
 
     @Transactional
-    public AiCredentialResponse activate(Long id) {
+    public AiProviderResponse activate(Long id) {
         UserEntity user = currentUserProvider.get();
-        AiCredentialEntity credential = getOwnedOrThrow(id, user);
-        user.changeActiveAiCredential(credential.getId());
+        AiProviderEntity provider = getOwnedOrThrow(id, user);
+        user.changeActiveAiProvider(provider.getId());
         userRepository.saveAndFlush(user);
-        return AiCredentialResponse.of(credential, credential.getId());
+        return AiProviderResponse.of(provider, provider.getId());
     }
 
     /** 쓰던 것을 지우면 서버 설정으로 돌아간다 */
     @Transactional
     public void delete(Long id) {
         UserEntity user = currentUserProvider.get();
-        AiCredentialEntity credential = getOwnedOrThrow(id, user);
+        AiProviderEntity provider = getOwnedOrThrow(id, user);
 
         // DB 의 SET NULL 을 Hibernate 가 모르므로 엔티티에서도 끊는다
-        if (credential.getId().equals(user.getActiveAiCredentialId())) {
-            user.changeActiveAiCredential(null);
+        if (provider.getId().equals(user.getActiveAiProviderId())) {
+            user.changeActiveAiProvider(null);
             userRepository.saveAndFlush(user);
         }
-        credentialRepository.delete(credential);
+        providerRepository.delete(provider);
     }
 
     /**
-     * 이번 파싱이 부를 곳. 고른 자격 증명이 먼저고, 없으면 서버 설정이다
+     * 이번 파싱이 부를 곳. 고른 제공자 설정이 먼저고, 없으면 서버 설정이다
      *
      * @throws AiUnavailableException 둘 다 없을 때
      */
     @Override
     public AiTarget resolve() {
         UserEntity user = currentUserProvider.get();
-        Long activeId = user.getActiveAiCredentialId();
+        Long activeId = user.getActiveAiProviderId();
 
         if (activeId != null) {
-            return credentialRepository.findByIdAndUser_Id(activeId, user.getId())
+            return providerRepository.findByIdAndUserId(activeId, user.getId())
                     .map(c -> new AiTarget(c.getBaseUrl(), c.getModel(), c.getApiKey()))
-                    .orElseThrow(AiCredentialService::noKey);
+                    .orElseThrow(AiProviderService::noKey);
         }
 
         AppProperties.AiSetting server = properties.ai();
@@ -121,9 +121,9 @@ public class AiCredentialService implements AiTargetResolver {
         throw noKey();
     }
 
-    private AiCredentialEntity getOwnedOrThrow(Long id, UserEntity user) {
-        return credentialRepository.findByIdAndUser_Id(id, user.getId())
-                .orElseThrow(() -> new NotFoundException("자격 증명을 찾을 수 없습니다. id=" + id));
+    private AiProviderEntity getOwnedOrThrow(Long id, UserEntity user) {
+        return providerRepository.findByIdAndUserId(id, user.getId())
+                .orElseThrow(() -> new NotFoundException("제공자 설정을 찾을 수 없습니다. id=" + id));
     }
 
     // 서버 설정이 아니라 이 사용자가 키를 넣지 않은 것이다

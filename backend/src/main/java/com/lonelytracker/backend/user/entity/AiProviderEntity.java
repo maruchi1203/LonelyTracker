@@ -28,18 +28,18 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 /**
- * AI 제공자 하나에 대한 자격 증명.
+ * AI 제공자 하나에 대한 제공자 설정.
  * 제공자는 주소로 갈려서 한 사용자에게 주소마다 한 줄이다.
  */
 @Entity
-@Table(name = "ai_credential", uniqueConstraints = @UniqueConstraint(name = "uq_ai_credential_base_url", columnNames = {
+@Table(name = "ai_provider", uniqueConstraints = @UniqueConstraint(name = "uq_ai_provider_base_url", columnNames = {
         "user_id", "base_url" }))
 @EntityListeners(AuditingEntityListener.class)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-public class AiCredentialEntity {
+public class AiProviderEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

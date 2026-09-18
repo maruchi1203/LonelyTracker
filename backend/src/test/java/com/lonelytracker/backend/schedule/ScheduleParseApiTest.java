@@ -63,7 +63,7 @@ class ScheduleParseApiTest extends IntegrationTest {
         registerKey("sk-test-abcdefgh");
     }
 
-    private static final String CREDENTIALS = "/api/users/me/ai-credentials";
+    private static final String CREDENTIALS = "/api/users/me/ai-providers";
     private static final String BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai";
 
     /** 파싱은 사용자 키가 있어야 동작한다. 서버 설정이 아니다. */
@@ -76,11 +76,11 @@ class ScheduleParseApiTest extends IntegrationTest {
                 .andExpect(status().isOk());
     }
 
-    /** 등록한 자격 증명을 모두 지운다 */
+    /** 등록한 제공자 설정을 모두 지운다 */
     private void clearKeys() throws Exception {
         String body = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                 .get(CREDENTIALS)).andReturn().getResponse().getContentAsString();
-        List<Integer> ids = com.jayway.jsonpath.JsonPath.read(body, "$.credentials[*].id");
+        List<Integer> ids = com.jayway.jsonpath.JsonPath.read(body, "$.providers[*].id");
         for (Integer id : ids) {
             mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                     .delete(CREDENTIALS + "/" + id)).andExpect(status().isNoContent());

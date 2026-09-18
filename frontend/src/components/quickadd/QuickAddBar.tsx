@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { HttpError } from "../../api/http";
 import { parseSchedule } from "../../api/schedules";
-import { fetchAiCredentials } from "../../api/users";
+import { fetchAiProviders } from "../../api/users";
 import { knownQuestions } from "../../constants/parseQuestions";
 import type { FormVariant, ScheduleForm } from "../../domain/scheduleForm";
 import { draftFromParsed, formToCreateRequest } from "../../domain/scheduleForm";
@@ -120,8 +120,8 @@ export default function QuickAddBar({
       // 503 은 키 없음 말고도 서버 암호화 문제일 수 있어 상태를 한 번 더 확인한다
       let needsKey = false;
       if (e instanceof HttpError && e.status === 503) {
-        needsKey = await fetchAiCredentials()
-          .then((l) => !l.serverConfigured && !l.credentials.some((c) => c.active))
+        needsKey = await fetchAiProviders()
+          .then((l) => !l.serverConfigured && !l.providers.some((c) => c.active))
           .catch(() => false);
         if (needsKey) sessionStorage.setItem(DRAFT_TEXT_KEY, sentence);
       }

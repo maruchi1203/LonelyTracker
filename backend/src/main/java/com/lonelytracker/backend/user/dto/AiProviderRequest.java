@@ -9,7 +9,7 @@ import jakarta.validation.constraints.Size;
  * @param model   모델 이름. 이름은 제공자마다 다르다
  * @param apiKey  이미 있는 주소를 고칠 때 비우면 기존 키를 그대로 둔다
  */
-public record AiCredentialRequest(
+public record AiProviderRequest(
         @NotBlank(message = "제공자 주소를 넣어 주세요")
         @Size(max = FieldLengths.AI_BASE_URL, message = "주소가 너무 깁니다")
         String baseUrl,

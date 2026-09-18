@@ -21,7 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * AI 제공자별 자격 증명.
+ * AI 제공자별 제공자 설정.
  * <p>
  * 제공자를 바꿔도 앞서 넣은 키가 남아야 한다. 키 하나를 갈아 끼우는 방식은
  * 주소와 키가 어긋나 Gemini 키가 OpenAI 로 날아가는 사고를 낸다.
@@ -30,9 +30,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @AutoConfigureMockMvc
 @Transactional
-class AiCredentialApiTest extends IntegrationTest {
+class AiProviderApiTest extends IntegrationTest {
 
-    private static final String PATH = "/api/users/me/ai-credentials";
+    private static final String PATH = "/api/users/me/ai-providers";
     private static final String OPENAI = "https://api.openai.com/v1";
     private static final String GEMINI = "https://generativelanguage.googleapis.com/v1beta/openai";
     private static final String SAMPLE_KEY = "sk-proj-verysecretvalue1234";
@@ -48,7 +48,7 @@ class AiCredentialApiTest extends IntegrationTest {
     void emptyInitially() throws Exception {
         mvc.perform(get(PATH))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.credentials").isEmpty())
+                .andExpect(jsonPath("$.providers").isEmpty())
                 .andExpect(jsonPath("$.serverConfigured").value(false));
     }
 
@@ -92,7 +92,7 @@ class AiCredentialApiTest extends IntegrationTest {
         save(OPENAI, "gpt-5.6-luna", SAMPLE_KEY).andExpect(status().isOk());
 
         String stored = jdbc.queryForObject(
-                "select api_key from ai_credential where base_url = ?", String.class, OPENAI);
+                "select api_key from ai_provider where base_url = ?", String.class, OPENAI);
 
         // DB 백업이나 덤프가 새는 순간 평문 키는 그대로 노출된다
         assertThat(stored).isNotNull();
@@ -107,11 +107,11 @@ class AiCredentialApiTest extends IntegrationTest {
 
         mvc.perform(get(PATH))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.credentials.length()").value(2))
-                .andExpect(jsonPath("$.credentials[0].baseUrl").value(OPENAI))
-                .andExpect(jsonPath("$.credentials[0].active").value(false))
-                .andExpect(jsonPath("$.credentials[1].baseUrl").value(GEMINI))
-                .andExpect(jsonPath("$.credentials[1].active").value(true));
+                .andExpect(jsonPath("$.providers.length()").value(2))
+                .andExpect(jsonPath("$.providers[0].baseUrl").value(OPENAI))
+                .andExpect(jsonPath("$.providers[0].active").value(false))
+                .andExpect(jsonPath("$.providers[1].baseUrl").value(GEMINI))
+                .andExpect(jsonPath("$.providers[1].active").value(true));
     }
 
     @Test
@@ -123,7 +123,7 @@ class AiCredentialApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.masked").value("****5678"));
 
         mvc.perform(get(PATH))
-                .andExpect(jsonPath("$.credentials.length()").value(1));
+                .andExpect(jsonPath("$.providers.length()").value(1));
     }
 
     @Test
@@ -135,7 +135,7 @@ class AiCredentialApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.baseUrl").value(OPENAI));
 
         mvc.perform(get(PATH))
-                .andExpect(jsonPath("$.credentials.length()").value(1));
+                .andExpect(jsonPath("$.providers.length()").value(1));
     }
 
     @Test
@@ -182,8 +182,8 @@ class AiCredentialApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$.active").value(true));
 
         mvc.perform(get(PATH))
-                .andExpect(jsonPath("$.credentials[0].active").value(true))
-                .andExpect(jsonPath("$.credentials[1].active").value(false));
+                .andExpect(jsonPath("$.providers[0].active").value(true))
+                .andExpect(jsonPath("$.providers[1].active").value(false));
     }
 
     @Test
@@ -194,28 +194,28 @@ class AiCredentialApiTest extends IntegrationTest {
         mvc.perform(delete(PATH + "/" + id)).andExpect(status().isNoContent());
 
         mvc.perform(get(PATH))
-                .andExpect(jsonPath("$.credentials").isEmpty());
+                .andExpect(jsonPath("$.providers").isEmpty());
         Long active = jdbc.queryForObject(
-                "select active_ai_credential_id from app_user where username = 'default'", Long.class);
+                "select active_ai_provider_id from app_user where username = 'default'", Long.class);
         assertThat(active).isNull();
     }
 
     @Test
-    @DisplayName("남의 자격 증명은 고르거나 지울 수 없다")
-    void cannotTouchOthersCredential() throws Exception {
+    @DisplayName("남의 제공자 설정은 고르거나 지울 수 없다")
+    void cannotTouchOthersProvider() throws Exception {
         mvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"username\":\"other\",\"displayName\":\"other\"}"))
                 .andExpect(status().isCreated());
         Long otherUser = jdbc.queryForObject(
                 "select id from app_user where username = 'other'", Long.class);
-        Long othersCredential = jdbc.queryForObject(
-                "insert into ai_credential (user_id, base_url, model, api_key, created_at, updated_at) "
+        Long othersProvider = jdbc.queryForObject(
+                "insert into ai_provider (user_id, base_url, model, api_key, created_at, updated_at) "
                         + "values (?, ?, 'm', 'x', now(), now()) returning id",
                 Long.class, otherUser, OPENAI);
 
         // 있다고 알려주지 않는다
-        mvc.perform(put(PATH + "/" + othersCredential + "/active")).andExpect(status().isNotFound());
-        mvc.perform(delete(PATH + "/" + othersCredential)).andExpect(status().isNotFound());
+        mvc.perform(put(PATH + "/" + othersProvider + "/active")).andExpect(status().isNotFound());
+        mvc.perform(delete(PATH + "/" + othersProvider)).andExpect(status().isNotFound());
     }
 
     // --- 헬퍼 -------------------------------------------------------------
