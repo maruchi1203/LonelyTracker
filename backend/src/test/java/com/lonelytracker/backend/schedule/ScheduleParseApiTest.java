@@ -95,10 +95,10 @@ class ScheduleParseApiTest extends IntegrationTest {
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"내일 3시 헬스장에서 운동\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].title").value("헬스장 운동"))
-                .andExpect(jsonPath("$[0].startAt").value("2026-09-08T15:00:00"))
-                .andExpect(jsonPath("$[0].place").value("헬스장"))
-                .andExpect(jsonPath("$[0].tags[0]").value("육체"));
+                .andExpect(jsonPath("$.schedules[0].title").value("헬스장 운동"))
+                .andExpect(jsonPath("$.schedules[0].startAt").value("2026-09-08T15:00:00"))
+                .andExpect(jsonPath("$.schedules[0].place").value("헬스장"))
+                .andExpect(jsonPath("$.schedules[0].tags[0]").value("육체"));
 
         // 저장되지 않았다 - 목록이 비어 있어야 한다
         mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
@@ -106,7 +106,7 @@ class ScheduleParseApiTest extends IntegrationTest {
                 .param("from", "2026-09-01T00:00:00")
                 .param("to", "2026-09-30T23:59:59"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0]").doesNotExist());
+                .andExpect(jsonPath("$.schedules[0]").doesNotExist());
     }
 
     @Test
@@ -145,7 +145,7 @@ class ScheduleParseApiTest extends IntegrationTest {
                 .content("{\"text\":\"운동\"}"))
                 .andExpect(status().isOk())
                 // 태그는 자유 입력이라 후보 밖의 이름도 버리지 않는다
-                .andExpect(jsonPath("$[0].tags[0]").value("처음쓰는태그"));
+                .andExpect(jsonPath("$.schedules[0].tags[0]").value("처음쓰는태그"));
     }
 
     @Test
@@ -160,8 +160,8 @@ class ScheduleParseApiTest extends IntegrationTest {
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"매주 월수금 아침 7시 헬스장에서 운동\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].recurrence.freq").value("WEEKLY"))
-                .andExpect(jsonPath("$[0].recurrence.byWeekday.length()").value(3));
+                .andExpect(jsonPath("$.schedules[0].recurrence.freq").value("WEEKLY"))
+                .andExpect(jsonPath("$.schedules[0].recurrence.byWeekday.length()").value(3));
     }
 
     @Test
@@ -174,29 +174,30 @@ class ScheduleParseApiTest extends IntegrationTest {
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"회의\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].title").value("회의"))
+                .andExpect(jsonPath("$.schedules[0].title").value("회의"))
                 // 모르는 값은 지어내지 않고 null 로 둔다
-                .andExpect(jsonPath("$[0].startAt").doesNotExist())
-                .andExpect(jsonPath("$[0].questions.length()").value(3))
-                .andExpect(jsonPath("$[0].questions[0]").value("DATE"));
+                .andExpect(jsonPath("$.schedules[0].startAt").doesNotExist())
+                .andExpect(jsonPath("$.schedules[0].questions.length()").value(3))
+                .andExpect(jsonPath("$.schedules[0].questions[0]").value("DATE"));
     }
 
     @Test
-    @DisplayName("제목이 비면 400을 반환한다")
-    void rejectsEmptyTitle() throws Exception {
+    @DisplayName("제목이 비면 초안 없이 안내 문구만 온다")
+    void emptyTitleBecomesNotice() throws Exception {
         parser.willReturn(new ParsedSchedule(
                 null, LocalDateTime.parse("2026-09-08T15:00:00"), null, false,
                 null, null, null, List.of()));
 
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"ㅁㄴㅇㄹ\"}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").exists());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.schedules.length()").value(0))
+                .andExpect(jsonPath("$.notice").exists());
     }
 
     @Test
-    @DisplayName("종료가 시작보다 이르면 400을 반환한다")
-    void rejectsInvertedPeriod() throws Exception {
+    @DisplayName("종료가 시작보다 이른 초안은 버리고 안내 문구를 준다")
+    void invertedPeriodBecomesNotice() throws Exception {
         parser.willReturn(new ParsedSchedule(
                 "거꾸로",
                 LocalDateTime.parse("2026-09-08T15:00:00"),
@@ -205,7 +206,8 @@ class ScheduleParseApiTest extends IntegrationTest {
 
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"거꾸로\"}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notice").exists());
     }
 
     @Test
@@ -317,9 +319,9 @@ class ScheduleParseApiTest extends IntegrationTest {
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"내일 3시 치과, 5시에 장보기\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].title").value("치과"))
-                .andExpect(jsonPath("$[1].title").value("장보기"));
+                .andExpect(jsonPath("$.schedules.length()").value(2))
+                .andExpect(jsonPath("$.schedules[0].title").value("치과"))
+                .andExpect(jsonPath("$.schedules[1].title").value("장보기"));
     }
 
     @Test
@@ -333,18 +335,20 @@ class ScheduleParseApiTest extends IntegrationTest {
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"내일 3시 ???, 5시에 장보기\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].title").value("장보기"));
+                .andExpect(jsonPath("$.schedules.length()").value(1))
+                .andExpect(jsonPath("$.schedules[0].title").value("장보기"));
     }
 
     @Test
-    @DisplayName("쓸 수 있는 초안이 하나도 없으면 거절한다")
-    void refusesWhenNothingIsUsable() throws Exception {
+    @DisplayName("쓸 수 있는 초안이 하나도 없으면 안내 문구를 준다")
+    void noticesWhenNothingIsUsable() throws Exception {
         parser.willReturn(draft("  ", "2026-09-08T15:00:00", null, List.of()));
 
         mvc.perform(post(PARSE).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"???\"}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.schedules.length()").value(0))
+                .andExpect(jsonPath("$.notice").value("일정으로 읽을 수 없는 문장입니다. 직접 입력해 주세요"));
     }
 
     /** 정해진 답을 돌려주는 가짜. 실제 API 를 부르지 않는다. */

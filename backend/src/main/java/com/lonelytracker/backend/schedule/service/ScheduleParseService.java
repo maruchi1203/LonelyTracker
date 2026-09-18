@@ -7,7 +7,7 @@ import com.lonelytracker.backend.ai.AiUsageRecorder;
 import com.lonelytracker.backend.ai.ParseResult;
 import com.lonelytracker.backend.ai.ParsedSchedule;
 import com.lonelytracker.backend.ai.ScheduleParser;
-import com.lonelytracker.backend.common.exception.AiParseException;
+import com.lonelytracker.backend.schedule.dto.ScheduleParseResponse;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,9 +34,9 @@ public class ScheduleParseService {
     /**
      * 문장 하나를 초안 목록으로 바꾼다.
      *
-     * @return 읽어낸 초안들. 쓸 수 없는 것은 버리고 남은 것만 온다
+     * @return 읽어낸 초안들. 하나도 못 읽었으면 빈 목록과 안내 문구
      */
-    public List<ParsedSchedule> parse(String text) {
+    public ScheduleParseResponse parse(String text) {
         // 짧은 트랜잭션. 여기서 닫힌다
         AiTarget target = targetResolver.resolve();
 
@@ -62,10 +62,11 @@ public class ScheduleParseService {
                 .map(ScheduleParseService::trim)
                 .toList();
 
+        // 부르는 데 성공했고 읽을 것이 없었을 뿐이라 오류로 내보내지 않는다
         if (usable.isEmpty()) {
-            throw new AiParseException("일정으로 읽을 수 없는 문장입니다. 직접 입력해 주세요");
+            return ScheduleParseResponse.notice("일정으로 읽을 수 없는 문장입니다. 직접 입력해 주세요");
         }
-        return usable;
+        return ScheduleParseResponse.of(usable);
     }
 
     /**

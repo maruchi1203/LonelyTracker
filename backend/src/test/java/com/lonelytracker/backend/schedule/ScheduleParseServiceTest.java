@@ -37,6 +37,6 @@ class ScheduleParseServiceTest {
         ScheduleParseService service =
                 new ScheduleParseService(parser, scheduleService, targetResolver, usageRecorder);
 
-        assertThat(service.parse("운동").stream().map(ParsedSchedule::title)).containsExactly("운동");
+        assertThat(service.parse("운동").schedules().stream().map(ParsedSchedule::title)).containsExactly("운동");
     }
 }
