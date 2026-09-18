@@ -46,11 +46,8 @@ spring:
 
   # 스키마 변경은 Flyway가 담당한다. db/migration 의 V*.sql 중
   # 아직 적용되지 않은 것만 앱 시작 시 순서대로 실행된다.
-  flyway:
-    # 이미 schedule 테이블이 있는 기존 DB에 도입하는 중이라 필요하다.
-    # 현재 상태를 version 1로 간주하고 V2부터 적용한다. 빈 DB에서는 V1부터 전부 실행된다.
-    baseline-on-migrate: true
-    baseline-version: 1
+  # V1 하나에 전체 스키마가 있다. 빈 DB 에서만 돌리며, 이미 테이블이 있는 DB 는
+  # 조용히 건너뛰는 대신 기동을 실패시켜 어긋남을 드러낸다.
 
   jpa:
     hibernate:
