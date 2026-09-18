@@ -1,5 +1,8 @@
 import type {
-  OpenAiKeyStatus,
+  AiProvider,
+  AiProviderList,
+  AiProviderRequest,
+  AiUsageSummary,
   UserResponse,
   UserSettings,
 } from "../types/schedule";
@@ -27,20 +30,37 @@ export async function changeSettings(
   return handle<UserSettings>(res);
 }
 
-/** 등록 여부와 마스킹된 꼬리만 온다 */
-export async function fetchOpenAiKeyStatus(): Promise<OpenAiKeyStatus> {
-  return handle<OpenAiKeyStatus>(await fetch(`${BASE}/openai-key`));
+const CREDENTIALS = `${BASE}/ai-providers`;
+
+/** 등록한 제공자 설정들. 키는 마스킹된 꼬리만 온다 */
+export async function fetchAiProviders(): Promise<AiProviderList> {
+  return handle<AiProviderList>(await fetch(CREDENTIALS));
 }
 
-/** API Key 등록 혹은 수정
- * null이나 빈 문자열을 보내면 등록을 해제한다 */
-export async function changeOpenAiKey(
-  apiKey: string | null,
-): Promise<OpenAiKeyStatus> {
-  const res = await fetch(`${BASE}/openai-key`, {
+/** 주소가 같으면 고치고 없으면 만든다. 저장한 것을 바로 쓴다 */
+export async function saveAiProvider(
+  body: AiProviderRequest,
+): Promise<AiProvider> {
+  const res = await fetch(CREDENTIALS, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ apiKey }),
+    body: JSON.stringify(body),
   });
-  return handle<OpenAiKeyStatus>(res);
+  return handle<AiProvider>(res);
+}
+
+/** 이 제공자 설정으로 부르게 한다 */
+export async function activateAiProvider(id: number): Promise<AiProvider> {
+  const res = await fetch(`${CREDENTIALS}/${id}/active`, { method: "PUT" });
+  return handle<AiProvider>(res);
+}
+
+/** 이번 주와 이번 달의 제공자별 호출 수·토큰 */
+export async function fetchAiUsage(): Promise<AiUsageSummary> {
+  return handle<AiUsageSummary>(await fetch(`${BASE}/ai-usage`));
+}
+
+export async function deleteAiProvider(id: number): Promise<void> {
+  const res = await fetch(`${CREDENTIALS}/${id}`, { method: "DELETE" });
+  return handle<void>(res);
 }

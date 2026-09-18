@@ -19,12 +19,18 @@ public record AppProperties(UserDefaults user, AiSetting ai, Security security) 
     }
 
     /**
+     * @param apiKey         사용자가 자격 증명을 고르지 않았을 때 쓰는 키. clone 해서 .env 로 쓰는 길
      * @param connectTimeout 서버 응답 대기시간
      * @param readTimeout    응답 받는 데 걸리는 시간. 기본값은 무한 대기
      * @param maxRetries     429·5xx 나올 경우에 최대 재시도 횟수
      */
-    public record AiSetting(String baseUrl, String model,
+    public record AiSetting(String baseUrl, String model, String apiKey,
             Duration connectTimeout, Duration readTimeout, int maxRetries) {
+
+        /** .env 만으로 AI 를 쓸 수 있는지 */
+        public boolean hasApiKey() {
+            return apiKey != null && !apiKey.isBlank();
+        }
     }
 
     /**

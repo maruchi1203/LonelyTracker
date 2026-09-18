@@ -46,5 +46,8 @@ public abstract class IntegrationTest {
         // 사용자 API 키를 암호화해 저장하려면 마스터 키가 필요하다.
         // 운영에서는 환경변수로 주입한다.
         registry.add("lonelytracker.security.encryption-key", () -> "test-master-key-for-integration");
+
+        // 개발자의 .env 에 키가 있어도 테스트는 "키 없음" 에서 출발한다
+        registry.add("lonelytracker.ai.api-key", () -> "");
     }
 }

@@ -14,9 +14,15 @@ lonelytracker:
     encryption-key: ${LONELYTRACKER_ENCRYPTION_KEY:}
 
   ai:
-    base-url: https://api.openai.com/v1
+    # 제공자는 주소로 갈린다. 규약이 같은 곳은 이 값만 바꾸면 그대로 돈다.
+    # api.anthropic.com 이면 네이티브 Messages 규약으로 자동 전환된다.
+    base-url: ${AI_BASE_URL:https://api.openai.com/v1}
     # 한 줄짜리 한국어를 JSON 으로 바꾸는 작업이라 상위 모델을 쓸 이유가 없다.
-    model: gpt-5.6-luna
+    # 주소를 바꾸면 모델도 같이 바꿔야 한다. 이름은 제공자마다 다르다.
+    model: ${AI_MODEL:gpt-5.6-luna}
+    # 설정 화면에서 자격 증명을 고르지 않았을 때 쓰는 키. clone 해서 .env 한 줄로 쓰는 길이다.
+    # 따옴표를 붙이지 않는다. properties 로 읽혀 따옴표가 값에 들어간다.
+    api-key: ${AI_API_KEY:}
     # 기본값이 무한 대기다. 걸지 않으면 API 가 멈췄을 때 우리 스레드가 계속 묶인다.
     connect-timeout: 5s
     read-timeout: 30s

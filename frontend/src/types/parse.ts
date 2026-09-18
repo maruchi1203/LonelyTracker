@@ -29,3 +29,9 @@ export interface ParsedSchedule {
   recurrence?: ParsedRecurringSchedule;
   questions?: ParseQuestion[];
 }
+
+/** 부르는 데 성공했으면 200 이다. 읽을 것이 없으면 초안 대신 notice 가 온다 */
+export interface ParseResponse {
+  schedules: ParsedSchedule[];
+  notice?: string;
+}

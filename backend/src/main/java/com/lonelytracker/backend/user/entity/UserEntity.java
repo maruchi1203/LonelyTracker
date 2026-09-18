@@ -1,9 +1,7 @@
 package com.lonelytracker.backend.user.entity;
 
 import com.lonelytracker.backend.common.FieldLengths;
-import com.lonelytracker.backend.common.security.EncryptedStringConverter;
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
@@ -56,11 +54,10 @@ public class UserEntity {
     private LocalDateTime updatedAt;
 
     /**
-     * OpenAI API 키. DB에는 암호화되어 저장되고 어떤 응답에도 실리지 않는다
+     * 지금 쓰는 AI 제공자 설정. 비어 있으면 서버 설정을 쓴다
      */
-    @Convert(converter = EncryptedStringConverter.class)
-    @Column(name = "openai_api_key", length = 500)
-    private String openAiApiKey;
+    @Column(name = "active_ai_provider_id")
+    private Long activeAiProviderId;
 
     /**
      * 2분 행동 칸을 폼에 띄울지
@@ -70,17 +67,9 @@ public class UserEntity {
     @Column(name = "two_minute_rule", nullable = false)
     private boolean twoMinuteRule = true;
 
-    public boolean hasOpenAiApiKey() {
-        return openAiApiKey != null && !openAiApiKey.isBlank();
-    }
-
-    /**
-     * OpenAI API 키를 바꾼다.
-     *
-     * @param openAiApiKey null이나 빈 값을 주면 등록을 해제한다
-     */
-    public void changeOpenAiApiKey(String apiKey) {
-        this.openAiApiKey = (apiKey == null || apiKey.isBlank()) ? null : apiKey.strip();
+    /** @param providerId null 이면 서버 설정으로 돌아간다 */
+    public void changeActiveAiProvider(Long providerId) {
+        this.activeAiProviderId = providerId;
     }
 
     public void changeTwoMinuteRule(boolean twoMinuteRule) {

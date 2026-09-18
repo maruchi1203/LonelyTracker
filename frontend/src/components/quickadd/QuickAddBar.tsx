@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { HttpError } from "../../api/http";
 import { parseSchedule } from "../../api/schedules";
-import { fetchOpenAiKeyStatus } from "../../api/users";
+import { fetchAiProviders } from "../../api/users";
 import { knownQuestions } from "../../constants/parseQuestions";
 import type { FormVariant, ScheduleForm } from "../../domain/scheduleForm";
 import { draftFromParsed, formToCreateRequest } from "../../domain/scheduleForm";
@@ -35,6 +35,8 @@ type State =
   | { mode: "idle" }
   | { mode: "parsing" }
   | { mode: "drafts"; drafts: Draft[] }
+  // AI 는 답했지만 초안이 없다. 오류가 아니다
+  | { mode: "notice"; message: string }
   | { mode: "error"; message: string; needsKey: boolean };
 
 /** 서버 읽기 타임아웃이 30초라 그보다 조금 뒤에 포기한다 */
@@ -98,9 +100,13 @@ export default function QuickAddBar({
 
     try {
       const parsed = await parseSchedule(sentence, controller.signal);
+      if (parsed.notice) {
+        setState({ mode: "notice", message: parsed.notice });
+        return;
+      }
       setState({
         mode: "drafts",
-        drafts: parsed.map((one, at) => ({
+        drafts: parsed.schedules.map((one, at) => ({
           key: at,
           form: draftFromParsed(one, defaultDate, variant),
           questions: knownQuestions(one.questions),
@@ -120,8 +126,8 @@ export default function QuickAddBar({
       // 503 은 키 없음 말고도 서버 암호화 문제일 수 있어 상태를 한 번 더 확인한다
       let needsKey = false;
       if (e instanceof HttpError && e.status === 503) {
-        needsKey = await fetchOpenAiKeyStatus()
-          .then((s) => !s.registered)
+        needsKey = await fetchAiProviders()
+          .then((l) => !l.serverConfigured && !l.providers.some((c) => c.active))
           .catch(() => false);
         if (needsKey) sessionStorage.setItem(DRAFT_TEXT_KEY, sentence);
       }
@@ -232,12 +238,28 @@ export default function QuickAddBar({
         </>
       )}
 
+      {state.mode === "notice" && (
+        <div className="flex flex-col items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          <p>{state.message}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setManual(true);
+              setState({ mode: "idle" });
+            }}
+            className="rounded-md border border-amber-200 bg-white px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-100"
+          >
+            직접 입력하기
+          </button>
+        </div>
+      )}
+
       {state.mode === "error" && (
         <div className="flex flex-col items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
           <p>{state.message}</p>
           {state.needsKey ? (
             <Link
-              to="/settings?focus=openai-key"
+              to="/settings?focus=ai-key"
               className="rounded-md bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600"
             >
               설정에서 키 등록하기
@@ -288,7 +310,11 @@ export default function QuickAddBar({
           defaultDate={defaultDate}
           variant={variant}
           // 문장을 못 읽었을 때 친 내용을 버리지 않는다
-          initialTitle={state.mode === "error" ? text.trim() : undefined}
+          initialTitle={
+            state.mode === "error" || state.mode === "notice"
+              ? text.trim()
+              : undefined
+          }
         />
       )}
     </section>

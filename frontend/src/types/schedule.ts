@@ -180,10 +180,47 @@ export interface UserResponse {
   createdAt: string;
 }
 
-/** 등록 여부와 마스킹된 꼬리 네 자리만 온다. 키 원문은 서버가 절대 돌려주지 않는다 */
-export interface OpenAiKeyStatus {
-  registered: boolean;
-  masked?: string;
+/** AI 제공자 하나의 제공자 설정. 키 원문은 서버가 절대 돌려주지 않는다 */
+export interface AiProvider {
+  id: number;
+  baseUrl: string;
+  model: string;
+  /** 끝 네 자리만 */
+  masked: string;
+  /** 지금 이 제공자 설정으로 부르는지 */
+  active: boolean;
+  /** 이번 달 토큰 한도. 없으면 제한 없음 */
+  monthlyTokenLimit?: number;
+}
+
+export interface AiProviderList {
+  providers: AiProvider[];
+  /** 고른 것이 없어도 서버 설정(.env)의 키로 부를 수 있는지 */
+  serverConfigured: boolean;
+}
+
+/** 제공자 하나의 기간 사용량 */
+export interface ProviderUsage {
+  baseUrl: string;
+  /** 호출 수 */
+  calls: number;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/** 이번 주(월요일부터)와 이번 달의 제공자별 사용량. 호출이 많은 제공자가 앞 */
+export interface AiUsageSummary {
+  week: ProviderUsage[];
+  month: ProviderUsage[];
+}
+
+export interface AiProviderRequest {
+  baseUrl: string;
+  model: string;
+  /** 이미 있는 주소를 고칠 때 비우면 기존 키를 그대로 둔다 */
+  apiKey?: string;
+  /** 비우면 한도 없음 */
+  monthlyTokenLimit?: number;
 }
 
 /** 사용자 설정 (GET/PUT /api/users/me/settings) */

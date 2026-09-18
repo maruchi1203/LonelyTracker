@@ -8,6 +8,7 @@ import com.lonelytracker.backend.schedule.dto.ScheduleDetailResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleListItemResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleRecurringResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleParseRequest;
+import com.lonelytracker.backend.schedule.dto.ScheduleParseResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleReorderRequest;
 import com.lonelytracker.backend.schedule.dto.ScheduleResponse;
 import com.lonelytracker.backend.schedule.dto.ScheduleStatusRequest;
@@ -124,7 +125,7 @@ public class ScheduleController {
      * @return
      */
     @PostMapping("/parse")
-    public List<ParsedSchedule> parse(@Valid @RequestBody ScheduleParseRequest request) {
+    public ScheduleParseResponse parse(@Valid @RequestBody ScheduleParseRequest request) {
         return scheduleParseService.parse(request.text());
     }
 
