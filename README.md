@@ -61,3 +61,23 @@
 | AI | OpenAI Responses API + `RestClient` | 무료로 사용 가능한 AI API도 적용 가능하게 전환할 예정 |
 
 ---
+
+## 사용화면 (ver.1 개발 미완료)
+
+#### 대시보드
+
+<img width="1175" height="623" alt="스크린샷 2026-09-21 201047" src="https://github.com/user-attachments/assets/9d35c02b-7af6-4d1f-abcb-b2c4bf545bd6" />
+
+#### AI로 계획 등록
+
+<img width="1535" height="860" alt="스크린샷 2026-09-21 200831" src="https://github.com/user-attachments/assets/07be3279-b162-4de9-a96f-3bad5250f370" />
+
+<img width="1518" height="864" alt="스크린샷 2026-09-21 200905" src="https://github.com/user-attachments/assets/664b2f19-779e-4fb8-94a2-a67219c6f4cf" />
+
+<img width="1525" height="849" alt="스크린샷 2026-09-21 200920" src="https://github.com/user-attachments/assets/b4eb106c-944f-4be0-ad99-b2c676ac56f8" />
+
+#### 습관일지
+
+<img width="1242" height="688" alt="스크린샷 2026-09-21 201102" src="https://github.com/user-attachments/assets/de645099-afcb-41b1-a188-ab6ccd41579e" />
+
+
