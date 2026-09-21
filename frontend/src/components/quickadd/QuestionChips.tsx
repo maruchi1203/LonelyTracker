@@ -26,18 +26,18 @@ export default function QuestionChips({
     <div className="flex flex-col gap-2">
       {/* 빈칸 채우기가 아니라 행동을 다시 생각해 보자는 제안이다 */}
       {vague && (
-        <div className="flex items-start justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+        <div className="flex items-start justify-between gap-2 rounded-xl border border-warn bg-warn-soft px-3 py-2">
           <button
             type="button"
             onClick={() => onFocusField(PARSE_QUESTION_FIELD.TOO_VAGUE)}
-            className="text-left text-sm text-amber-800 underline-offset-2 hover:underline"
+            className="text-left text-sm text-warn underline-offset-2 hover:underline"
           >
             {PARSE_QUESTION_TEXT.TOO_VAGUE}
           </button>
           <button
             type="button"
             aria-label="이 질문 닫기"
-            className="shrink-0 text-amber-500 hover:text-amber-700"
+            className="shrink-0 text-warn hover:text-warn"
             onClick={() => onDismiss("TOO_VAGUE")}
           >
             ×
@@ -49,7 +49,7 @@ export default function QuestionChips({
         <ul className="flex list-none flex-wrap gap-1.5 p-0">
           {fillable.map((question) => (
             <li key={question}>
-              <span className="flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 py-1 pr-1 pl-3 text-sm text-amber-800">
+              <span className="flex items-center gap-1 rounded-full border border-warn bg-warn-soft py-1 pr-1 pl-3 text-sm text-warn">
                 <button
                   type="button"
                   onClick={() => onFocusField(PARSE_QUESTION_FIELD[question])}
@@ -60,7 +60,7 @@ export default function QuestionChips({
                 <button
                   type="button"
                   aria-label="이 질문 닫기"
-                  className="rounded-full px-1.5 text-amber-500 hover:text-amber-700"
+                  className="rounded-full px-1.5 text-warn hover:text-warn"
                   onClick={() => onDismiss(question)}
                 >
                   ×

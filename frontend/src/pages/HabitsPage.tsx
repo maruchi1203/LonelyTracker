@@ -19,8 +19,8 @@ import { toLocalDate } from "../utils/datetime";
 const DAYS = 7;
 
 const CELL = "size-7 rounded-md border text-xs transition-colors";
-const CELL_DONE = "border-brand-500 bg-brand-500 text-white";
-const CELL_TODO = "border-slate-200 text-slate-300 hover:bg-brand-50";
+const CELL_DONE = "border-accent bg-accent text-canvas";
+const CELL_TODO = "border-line text-ink-faint hover:bg-accent-soft";
 
 export default function HabitsPage() {
   const [habits, setHabits] = useState<Habit[]>([]);
@@ -117,43 +117,43 @@ export default function HabitsPage() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-slate-800">습관일지</h2>
+        <h2 className="text-lg font-semibold text-ink">습관일지</h2>
 
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600 select-none">
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-ink-soft select-none">
           <input
             type="checkbox"
             checked={showArchived}
             onChange={(e) => setShowArchived(e.target.checked)}
-            className="size-4 cursor-pointer accent-brand-500"
+            className="size-4 cursor-pointer accent-accent"
           />
           그만둔 것도 보기
         </label>
       </div>
 
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-ink-faint">
         2분 안에 시작할 수 있는 행동을 적어 두면 실행될 확률이 높아집니다.
         {emptyCount > 0 &&
           ` 아직 비어 있는 갈래가 ${emptyCount}개 있습니다 — 갈래마다 하나씩 두는 것을 권합니다.`}
       </p>
 
       {error && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
           {error}
         </p>
       )}
 
       {loading ? (
-        <p className="px-5 py-8 text-center text-sm text-slate-400">
+        <p className="px-5 py-8 text-center text-sm text-ink-faint">
           불러오는 중입니다…
         </p>
       ) : (
         groups.map((group) => (
           <section
             key={group.category}
-            className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs"
+            className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-4 shadow-xs"
           >
             <div className="flex items-center justify-between gap-2">
-              <h3 className="font-semibold text-slate-700">{group.label}</h3>
+              <h3 className="font-semibold text-ink">{group.label}</h3>
 
               <button
                 type="button"
@@ -161,14 +161,14 @@ export default function HabitsPage() {
                   setAdding(adding === group.category ? null : group.category)
                 }
                 aria-expanded={adding === group.category}
-                className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-600 transition-colors hover:bg-brand-50"
+                className="rounded-md border border-line px-2.5 py-1 text-xs text-ink-soft transition-colors hover:bg-accent-soft"
               >
                 + 습관
               </button>
             </div>
 
             {group.habits.length === 0 && adding !== group.category && (
-              <p className="rounded-md border border-dashed border-slate-200 px-3 py-3 text-center text-xs text-slate-400">
+              <p className="rounded-md border border-dashed border-line px-3 py-3 text-center text-xs text-ink-faint">
                 아직 없습니다. 2분이면 되는 것부터 하나 두어 보세요.
               </p>
             )}
@@ -229,9 +229,9 @@ function HabitRow({
       }`}
     >
       <div className="flex min-w-0 flex-1 basis-48 flex-col">
-        <span className="truncate text-sm text-slate-800">{habit.title}</span>
+        <span className="truncate text-sm text-ink">{habit.title}</span>
         {habit.twoMinuteAction && (
-          <span className="truncate text-xs text-slate-400">
+          <span className="truncate text-xs text-ink-faint">
             2분: {habit.twoMinuteAction}
           </span>
         )}
@@ -240,7 +240,7 @@ function HabitRow({
       {streak > 0 && (
         <span
           title="오늘까지 이어 온 날"
-          className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700"
+          className="shrink-0 rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent"
         >
           {streak}일째
         </span>
@@ -258,7 +258,7 @@ function HabitRow({
               aria-label={`${habit.title} ${day}`}
               title={day}
               className={`${CELL} ${done ? CELL_DONE : CELL_TODO} ${
-                day === today ? "ring-2 ring-brand-200" : ""
+                day === today ? "ring-2 ring-line" : ""
               }`}
             >
               {Number(day.slice(8))}
@@ -271,14 +271,14 @@ function HabitRow({
         <button
           type="button"
           onClick={onArchive}
-          className="rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-slate-50"
+          className="rounded-md border border-line px-2 py-1 text-xs text-ink-soft transition-colors hover:bg-surface-soft"
         >
           {habit.archived ? "다시" : "그만"}
         </button>
         <button
           type="button"
           onClick={onDelete}
-          className="rounded-md border border-transparent px-2 py-1 text-xs text-red-500 transition-colors hover:border-red-200 hover:bg-red-50"
+          className="rounded-md border border-transparent px-2 py-1 text-xs text-danger transition-colors hover:border-danger hover:bg-danger-soft"
         >
           삭제
         </button>
@@ -315,10 +315,10 @@ function AddHabitForm({ category, onCancel, onSubmit }: AddProps) {
           twoMinuteAction: action.trim() || undefined,
         });
       }}
-      className="flex flex-wrap items-end gap-2 rounded-md border border-brand-200 bg-brand-50/40 p-3"
+      className="flex flex-wrap items-end gap-2 rounded-md border border-line bg-accent-soft/40 p-3"
     >
       <label className="flex min-w-0 flex-1 basis-48 flex-col gap-1">
-        <span className="text-xs font-semibold text-slate-500">
+        <span className="text-xs font-semibold text-ink-soft">
           {label} 습관 *
         </span>
         <input
@@ -327,18 +327,18 @@ function AddHabitForm({ category, onCancel, onSubmit }: AddProps) {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="예: 팔굽혀펴기"
           maxLength={200}
-          className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-800 focus:border-brand-500 focus:outline-none"
+          className="w-full rounded-md border border-line bg-surface px-2.5 py-2 text-sm text-ink focus:border-accent focus:outline-none"
         />
       </label>
 
       <label className="flex min-w-0 flex-1 basis-48 flex-col gap-1">
-        <span className="text-xs font-semibold text-slate-500">2분 행동</span>
+        <span className="text-xs font-semibold text-ink-soft">2분 행동</span>
         <input
           value={action}
           onChange={(e) => setAction(e.target.value)}
           placeholder="예: 매트 깔기"
           maxLength={200}
-          className="w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-sm text-slate-800 focus:border-brand-500 focus:outline-none"
+          className="w-full rounded-md border border-line bg-surface px-2.5 py-2 text-sm text-ink focus:border-accent focus:outline-none"
         />
       </label>
 
@@ -346,14 +346,14 @@ function AddHabitForm({ category, onCancel, onSubmit }: AddProps) {
         <button
           type="submit"
           disabled={!title.trim()}
-          className="rounded-md bg-brand-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-md bg-accent px-3 py-2 text-sm font-semibold text-canvas transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50"
         >
           추가
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-600 hover:bg-white"
+          className="rounded-md border border-line px-3 py-2 text-sm text-ink-soft hover:bg-surface"
         >
           취소
         </button>

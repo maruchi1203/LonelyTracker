@@ -27,25 +27,25 @@ export default function HabitSection() {
   };
 
   return (
-    <section className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-      <h3 className="font-semibold text-slate-800">습관일지</h3>
+    <section className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-5 shadow-xs">
+      <h3 className="font-semibold text-ink">습관일지</h3>
 
-      <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 select-none">
+      <label className="flex cursor-pointer items-center gap-2 text-sm text-ink select-none">
         <input
           type="checkbox"
-          className="size-4 cursor-pointer accent-brand-500"
+          className="size-4 cursor-pointer accent-accent"
           checked={enabled ?? true}
           disabled={enabled === null || busy}
           onChange={(e) => void toggle(e.target.checked)}
         />
         2분 법칙 적용 여부
       </label>
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-ink-faint">
         시작에 필요한 2분 이내의 행동을 미리 정해두면 실행될 확률이 높아집니다.
         꺼도 이미 적어둔 2분 행동은 그대로 보입니다.
       </p>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
     </section>
   );
 }

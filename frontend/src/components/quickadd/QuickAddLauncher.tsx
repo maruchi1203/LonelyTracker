@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FormVariant } from "../../domain/scheduleForm";
 import type { ScheduleCreateRequest } from "../../types/schedule";
 import QuickAddBar from "./QuickAddBar";
+import WarpBorder from "../layouts/WarpBorder";
 
 interface Props {
   /** 달력에서 고른 날짜. 리스트처럼 날짜 개념이 없는 탭은 주지 않는다 */
@@ -44,20 +45,23 @@ export default function QuickAddLauncher({
   return (
     <div ref={root}>
       {open && (
-        <div
+        <WarpBorder
           role="dialog"
           aria-label="일정 추가"
-          className="fixed right-6 bottom-24 z-40 flex max-h-[75vh] w-[30rem] flex-col overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
+          className="fixed right-6 bottom-24 z-40 flex max-h-[75vh] w-120 flex-col rounded-2xl bg-surface p-5 text-line"
         >
-          <QuickAddBar
-            defaultDate={defaultDate}
-            knownTags={knownTags}
-            variant={variant}
-            onCreate={onCreate}
-            onDone={() => setOpen(false)}
-            autoFocus
-          />
-        </div>
+          {/* 넘치는 내용만 구른다. 일그러지는 겹이 함께 밀리지 않게 안쪽에 둔다 */}
+          <div className="min-h-0 overflow-y-auto">
+            <QuickAddBar
+              defaultDate={defaultDate}
+              knownTags={knownTags}
+              variant={variant}
+              onCreate={onCreate}
+              onDone={() => setOpen(false)}
+              autoFocus
+            />
+          </div>
+        </WarpBorder>
       )}
 
       <button
@@ -65,13 +69,13 @@ export default function QuickAddLauncher({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? "일정 추가 닫기" : "일정 추가 열기"}
-        className={`fixed right-6 bottom-6 z-40 flex size-14 items-center justify-center rounded-full text-3xl leading-none text-white shadow-lg transition-all focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100 ${
+        className={`fixed right-6 bottom-6 z-40 flex size-14 items-center justify-center border text-3xl leading-none text-canvas shadow-lg transition-all focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-line ${
           open
-            ? "rotate-45 bg-slate-500 hover:bg-slate-600"
-            : "bg-brand-500 hover:bg-brand-600"
+            ? "rotate-45 bg-ink-soft hover:bg-ink"
+            : "bg-accent hover:bg-ink"
         }`}
       >
-        +
+        {open ? "!!!" : "..."}
       </button>
     </div>
   );

@@ -65,7 +65,7 @@ export default function ScheduleInputForm({
 
   return (
     <form
-      className="flex flex-col gap-3.5 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs"
+      className="flex flex-col gap-3.5 rounded-2xl border border-line bg-surface p-5 shadow-xs"
       onSubmit={handleSubmit}
     >
       <ScheduleFields
@@ -75,12 +75,12 @@ export default function ScheduleInputForm({
         idPrefix="manual"
       />
 
-      {problem && <p className="text-sm text-red-600">{problem}</p>}
+      {problem && <p className="text-sm text-danger">{problem}</p>}
 
       <div className="flex justify-end">
         <button
           type="submit"
-          className="rounded-md bg-brand-500 px-5 py-2 font-semibold text-white shadow-xs transition-colors hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-md bg-accent px-5 py-2 font-semibold text-canvas shadow-xs transition-colors hover:bg-ink focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-line disabled:cursor-not-allowed disabled:opacity-50"
           disabled={disabled || problem !== null}
         >
           일정 추가

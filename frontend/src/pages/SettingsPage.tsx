@@ -19,14 +19,14 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-lg font-semibold text-slate-800">설정</h2>
+      <h2 className="text-lg font-semibold text-ink">설정</h2>
 
-      <section className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
-        <h3 className="font-semibold text-slate-800">계정</h3>
-        <p className="text-sm text-slate-700">
+      <section className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-5 shadow-xs">
+        <h3 className="font-semibold text-ink">계정</h3>
+        <p className="text-sm text-ink">
           {me ? (me.displayName ?? me.username) : "…"}
         </p>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-ink-faint">
           로그인이 아직 없어 단일 사용자로 동작합니다.
         </p>
       </section>

@@ -7,12 +7,12 @@ import {
   fetchSchedules,
 } from "../api/schedules";
 import { fetchAiProviders, fetchAiUsage } from "../api/users";
-import AgendaPanel from "../components/dashboard/AgendaPanel";
-import { PendingCard } from "../components/dashboard/DashboardCard";
+import ScheduleSummaryPanel from "../components/dashboard/AgendaPanel";
+import { TempPanel } from "../components/dashboard/DashboardPanel";
 import HabitPanel from "../components/dashboard/HabitPanel";
-import UsagePanel from "../components/dashboard/UsagePanel";
+import AiUsagePanel from "../components/dashboard/UsagePanel";
 import { weekOf } from "../domain/dashboard";
-import type { Habit } from "../types/habit";
+import type { Habit as HabitItem } from "../types/habit";
 import type {
   AiProvider,
   AiUsageSummary,
@@ -27,7 +27,7 @@ const HABIT_HISTORY_DAYS = 60;
 interface Data {
   instances: ScheduleResponse[];
   items: ScheduleListItem[];
-  habits: Habit[];
+  habits: HabitItem[];
   usage: AiUsageSummary;
   providers: AiProvider[];
 }
@@ -51,13 +51,22 @@ export default function DashboardPage() {
 
     try {
       const [instances, items, habits, usage, providers] = await Promise.all([
-        fetchSchedules({ from: `${week.from}T00:00:00`, to: `${week.to}T23:59:59` }),
+        fetchSchedules({
+          from: `${week.from}T00:00:00`,
+          to: `${week.to}T23:59:59`,
+        }),
         fetchScheduleList(),
         fetchHabits(toLocalDate(since), now),
         fetchAiUsage(),
         fetchAiProviders(),
       ]);
-      setData({ instances, items, habits, usage, providers: providers.providers });
+      setData({
+        instances,
+        items,
+        habits,
+        usage,
+        providers: providers.providers,
+      });
       setError(null);
     } catch (e) {
       fail(e, "대시보드를 불러오지 못했습니다");
@@ -87,7 +96,11 @@ export default function DashboardPage() {
     void run(
       () =>
         instance.recurring && instance.instanceDate
-          ? changeInstanceStatus(instance.id, instance.instanceDate, done ? "PLANNED" : "DONE")
+          ? changeInstanceStatus(
+              instance.id,
+              instance.instanceDate,
+              done ? "PLANNED" : "DONE",
+            )
           : changeCompletion(instance.id, !done),
       "상태를 바꾸지 못했습니다",
     );
@@ -99,24 +112,27 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <h2 className="text-lg font-semibold text-slate-800">대시보드</h2>
+      <h2 className="text-lg font-semibold text-ink-faint">대시보드</h2>
 
       {error && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
           {error}
         </p>
       )}
 
       {data === null ? (
-        <p className="px-5 py-8 text-center text-sm text-slate-400">불러오는 중입니다…</p>
+        <p className="px-5 py-8 text-center text-sm text-ink-faint">💫</p>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
-          <UsagePanel usage={data.usage} providers={data.providers} />
-          <PendingCard
+          {/* AI 사용량 판넬 */}
+          <AiUsagePanel usage={data.usage} providers={data.providers} />
+          {/* 주간 목표 */}
+          <TempPanel
             title="주간 목표"
             summary="ver.2 에서 만듭니다. 이번 주 목표와 진행을 보여 줍니다."
           />
-          <AgendaPanel
+          {/* 주간 목표 */}
+          <ScheduleSummaryPanel
             instances={data.instances}
             items={data.items}
             today={today}
@@ -124,6 +140,7 @@ export default function DashboardPage() {
             onToggleInstance={handleToggleInstance}
             onCompleteItem={handleCompleteItem}
           />
+          {/* 주간 목표 */}
           <HabitPanel habits={data.habits} today={today} />
         </div>
       )}

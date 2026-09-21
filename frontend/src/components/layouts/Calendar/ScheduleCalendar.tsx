@@ -40,7 +40,7 @@ export default function ScheduleCalendar({
   return (
     <section className="flex flex-col gap-3">
       <header className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-800">
+        <h2 className="text-lg font-semibold text-ink">
           {month.getFullYear()}년 {month.getMonth() + 1}월
         </h2>
 
@@ -54,7 +54,7 @@ export default function ScheduleCalendar({
               const now = new Date();
               onMonthChange(new Date(now.getFullYear(), now.getMonth(), 1));
             }}
-            className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-600 transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+            className="rounded-md border border-line px-2.5 py-1 text-xs text-ink-soft transition-colors hover:border-line hover:bg-accent-soft hover:text-accent"
           >
             오늘
           </button>
@@ -76,10 +76,10 @@ export default function ScheduleCalendar({
             key={label}
             className={`pb-1 text-center text-xs font-semibold ${
               i === 0
-                ? "text-red-400"
+                ? "text-danger"
                 : i === 6
-                  ? "text-brand-500"
-                  : "text-slate-400"
+                  ? "text-accent"
+                  : "text-ink-faint"
             }`}
           >
             {label}
@@ -119,7 +119,7 @@ function NavButton({
       type="button"
       onClick={onClick}
       aria-label={label}
-      className="rounded-md border border-slate-200 px-2.5 py-1 text-slate-600 transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+      className="rounded-md border border-line px-2.5 py-1 text-ink-soft transition-colors hover:border-line hover:bg-accent-soft hover:text-accent"
     >
       {children}
     </button>

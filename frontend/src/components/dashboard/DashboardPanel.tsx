@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import WarpBorder from "../layouts/WarpBorder";
 
 interface Props {
   title: string;
@@ -8,26 +9,32 @@ interface Props {
 }
 
 /** 대시보드 칸 하나의 틀 */
-export default function DashboardCard({ title, action, children }: Props) {
+export default function DashboardPanel({ title, action, children }: Props) {
   return (
-    <section className="flex min-w-0 flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+    <WarpBorder className="flex min-w-0 flex-col gap-3 rounded-2xl p-5 text-line">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold text-slate-800">{title}</h3>
+        <h3 className="font-semibold text-ink">{title}</h3>
         {action}
       </div>
       {children}
-    </section>
+    </WarpBorder>
   );
 }
 
 /** 아직 데이터가 없는 칸. 가짜 숫자를 넣지 않는다 */
-export function PendingCard({ title, summary }: { title: string; summary: string }) {
+export function TempPanel({
+  title,
+  summary,
+}: {
+  title: string;
+  summary: string;
+}) {
   return (
-    <DashboardCard title={title}>
-      <p className="rounded-xl border border-dashed border-slate-300 px-4 py-8 text-center text-sm text-slate-400">
+    <DashboardPanel title={title}>
+      <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-ink-faint">
         {summary}
       </p>
-    </DashboardCard>
+    </DashboardPanel>
   );
 }
 
@@ -38,9 +45,16 @@ interface ToggleProps<T extends string> {
 }
 
 /** 한 칸 안에서 기간이나 보기를 오가는 버튼 묶음 */
-export function SegmentToggle<T extends string>({ options, value, onChange }: ToggleProps<T>) {
+export function SegmentToggle<T extends string>({
+  options,
+  value,
+  onChange,
+}: ToggleProps<T>) {
   return (
-    <div role="tablist" className="flex rounded-md border border-slate-200 p-0.5 text-xs">
+    <div
+      role="tablist"
+      className="flex rounded-md border border-line p-0.5 text-xs"
+    >
       {options.map((o) => (
         <button
           key={o.value}
@@ -50,8 +64,8 @@ export function SegmentToggle<T extends string>({ options, value, onChange }: To
           onClick={() => onChange(o.value)}
           className={`rounded px-2.5 py-1 transition-colors ${
             value === o.value
-              ? "bg-brand-500 font-semibold text-white"
-              : "text-slate-500 hover:bg-slate-50"
+              ? "bg-accent font-semibold text-canvas"
+              : "text-ink-soft hover:bg-surface-soft"
           }`}
         >
           {o.label}

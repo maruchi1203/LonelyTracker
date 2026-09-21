@@ -186,7 +186,7 @@ export default function QuickAddBar({
     <section className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
         <input
-          className="min-w-0 flex-1 basis-64 rounded-full border border-slate-200 bg-white px-4 py-2 text-slate-800 placeholder:text-slate-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-3 focus:ring-brand-100"
+          className="min-w-0 flex-1 basis-64 rounded-full border border-line bg-surface px-4 py-2 text-ink placeholder:text-ink-faint transition-colors focus:border-accent focus:outline-none focus:ring-3 focus:ring-line"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
@@ -204,7 +204,7 @@ export default function QuickAddBar({
           <button
             type="button"
             onClick={stop}
-            className="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+            className="rounded-full border border-line px-4 py-2 text-sm text-ink-soft hover:bg-surface-soft"
           >
             취소
           </button>
@@ -213,7 +213,7 @@ export default function QuickAddBar({
             type="button"
             onClick={() => void parse()}
             disabled={!text.trim()}
-            className="rounded-full bg-brand-500 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-canvas transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50"
           >
             AI로 추가
           </button>
@@ -223,7 +223,7 @@ export default function QuickAddBar({
           type="button"
           onClick={() => setManual((v) => !v)}
           aria-expanded={manual}
-          className="rounded-full border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+          className="rounded-full border border-line px-4 py-2 text-sm text-ink-soft hover:bg-surface-soft"
         >
           직접 입력
         </button>
@@ -231,7 +231,7 @@ export default function QuickAddBar({
 
       {parsing && (
         <>
-          <p role="status" aria-live="polite" className="text-sm text-slate-500">
+          <p role="status" aria-live="polite" className="text-sm text-ink-soft">
             {STEPS[step]}
           </p>
           <DraftSkeleton />
@@ -239,7 +239,7 @@ export default function QuickAddBar({
       )}
 
       {state.mode === "notice" && (
-        <div className="flex flex-col items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        <div className="flex flex-col items-start gap-2 rounded-xl border border-warn bg-warn-soft px-4 py-3 text-sm text-warn">
           <p>{state.message}</p>
           <button
             type="button"
@@ -247,7 +247,7 @@ export default function QuickAddBar({
               setManual(true);
               setState({ mode: "idle" });
             }}
-            className="rounded-md border border-amber-200 bg-white px-3 py-1.5 text-xs text-amber-700 hover:bg-amber-100"
+            className="rounded-md border border-warn bg-surface px-3 py-1.5 text-xs text-warn hover:bg-warn-soft"
           >
             직접 입력하기
           </button>
@@ -255,12 +255,12 @@ export default function QuickAddBar({
       )}
 
       {state.mode === "error" && (
-        <div className="flex flex-col items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+        <div className="flex flex-col items-start gap-2 rounded-xl border border-danger bg-danger-soft px-4 py-3 text-sm text-danger">
           <p>{state.message}</p>
           {state.needsKey ? (
             <Link
               to="/settings?focus=ai-key"
-              className="rounded-md bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-600"
+              className="rounded-md bg-accent px-3 py-1.5 text-xs font-semibold text-canvas hover:bg-ink"
             >
               설정에서 키 등록하기
             </Link>
@@ -271,7 +271,7 @@ export default function QuickAddBar({
                 setManual(true);
                 setState({ mode: "idle" });
               }}
-              className="rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs text-red-600 hover:bg-red-100"
+              className="rounded-md border border-danger bg-surface px-3 py-1.5 text-xs text-danger hover:bg-danger-soft"
             >
               직접 입력하기
             </button>
@@ -282,7 +282,7 @@ export default function QuickAddBar({
       {state.mode === "drafts" && (
         <>
           {state.drafts.length > 1 && (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-ink-soft">
               일정 {state.drafts.length}개를 읽었습니다. 하나씩 확인해 주세요.
             </p>
           )}
@@ -324,13 +324,13 @@ export default function QuickAddBar({
 /** 답의 윤곽이 채워지는 것을 보게 한다. 스피너만으로는 몇 초가 길다 */
 function DraftSkeleton() {
   return (
-    <div className="flex animate-pulse flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5">
-      <div className="h-8 w-2/3 rounded-md bg-slate-100" />
+    <div className="flex animate-pulse flex-col gap-3 rounded-2xl border border-line bg-surface p-5">
+      <div className="h-8 w-2/3 rounded-md bg-surface-soft" />
       <div className="flex gap-3">
-        <div className="h-8 flex-1 rounded-md bg-slate-100" />
-        <div className="h-8 flex-1 rounded-md bg-slate-100" />
+        <div className="h-8 flex-1 rounded-md bg-surface-soft" />
+        <div className="h-8 flex-1 rounded-md bg-surface-soft" />
       </div>
-      <div className="h-16 rounded-xl bg-slate-100" />
+      <div className="h-16 rounded-xl bg-surface-soft" />
     </div>
   );
 }

@@ -70,15 +70,15 @@ export default function ParsedDraftCard({
 
   const decorate = (field: FormFieldId) =>
     flashing === field
-      ? "border-amber-400 ring-2 ring-amber-300"
+      ? "border-warn ring-2 ring-warn"
       : asking(field)
-        ? "border-amber-300"
-        : "border-slate-200";
+        ? "border-warn"
+        : "border-line";
 
   const problem = formValidationError(draft, variant);
 
   return (
-    <div className="flex flex-col gap-3.5 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+    <div className="flex flex-col gap-3.5 rounded-2xl border border-line bg-surface p-5 shadow-xs">
       <QuestionChips
         questions={open}
         onFocusField={focusField}
@@ -94,13 +94,13 @@ export default function ParsedDraftCard({
         decorate={decorate}
       />
 
-      {problem && <p className="text-sm text-red-600">{problem}</p>}
+      {problem && <p className="text-sm text-danger">{problem}</p>}
 
       <div className="flex items-center justify-end gap-2">
         <button
           type="button"
           onClick={onDiscard}
-          className="rounded-md border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+          className="rounded-md border border-line px-4 py-2 text-sm text-ink-soft hover:bg-surface-soft"
         >
           취소
         </button>
@@ -108,7 +108,7 @@ export default function ParsedDraftCard({
           type="button"
           onClick={onSave}
           disabled={saving || problem !== null}
-          className="rounded-md bg-brand-500 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-md bg-accent px-5 py-2 text-sm font-semibold text-canvas transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50"
         >
           {saving ? "저장 중…" : "이대로 저장"}
         </button>

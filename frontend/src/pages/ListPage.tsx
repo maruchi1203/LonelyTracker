@@ -44,8 +44,8 @@ const MENU_ITEM =
   "rounded-md px-2.5 py-1.5 text-left text-sm transition-colors";
 
 const TOGGLE = "rounded-md border px-3 py-1 text-sm transition-colors";
-const TOGGLE_ON = "border-brand-500 bg-brand-500 text-white";
-const TOGGLE_OFF = "border-slate-200 text-slate-600 hover:bg-brand-50";
+const TOGGLE_ON = "border-accent bg-accent text-canvas";
+const TOGGLE_OFF = "border-line text-ink-soft hover:bg-accent-soft";
 
 const SORTS: { value: ListSort; label: string }[] = [
   { value: "manual", label: "내 순서" },
@@ -56,10 +56,10 @@ const SORTS: { value: ListSort; label: string }[] = [
 /** 값이 없으면 뱃지를 달지 않는다. 정렬에서만 선택으로 본다 */
 const PRIORITY_BADGE: Record<SchedulePriority, { label: string; style: string }> =
   {
-    MUST: { label: "필수", style: "bg-red-50 text-red-600" },
-    SHOULD: { label: "권장", style: "bg-brand-50 text-brand-700" },
-    COULD: { label: "선택", style: "bg-slate-100 text-slate-500" },
-    WONT: { label: "보류", style: "bg-slate-100 text-slate-400" },
+    MUST: { label: "필수", style: "bg-danger-soft text-danger" },
+    SHOULD: { label: "권장", style: "bg-accent-soft text-accent" },
+    COULD: { label: "선택", style: "bg-surface-soft text-ink-soft" },
+    WONT: { label: "보류", style: "bg-surface-soft text-ink-faint" },
   };
 
 export default function ListPage() {
@@ -188,7 +188,7 @@ export default function ListPage() {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-slate-800">리스트</h2>
+        <h2 className="text-lg font-semibold text-ink">리스트</h2>
 
         <div className="flex items-center gap-1.5">
           {SORTS.map(({ value, label }) => (
@@ -205,25 +205,25 @@ export default function ListPage() {
         </div>
       </div>
 
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-ink-faint">
         날짜를 안 정한 일도 적어 둘 수 있습니다. 끌 때 행의 가운데에 놓으면 그
         일정의 막내 하위로, 위아래 틈에 놓으면 형제로 들어갑니다. 틈에서는 좌우로
         움직여 몇 단에 설지 고릅니다.
       </p>
 
       {error && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+        <p className="rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
           {error}
         </p>
       )}
 
-      <section className="rounded-2xl border border-slate-200 bg-white shadow-xs">
+      <section className="rounded-2xl border border-line bg-surface shadow-xs">
         {rows.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-slate-400">
+          <p className="px-5 py-8 text-center text-sm text-ink-faint">
             {loading ? "불러오는 중입니다…" : "아직 적어 둔 것이 없습니다."}
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-line">
             {rows.map(({ item, depth }) => (
               <ListRow
                 key={item.id}
@@ -287,8 +287,8 @@ export default function ListPage() {
             }}
             className={`m-2 rounded-xl border-2 border-dashed py-3 text-center text-xs transition-colors ${
               dropAtEnd
-                ? "border-brand-500 bg-brand-50 text-brand-700"
-                : "border-slate-200 text-slate-400"
+                ? "border-accent bg-accent-soft text-accent"
+                : "border-line text-ink-faint"
             }`}
           >
             여기에 놓으면 맨 아래로 갑니다
@@ -338,7 +338,7 @@ function StepButton({
       aria-label={label}
       disabled={to === null}
       onClick={() => to !== null && onStep(to)}
-      className="rounded px-1 leading-none transition-colors enabled:hover:bg-brand-50 disabled:text-slate-300"
+      className="rounded px-1 leading-none transition-colors enabled:hover:bg-accent-soft disabled:text-ink-faint"
     >
       {children}
     </button>
@@ -442,7 +442,7 @@ function ListRow({
       className={`relative flex items-start gap-2 px-3 py-3 transition-opacity ${
         INDENT[depth] ?? ""
       } ${dragging ? "opacity-40" : ""} ${shelved ? "opacity-50" : ""} ${
-        drop?.intent === "inside" ? "bg-brand-50 ring-2 ring-inset ring-brand-300" : ""
+        drop?.intent === "inside" ? "bg-accent-soft ring-2 ring-inset ring-line" : ""
       }`}
     >
       {/* 어느 틈에 몇 단으로 설지를 선의 자리와 들여쓰기로 보여준다 */}
@@ -450,7 +450,7 @@ function ListRow({
         <span
           aria-hidden
           style={{ marginLeft: drop.level * INDENT_PX }}
-          className={`pointer-events-none absolute right-3 left-3 h-0.5 rounded-full bg-brand-500 ${
+          className={`pointer-events-none absolute right-3 left-3 h-0.5 rounded-full bg-accent ${
             drop.intent === "before" ? "top-0" : "bottom-0"
           }`}
         />
@@ -471,8 +471,8 @@ function ListRow({
         aria-label={`${item.title} 순서 바꾸기`}
         className={`mt-0.5 shrink-0 px-1 ${
           draggable
-            ? "cursor-grab text-slate-400 hover:text-slate-600 active:cursor-grabbing"
-            : "cursor-not-allowed text-slate-200"
+            ? "cursor-grab text-ink-faint hover:text-ink-soft active:cursor-grabbing"
+            : "cursor-not-allowed text-ink-faint"
         }`}
       >
         ⠿
@@ -485,7 +485,7 @@ function ListRow({
         onChange={() => onToggle(shownOn)}
         disabled={item.recurring && shownOn === undefined}
         aria-label={`${item.title} 완료`}
-        className="mt-1 size-4 shrink-0 accent-brand-500"
+        className="mt-1 size-4 shrink-0 accent-accent"
       />
 
       <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -493,20 +493,20 @@ function ListRow({
           type="button"
           onClick={onEdit}
           className={`truncate text-left text-sm hover:underline ${
-            done ? "text-slate-400 line-through" : "text-slate-800"
+            done ? "text-ink-faint line-through" : "text-ink"
           }`}
         >
           {item.title}
         </button>
 
-        <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
+        <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-faint">
           {badge && (
             <span className={`rounded-full px-2 py-0.5 ${badge.style}`}>
               {badge.label}
             </span>
           )}
           {item.recurring && item.recurrence && (
-            <span className="flex items-center gap-1 text-brand-600">
+            <span className="flex items-center gap-1 text-accent">
               ⟳ {describeRecurrence(item.recurrence)}
               {shownOn === undefined ? (
                 "· 남은 회차 없음"
@@ -526,7 +526,7 @@ function ListRow({
                     title="지금 할 회차로 돌아가기"
                     disabled={shownOn === item.occurrenceOn}
                     onClick={onRewind}
-                    className="leading-none transition-colors enabled:text-brand-500 enabled:hover:text-brand-700 disabled:text-slate-300"
+                    className="leading-none transition-colors enabled:text-accent enabled:hover:text-accent disabled:text-ink-faint"
                   >
                     ◉
                   </button>
@@ -547,7 +547,7 @@ function ListRow({
           {item.tags?.map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-brand-50 px-2 py-0.5 text-brand-700"
+              className="rounded-full bg-accent-soft px-2 py-0.5 text-accent"
             >
               {tag}
             </span>
@@ -560,7 +560,7 @@ function ListRow({
         aria-label={`${item.title} 작업 메뉴`}
         aria-expanded={menuOpen}
         onClick={() => setMenuOpen((open) => !open)}
-        className="shrink-0 rounded-md border border-transparent px-2 py-1 text-slate-400 transition-colors hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100"
+        className="shrink-0 rounded-md border border-transparent px-2 py-1 text-ink-faint transition-colors hover:border-line hover:bg-surface-soft hover:text-ink focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-line"
       >
         ⋯
       </button>
@@ -568,12 +568,12 @@ function ListRow({
       {menuOpen && (
         <div
           role="menu"
-          className="absolute top-10 right-3 z-20 flex w-40 flex-col gap-0.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
+          className="absolute top-10 right-3 z-20 flex w-40 flex-col gap-0.5 rounded-xl border border-line bg-surface p-1.5 shadow-lg"
         >
           <button
             type="button"
             role="menuitem"
-            className={`${MENU_ITEM} text-slate-700 hover:bg-slate-100`}
+            className={`${MENU_ITEM} text-ink hover:bg-surface-soft`}
             onClick={() => {
               setMenuOpen(false);
               onEdit();
@@ -585,7 +585,7 @@ function ListRow({
           <button
             type="button"
             role="menuitem"
-            className={`${MENU_ITEM} text-red-600 hover:bg-red-50`}
+            className={`${MENU_ITEM} text-danger hover:bg-danger-soft`}
             onClick={() => {
               setMenuOpen(false);
               onDelete();

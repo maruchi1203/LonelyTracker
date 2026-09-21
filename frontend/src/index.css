@@ -1,13 +1,38 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-50: #f0f9ff;
-  --color-brand-100: #e0f2fe;
-  --color-brand-200: #bae6fd;
-  --color-brand-300: #7dd3fc;
-  --color-brand-500: #0ea5e9;
-  --color-brand-600: #0284c7;
-  --color-brand-700: #0369a1;
+  --color-brand-700: #000000f0;
+  --color-brand-600: #000000ea;
+  --color-brand-500: #000000dd;
+  --color-brand-400: #000000dd;
+  --color-brand-300: #000000cc;
+  --color-brand-200: #000000bb;
+  --color-brand-100: #000000aa;
+  --color-brand-100: #00000000;
+
+  /*
+   * 역할 이름의 색. 화면은 이 이름만 쓰고, 실제 값은 여기서만 고친다.
+   * 값은 아직 어림잡은 것이라 세부 조정 때 바꾼다
+   */
+  --color-canvas: #0b0b0c;
+  --color-surface: #141416;
+  --color-surface-soft: #1e1e21;
+  --color-line: #2c2c31;
+
+  --color-ink: #f4f4f5;
+  --color-ink-soft: #a1a1aa;
+  --color-ink-faint: #6b6b74;
+
+  --color-accent: #e4e4e7;
+  --color-accent-soft: #26262b;
+
+  --color-danger: #fb7185;
+  --color-danger-soft: #2a1419;
+  --color-warn: #fbbf24;
+  --color-warn-soft: #2a2213;
+
+  --color-info: #7dd3fc;
+  --color-info-soft: #14212b;
 }
 
 /*
@@ -15,7 +40,7 @@
  * 이 파일에서 유틸리티로 대체할 수 없는 유일한 부분이다.
  */
 html {
-  background-color: var(--color-slate-50);
+  background-color: var(--color-canvas);
 }
 
 /*

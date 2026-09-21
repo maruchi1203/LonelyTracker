@@ -33,19 +33,19 @@ export default function ScheduleCalendarCell({
       onClick={() => onSelect(date)}
       aria-label={`${date.getMonth() + 1}월 ${date.getDate()}일, 일정 ${count}건`}
       aria-pressed={isSelected}
-      className={`flex min-h-28 flex-col gap-1 rounded-md border p-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100 ${
+      className={`flex min-h-28 flex-col gap-1 rounded-md border p-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-line ${
         isSelected
-          ? "border-brand-500 bg-brand-50"
-          : "border-slate-200 bg-white hover:border-brand-200 hover:bg-brand-50/40"
+          ? "border-accent bg-accent-soft"
+          : "border-line bg-surface hover:border-line hover:bg-accent-soft/40"
       } ${inCurrentMonth ? "" : "opacity-40"}`}
     >
       <span
         className={`self-start rounded-full px-1.5 text-xs font-semibold ${
           isToday
-            ? "bg-brand-500 text-white"
+            ? "bg-accent text-canvas"
             : inCurrentMonth
-              ? "text-slate-600"
-              : "text-slate-400"
+              ? "text-ink-soft"
+              : "text-ink-faint"
         }`}
       >
         {date.getDate()}
@@ -65,7 +65,7 @@ export default function ScheduleCalendarCell({
         )}
 
         {day.hidden > 0 && (
-          <li className="px-1 text-[11px] leading-4 text-slate-400">
+          <li className="px-1 text-[11px] leading-4 text-ink-faint">
             +{day.hidden}건
           </li>
         )}
@@ -87,15 +87,15 @@ function Bar({ slot }: { slot: LaneSlot }) {
   // 시작은 왼쪽에, 기한은 오른쪽에 굵은 선을 둔다. 색을 못 가려도 방향으로 갈린다.
   // 이어지는 칸에는 선을 두지 않는다. 띠 한가운데에 금이 그어져 두 개로 보인다
   const tone = due
-    ? `bg-amber-100 text-amber-900 ${isEnd ? "border-r-2 border-r-amber-700" : ""}`
-    : `bg-brand-100 text-brand-800 ${isStart ? "border-l-2 border-l-brand-500" : ""}`;
+    ? `bg-warn-soft text-warn ${isEnd ? "border-r-2 border-r-warn" : ""}`
+    : `bg-accent-soft text-accent ${isStart ? "border-l-2 border-l-accent" : ""}`;
 
   return (
     <li
       // 칸이 좁으므로 한 줄로 자르고, 전체 제목은 title 속성으로 보여준다
       title={label(instance, due)}
       className={`${BAR} ${shape} ${
-        done ? "bg-slate-100 text-slate-400 line-through" : tone
+        done ? "bg-surface-soft text-ink-faint line-through" : tone
       }`}
     >
       {/* 제목은 띠가 시작하는 칸에만 적는다. 이어지는 칸은 띠만 보인다 */}
@@ -103,7 +103,7 @@ function Bar({ slot }: { slot: LaneSlot }) {
         <>
           {due && "~ "}
           {!due && isMoved(instance) && (
-            <span className="text-amber-600">↻ </span>
+            <span className="text-warn">↻ </span>
           )}
           {instance.title}
         </>

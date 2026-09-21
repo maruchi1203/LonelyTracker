@@ -97,7 +97,7 @@ export default function ScheduleEditModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-canvas/70 p-4"
       onPointerDown={(e) => {
         // 패널 안을 눌렀을 때는 닫지 않는다
         if (e.target === e.currentTarget) onClose();
@@ -107,18 +107,18 @@ export default function ScheduleEditModal({
         role="dialog"
         aria-modal="true"
         aria-label="일정 수정"
-        className="flex max-h-[85vh] w-[30rem] max-w-full flex-col gap-4 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-xl"
+        className="flex max-h-[85vh] w-[30rem] max-w-full flex-col gap-4 overflow-y-auto rounded-2xl border border-line bg-surface p-5 shadow-xl"
       >
-        <h3 className="font-semibold text-slate-800">일정 수정</h3>
+        <h3 className="font-semibold text-ink">일정 수정</h3>
 
         {error && (
-          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+          <p className="rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">
             {error}
           </p>
         )}
 
         {form === null ? (
-          <p className="py-8 text-center text-sm text-slate-400">
+          <p className="py-8 text-center text-sm text-ink-faint">
             불러오는 중입니다…
           </p>
         ) : (
@@ -132,14 +132,14 @@ export default function ScheduleEditModal({
               idPrefix={`edit-${id}`}
             />
 
-            {problem && <p className="text-sm text-red-600">{problem}</p>}
+            {problem && <p className="text-sm text-danger">{problem}</p>}
 
             <div className="flex items-center justify-between gap-2">
               <button
                 type="button"
                 onClick={() => void handleDelete()}
                 disabled={busy}
-                className={`${BUTTON} text-red-600 hover:bg-red-50`}
+                className={`${BUTTON} text-danger hover:bg-danger-soft`}
               >
                 삭제
               </button>
@@ -149,14 +149,14 @@ export default function ScheduleEditModal({
                   type="button"
                   onClick={onClose}
                   disabled={busy}
-                  className={`${BUTTON} text-slate-600 hover:bg-slate-100`}
+                  className={`${BUTTON} text-ink-soft hover:bg-surface-soft`}
                 >
                   취소
                 </button>
                 <button
                   type="submit"
                   disabled={busy || problem !== null}
-                  className={`${BUTTON} bg-brand-500 text-white hover:bg-brand-600`}
+                  className={`${BUTTON} bg-accent text-canvas hover:bg-ink`}
                 >
                   저장
                 </button>

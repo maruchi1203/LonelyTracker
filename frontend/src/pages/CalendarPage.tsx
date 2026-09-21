@@ -196,18 +196,18 @@ export default function CalendarPage() {
 
       <section className="flex flex-col gap-2">
         <div className="flex items-baseline gap-2">
-          <h2 className="text-lg font-semibold text-slate-800">
+          <h2 className="text-lg font-semibold text-ink">
             {selectedDate
               ? `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일`
               : "이 달 전체"}
           </h2>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-ink-soft">
             {forList.length}건 · 완료 {doneCount}건
           </p>
         </div>
 
         {error && (
-          <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-600">
+          <p className="rounded-xl border border-danger bg-danger-soft px-4 py-2.5 text-sm text-danger">
             {error}
           </p>
         )}

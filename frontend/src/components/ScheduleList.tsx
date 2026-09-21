@@ -43,7 +43,7 @@ export default function ScheduleList({
 }: Props) {
   if (instances.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-slate-300 bg-white px-4 py-12 text-center text-sm text-slate-400">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-line bg-surface px-4 py-12 text-center text-sm text-ink-faint">
         {emptyReason === "filtered-out" ? (
           <>
             <p>이 조건에 맞는 일정이 없습니다.</p>
@@ -51,7 +51,7 @@ export default function ScheduleList({
               <button
                 type="button"
                 onClick={onClearFilters}
-                className="rounded-md border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
+                className="rounded-md border border-line px-3 py-1.5 text-xs text-ink-soft hover:border-line hover:bg-accent-soft hover:text-accent"
               >
                 필터 지우기
               </button>
@@ -128,16 +128,16 @@ function ScheduleListItem({
         setPane("menu");
       }}
       // 왼쪽 띠 색으로 완료 여부를 구분한다
-      className={`relative flex flex-col gap-2 rounded-xl border border-l-3 border-slate-200 px-4 py-3.5 transition-all hover:border-slate-300 hover:shadow-md ${
+      className={`relative flex flex-col gap-2 rounded-xl border border-l-3 border-line px-4 py-3.5 transition-all hover:border-line hover:shadow-md ${
         done
-          ? "border-l-slate-300 bg-slate-50"
-          : "border-l-brand-300 bg-white hover:border-l-brand-500"
+          ? "border-l-line bg-surface-soft"
+          : "border-l-line bg-surface hover:border-l-accent"
       }`}
     >
       <div className="flex items-center gap-3.5">
         <input
           type="checkbox"
-          className="size-[1.15rem] shrink-0 cursor-pointer accent-brand-500"
+          className="size-[1.15rem] shrink-0 cursor-pointer accent-accent"
           checked={done}
           onChange={() => onToggleStatus(instance)}
           aria-label={`${instance.title} 완료 표시`}
@@ -146,19 +146,19 @@ function ScheduleListItem({
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <span
             className={`font-medium wrap-break-word ${
-              done ? "text-slate-400 line-through" : "text-slate-800"
+              done ? "text-ink-faint line-through" : "text-ink"
             }`}
           >
             {instance.title}
           </span>
 
-          <span className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+          <span className="flex flex-wrap items-center gap-1.5 text-xs text-ink-soft">
             {formatInstanceRange(instance)}
 
             {(instance.tags ?? []).map((tag) => (
               <span
                 key={tag}
-                className="rounded-full border border-brand-100 bg-brand-50 px-2 py-0.5 font-medium text-brand-700"
+                className="rounded-full border border-line bg-accent-soft px-2 py-0.5 font-medium text-accent"
               >
                 {tag}
               </span>
@@ -167,8 +167,8 @@ function ScheduleListItem({
             <span
               className={`rounded-full border px-2 py-0.5 ${
                 done
-                  ? "border-brand-100 bg-brand-50 text-brand-600"
-                  : "border-slate-200 text-slate-400"
+                  ? "border-line bg-accent-soft text-accent"
+                  : "border-line text-ink-faint"
               }`}
             >
               {STATUS_LABEL[instance.status]}
@@ -177,7 +177,7 @@ function ScheduleListItem({
             {/* 수행률만 보면 원래 날에 한 사람과 옮겨서 한 사람이 같아 보인다 */}
             {isMoved(instance) && (
               <span
-                className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-medium text-amber-700"
+                className="rounded-full border border-warn bg-warn-soft px-2 py-0.5 font-medium text-warn"
                 title={`원래 ${instance.instanceDate} 예정`}
               >
                 ↻ 옮김
@@ -187,7 +187,7 @@ function ScheduleListItem({
             {/* 분모에 안 들어가므로 수행률에 잡히지 않는다는 것을 알려준다 */}
             {isEarlyDone(instance) && (
               <span
-                className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 font-medium text-sky-700"
+                className="rounded-full border border-info bg-info-soft px-2 py-0.5 font-medium text-info"
                 title={`${instance.instanceDate} 이 오기 전에 완료했습니다`}
               >
                 ⏱ 조기 종료
@@ -201,7 +201,7 @@ function ScheduleListItem({
           aria-label={`${instance.title} 작업 메뉴`}
           aria-expanded={pane === "menu"}
           onClick={() => setPane((p) => (p === "menu" ? "none" : "menu"))}
-          className="shrink-0 rounded-md border border-transparent px-2.5 py-1.5 text-slate-400 transition-colors hover:border-slate-200 hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100"
+          className="shrink-0 rounded-md border border-transparent px-2.5 py-1.5 text-ink-faint transition-colors hover:border-line hover:bg-surface-soft hover:text-ink focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-line"
         >
           ⋯
         </button>
@@ -210,12 +210,12 @@ function ScheduleListItem({
       {pane === "menu" && (
         <div
           role="menu"
-          className="absolute top-12 right-3 z-20 flex w-52 flex-col gap-0.5 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg"
+          className="absolute top-12 right-3 z-20 flex w-52 flex-col gap-0.5 rounded-xl border border-line bg-surface p-1.5 shadow-lg"
         >
           <button
             type="button"
             role="menuitem"
-            className={`${MENU_ITEM} text-slate-700 hover:bg-amber-50 hover:text-amber-700`}
+            className={`${MENU_ITEM} text-ink hover:bg-warn-soft hover:text-warn`}
             onClick={() => setPane("move")}
           >
             다른 날로 옮기기
@@ -229,7 +229,7 @@ function ScheduleListItem({
             <button
               type="button"
               role="menuitem"
-              className={`${MENU_ITEM} text-slate-700 hover:bg-slate-100`}
+              className={`${MENU_ITEM} text-ink hover:bg-surface-soft`}
               onClick={() => {
                 setPane("none");
                 onSkip(instance);
@@ -243,7 +243,7 @@ function ScheduleListItem({
           <button
             type="button"
             role="menuitem"
-            className={`${MENU_ITEM} text-slate-700 hover:bg-red-50 hover:text-red-600`}
+            className={`${MENU_ITEM} text-ink hover:bg-danger-soft hover:text-danger`}
             onClick={() => {
               setPane("none");
               onDelete(instance, "FUTURE");
@@ -255,7 +255,7 @@ function ScheduleListItem({
           <button
             type="button"
             role="menuitem"
-            className={`${MENU_ITEM} text-red-600 hover:bg-red-50`}
+            className={`${MENU_ITEM} text-danger hover:bg-danger-soft`}
             onClick={() => {
               setPane("none");
               onDelete(instance, "ALL");
@@ -267,9 +267,9 @@ function ScheduleListItem({
       )}
 
       {pane === "move" && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2 border-t border-line pt-2 text-xs">
           <label
-            className="text-slate-500"
+            className="text-ink-soft"
             htmlFor={`to-${instanceKey(instance)}`}
           >
             언제로 옮길까요?
@@ -277,13 +277,13 @@ function ScheduleListItem({
           <input
             id={`to-${instanceKey(instance)}`}
             type="datetime-local"
-            className="rounded-md border border-slate-200 px-2 py-1 text-slate-800 focus:border-brand-500 focus:outline-none"
+            className="rounded-md border border-line px-2 py-1 text-ink focus:border-accent focus:outline-none"
             value={moveTo}
             onChange={(e) => setMoveTo(e.target.value)}
           />
           <button
             type="button"
-            className="rounded-md bg-amber-500 px-3 py-1 font-semibold text-white hover:bg-amber-600"
+            className="rounded-md bg-warn px-3 py-1 font-semibold text-canvas hover:bg-warn/80"
             onClick={() => {
               onMove(instance, `${moveTo}:00`);
               setPane("none");
@@ -293,7 +293,7 @@ function ScheduleListItem({
           </button>
           <button
             type="button"
-            className="rounded-md border border-slate-200 px-3 py-1 text-slate-500 hover:bg-slate-50"
+            className="rounded-md border border-line px-3 py-1 text-ink-soft hover:bg-surface-soft"
             onClick={() => setPane("none")}
           >
             취소

@@ -1,18 +1,18 @@
 import { NavLink } from "react-router";
 
 const ITEM =
-  "flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand-100";
-const ITEM_ON = "bg-brand-500 font-medium text-white";
-const ITEM_OFF = "text-slate-600 hover:bg-brand-50 hover:text-brand-700";
+  "flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-line";
+const ITEM_ON = "bg-accent font-medium text-canvas";
+const ITEM_OFF = "text-ink-soft hover:bg-surface hover:text-ink";
 
-interface MenuItem {
+interface SideMenuItem {
   to: string;
   label: string;
   /** 화면만 있고 아직 데이터가 없는 메뉴 */
   comingSoon?: boolean;
 }
 
-const MENU: MenuItem[] = [
+const MENU: SideMenuItem[] = [
   { to: "/dashboard", label: "대시보드" },
   { to: "/list", label: "리스트" },
   { to: "/calendar", label: "달력" },
@@ -25,7 +25,7 @@ export default function SideMenu() {
   return (
     <nav
       aria-label="주요 메뉴"
-      className="flex w-52 shrink-0 flex-col gap-1 border-r border-slate-200 pr-4"
+      className="flex w-52 shrink-0 flex-col gap-1 border-r border-line pr-4"
     >
       {MENU.map(({ to, label, comingSoon }) => (
         <NavLink
@@ -42,11 +42,11 @@ export default function SideMenu() {
                 <span
                   className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] ${
                     isActive
-                      ? "bg-white/20 text-white"
-                      : "bg-slate-100 text-slate-400"
+                      ? "bg-canvas/20 text-canvas"
+                      : "bg-surface-soft text-ink-faint"
                   }`}
                 >
-                  준비 중
+                  WIP
                 </span>
               )}
             </>

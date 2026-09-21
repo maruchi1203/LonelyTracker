@@ -20,9 +20,9 @@ interface Props {
 }
 
 const INPUT =
-  "w-full rounded-md border bg-white px-2.5 py-2 text-slate-800 placeholder:text-slate-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-3 focus:ring-brand-100";
-const LABEL = "text-xs font-semibold tracking-wide text-slate-500";
-const HINT = "text-xs text-slate-400";
+  "w-full rounded-md border bg-surface px-2.5 py-2 text-ink placeholder:text-ink-faint transition-colors focus:border-accent focus:outline-none focus:ring-3 focus:ring-line";
+const LABEL = "text-xs font-semibold tracking-wide text-ink-soft";
+const HINT = "text-xs text-ink-faint";
 
 /** 폼을 가르는 종류. 고른 것에 따라 아래 칸이 바뀐다 */
 const KINDS: { value: FormKind; label: string; hint: string }[] = [
@@ -56,8 +56,8 @@ const PRIORITIES: { value: SchedulePriority; label: string; hint: string }[] = [
 ];
 
 const TOGGLE = "rounded-md border px-3 py-1 text-sm transition-colors";
-const TOGGLE_ON = "border-brand-500 bg-brand-500 text-white";
-const TOGGLE_OFF = "border-slate-200 text-slate-600 hover:bg-brand-50";
+const TOGGLE_ON = "border-accent bg-accent text-canvas";
+const TOGGLE_OFF = "border-line text-ink-soft hover:bg-accent-soft";
 
 export default function ScheduleFields({
   value: form,
@@ -70,7 +70,7 @@ export default function ScheduleFields({
   const id = (name: string) => `${idPrefix}-${name}`;
   const ref = (name: FormFieldId) => fieldRef?.(name);
   const box = (name: FormFieldId) =>
-    `${INPUT} ${decorate?.(name) ?? "border-slate-200"}`;
+    `${INPUT} ${decorate?.(name) ?? "border-line"}`;
 
   const [tagDraft, setTagDraft] = useState("");
 
@@ -162,7 +162,7 @@ export default function ScheduleFields({
                 type="button"
                 onClick={() => onChange({ tags: form.tags.filter((t) => t !== tag) })}
                 aria-label={`태그 ${tag} 빼기`}
-                className="rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs text-brand-700 hover:bg-brand-100"
+                className="rounded-full border border-line bg-accent-soft px-2.5 py-1 text-xs text-accent hover:bg-accent-soft"
               >
                 {tag} ×
               </button>
@@ -343,7 +343,7 @@ export default function ScheduleFields({
       {form.kind === "repeat" && form.freq === "MONTHLY" && (
         <div className="flex flex-col gap-1.5">
           <span className={LABEL}>반복일자 *</span>
-          <p className="rounded-md border border-dashed border-slate-300 px-3 py-2 text-xs text-slate-400">
+          <p className="rounded-md border border-dashed border-line px-3 py-2 text-xs text-ink-faint">
             매월 반복은 준비 중입니다.
           </p>
         </div>

@@ -21,7 +21,7 @@ interface Props {
 }
 
 const INPUT =
-  "w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-slate-800 placeholder:text-slate-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-3 focus:ring-brand-100";
+  "w-full rounded-md border border-line bg-surface px-2.5 py-2 text-ink placeholder:text-ink-faint transition-colors focus:border-accent focus:outline-none focus:ring-3 focus:ring-line";
 
 /**
  * 503 은 서버 암호화 키 미설정이나 복호화 실패를 뜻한다.
@@ -113,29 +113,29 @@ export default function AiProviderSection({ autoFocus }: Props) {
       : "미등록";
 
   return (
-    <section className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+    <section className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-5 shadow-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold text-slate-800">AI 제공자</h3>
+        <h3 className="font-semibold text-ink">AI 제공자</h3>
 
         <span
           className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
             active || list?.serverConfigured
-              ? "border-brand-100 bg-brand-50 text-brand-700"
-              : "border-slate-200 bg-slate-50 text-slate-500"
+              ? "border-line bg-accent-soft text-accent"
+              : "border-line bg-surface-soft text-ink-soft"
           }`}
         >
           {badge}
         </span>
       </div>
 
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-ink-soft">
         자연어 입력에 쓸 제공자와 키입니다. 제공자마다 키를 따로 저장하므로
         바꿔도 앞서 넣은 키가 남습니다. 키는 암호화해 저장하며 다시 보여주지
         않습니다.
       </p>
 
       {!active && list?.serverConfigured && (
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-ink-faint">
           지금은 backend/.env 의 설정으로 부릅니다. 여기서 고르면 이쪽이
           먼저입니다.
         </p>
@@ -146,18 +146,18 @@ export default function AiProviderSection({ autoFocus }: Props) {
           {providers.map((c) => (
             <li
               key={c.id}
-              className="flex flex-wrap items-center gap-2 rounded-md border border-slate-100 px-3 py-2 text-sm"
+              className="flex flex-wrap items-center gap-2 rounded-md border border-line px-3 py-2 text-sm"
             >
-              <span className="font-medium text-slate-700">
+              <span className="font-medium text-ink">
                 {providerLabel(c.baseUrl)}
               </span>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-ink-faint">
                 {c.model} · {c.masked}
               </span>
               <span className="flex-1" />
 
               {c.active ? (
-                <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700">
+                <span className="rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent">
                   사용 중
                 </span>
               ) : (
@@ -170,7 +170,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
                       `${providerLabel(c.baseUrl)}(으)로 전환했습니다.`,
                     )
                   }
-                  className="rounded-md border border-slate-200 px-2.5 py-1 text-xs text-slate-600 transition-colors hover:bg-brand-50 disabled:opacity-50"
+                  className="rounded-md border border-line px-2.5 py-1 text-xs text-ink-soft transition-colors hover:bg-accent-soft disabled:opacity-50"
                 >
                   사용
                 </button>
@@ -185,7 +185,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
                   }
                   void run(() => deleteAiProvider(c.id), "키를 지웠습니다.");
                 }}
-                className="rounded-md border border-transparent px-2 py-1 text-xs text-red-500 transition-colors hover:border-red-200 hover:bg-red-50 disabled:opacity-50"
+                className="rounded-md border border-transparent px-2 py-1 text-xs text-danger transition-colors hover:border-danger hover:bg-danger-soft disabled:opacity-50"
               >
                 삭제
               </button>
@@ -214,7 +214,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
       >
         <div className="flex flex-wrap gap-2">
           <label className="flex min-w-0 flex-1 basis-40 flex-col gap-1">
-            <span className="text-xs font-semibold text-slate-500">제공자</span>
+            <span className="text-xs font-semibold text-ink-soft">제공자</span>
             <select
               value={presetId}
               onChange={(e) => choosePreset(e.target.value)}
@@ -229,7 +229,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
           </label>
 
           <label className="flex min-w-0 flex-1 basis-40 flex-col gap-1">
-            <span className="text-xs font-semibold text-slate-500">모델 *</span>
+            <span className="text-xs font-semibold text-ink-soft">모델 *</span>
             <input
               value={model}
               onChange={(e) => setModel(e.target.value)}
@@ -241,7 +241,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
         </div>
 
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-semibold text-slate-500">
+          <span className="text-xs font-semibold text-ink-soft">
             이번 달 토큰 한도
           </span>
           <input
@@ -256,7 +256,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
 
         {custom && (
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-slate-500">주소 *</span>
+            <span className="text-xs font-semibold text-ink-soft">주소 *</span>
             <input
               value={baseUrl}
               onChange={(e) => setBaseUrl(e.target.value)}
@@ -268,12 +268,12 @@ export default function AiProviderSection({ autoFocus }: Props) {
         )}
 
         {insecure && (
-          <label className="flex cursor-pointer items-start gap-2 rounded-md border border-rose-300 bg-rose-50 px-3 py-2 text-xs text-rose-700 select-none">
+          <label className="flex cursor-pointer items-start gap-2 rounded-md border border-danger bg-danger-soft px-3 py-2 text-xs text-danger select-none">
             <input
               type="checkbox"
               checked={allowHttp}
               onChange={(e) => setAllowHttp(e.target.checked)}
-              className="mt-0.5 size-4 shrink-0 cursor-pointer accent-rose-600"
+              className="mt-0.5 size-4 shrink-0 cursor-pointer accent-danger"
             />
             <span>
               암호화되지 않은 http 주소입니다. API 키와 입력한 문장이 그대로
@@ -284,7 +284,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
         )}
 
         {!preset.strict && (
-          <p className="text-xs text-amber-600">
+          <p className="text-xs text-warn">
             목록에 없는 제공자는 응답 형식을 보장하지 못할 수 있습니다. 형식을
             어긴 응답이 오면 파싱이 실패합니다.
           </p>
@@ -307,7 +307,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
 
           <button
             type="submit"
-            className="rounded-md bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-canvas transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50"
             disabled={busy || !canSave}
           >
             저장
@@ -315,9 +315,9 @@ export default function AiProviderSection({ autoFocus }: Props) {
         </div>
       </form>
 
-      {notice && <p className="text-sm text-brand-700">{notice}</p>}
+      {notice && <p className="text-sm text-accent">{notice}</p>}
       {error && (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm text-red-600">
+        <p className="rounded-xl border border-danger bg-danger-soft px-4 py-2.5 text-sm text-danger">
           {error}
         </p>
       )}

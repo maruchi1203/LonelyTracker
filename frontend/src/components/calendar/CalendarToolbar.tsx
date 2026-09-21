@@ -26,7 +26,7 @@ export default function CalendarToolbar({
     <div className="flex flex-wrap items-start gap-4">
       <div className="flex min-w-0 flex-1 basis-56 flex-col gap-1.5">
         <label
-          className="text-xs font-semibold tracking-wide text-slate-400"
+          className="text-xs font-semibold tracking-wide text-ink-faint"
           htmlFor="schedule-search"
         >
           검색
@@ -40,7 +40,7 @@ export default function CalendarToolbar({
             if (e.key === "Escape") onQueryChange("");
           }}
           placeholder="제목 · 내용 · 분류"
-          className="w-full rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-sm text-slate-800 placeholder:text-slate-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-3 focus:ring-brand-100"
+          className="w-full rounded-full border border-line bg-surface px-3.5 py-1.5 text-sm text-ink placeholder:text-ink-faint transition-colors focus:border-accent focus:outline-none focus:ring-3 focus:ring-line"
         />
       </div>
 
