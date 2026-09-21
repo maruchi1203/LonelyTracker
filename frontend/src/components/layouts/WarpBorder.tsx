@@ -13,15 +13,18 @@ interface Props extends ComponentPropsWithoutRef<"div"> {
   children: ReactNode;
   /** 바깥에서 주는 여백·바탕색 같은 것 */
   className?: string;
+  /** 선 색 유틸리티. 안쪽 글자색과 끊어 두려고 따로 받는다 */
+  line?: string;
 }
 
 /**
  * 테두리가 물결처럼 일렁이는 상자.
- * 선 색은 부모의 글자색을, 모서리는 부모의 radius 를 따른다
+ * 모서리는 부모의 radius 를 따른다
  */
 export default function WarpBorder({
   children,
   className = "",
+  line = "border-line",
   ...rest
 }: Props) {
   // 칸마다 다른 id 를 줘서 물결이 서로 어긋나게 인다
@@ -55,7 +58,7 @@ export default function WarpBorder({
 
       {/* 테두리만 가진 빈 겹. 필터가 이 겹에만 걸려 글자는 흔들리지 않는다 */}
       <div
-        className="pointer-events-none absolute inset-0 rounded-[inherit] border-2 border-current"
+        className={`pointer-events-none absolute inset-0 rounded-[inherit] border-2 ${line}`}
         style={{ filter: `url(#${id})` }}
         aria-hidden="true"
       />

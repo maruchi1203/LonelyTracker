@@ -11,7 +11,7 @@ interface Props {
 /** 대시보드 칸 하나의 틀 */
 export default function DashboardPanel({ title, action, children }: Props) {
   return (
-    <WarpBorder className="flex min-w-0 flex-col gap-3 rounded-2xl p-5 text-line">
+    <WarpBorder className="flex min-w-0 flex-col gap-3 rounded-2xl p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="font-semibold text-ink">{title}</h3>
         {action}

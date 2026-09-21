@@ -7,7 +7,6 @@ import type {
   ProviderUsage,
 } from "../../types/schedule";
 import DashboardPanel, { SegmentToggle } from "./DashboardPanel";
-import WarpBorder from "../layouts/WarpBorder";
 
 type Period = "week" | "month";
 
@@ -22,60 +21,58 @@ export default function AiUsagePanel({ usage, providers }: Props) {
   const rows: ProviderUsage[] = usage[period];
 
   return (
-    <WarpBorder>
-      <DashboardPanel
-        title="AI 사용량"
-        action={
-          <SegmentToggle
-            options={[
-              { value: "week", label: "Week" },
-              { value: "month", label: "Month" },
-            ]}
-            value={period}
-            onChange={setPeriod}
-          />
-        }
-      >
-        {rows.length === 0 ? (
-          <p className="py-6 text-center text-sm text-ink-faint">
-            {period === "week" ? "이번 주" : "이번 달"}에는 AI 호출이 없네요
-          </p>
-        ) : (
-          <ul className="flex list-none flex-col gap-2 p-0">
-            {rows.map((r) => (
-              <li key={r.baseUrl} className="flex flex-col gap-0.5">
-                <div className="flex items-baseline justify-between gap-2 text-sm">
-                  <span className="min-w-0 truncate font-medium text-ink">
-                    {providerLabel(r.baseUrl)}
-                  </span>
-                  <span className="shrink-0 text-ink">
-                    <span className="font-semibold">
-                      {r.calls.toLocaleString()}
-                    </span>
-                    <span className="ml-0.5 text-xs text-ink-faint">회</span>
-                  </span>
-                </div>
-                <div className="flex justify-between gap-2 text-xs text-ink-faint">
-                  <span>
-                    토큰 {(r.inputTokens + r.outputTokens).toLocaleString()}
-                  </span>
-                  <span>
-                    입력 {r.inputTokens.toLocaleString()} · 출력{" "}
-                    {r.outputTokens.toLocaleString()}
-                  </span>
-                </div>
-
-                <LimitBar usage={r} providers={providers} period={period} />
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <p className="text-[11px] text-ink-faint">
-          3개월이 지난 기록은 삭제합니다
+    <DashboardPanel
+      title="AI 사용량"
+      action={
+        <SegmentToggle
+          options={[
+            { value: "week", label: "Week" },
+            { value: "month", label: "Month" },
+          ]}
+          value={period}
+          onChange={setPeriod}
+        />
+      }
+    >
+      {rows.length === 0 ? (
+        <p className="py-6 text-center text-sm text-ink-faint">
+          {period === "week" ? "이번 주" : "이번 달"}에는 AI 호출이 없네요
         </p>
-      </DashboardPanel>
-    </WarpBorder>
+      ) : (
+        <ul className="flex list-none flex-col gap-2 p-0">
+          {rows.map((r) => (
+            <li key={r.baseUrl} className="flex flex-col gap-0.5">
+              <div className="flex items-baseline justify-between gap-2 text-sm">
+                <span className="min-w-0 truncate font-medium text-ink">
+                  {providerLabel(r.baseUrl)}
+                </span>
+                <span className="shrink-0 text-ink">
+                  <span className="font-semibold">
+                    {r.calls.toLocaleString()}
+                  </span>
+                  <span className="ml-0.5 text-xs text-ink-faint">회</span>
+                </span>
+              </div>
+              <div className="flex justify-between gap-2 text-xs text-ink-faint">
+                <span>
+                  토큰 {(r.inputTokens + r.outputTokens).toLocaleString()}
+                </span>
+                <span>
+                  입력 {r.inputTokens.toLocaleString()} · 출력{" "}
+                  {r.outputTokens.toLocaleString()}
+                </span>
+              </div>
+
+              <LimitBar usage={r} providers={providers} period={period} />
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className="text-[11px] text-ink-faint">
+        3개월이 지난 기록은 삭제합니다
+      </p>
+    </DashboardPanel>
   );
 }
 

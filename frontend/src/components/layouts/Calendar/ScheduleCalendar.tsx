@@ -4,6 +4,7 @@ import type { ScheduleResponse } from "../../../types/schedule";
 import { toLocalDate } from "../../../utils/datetime";
 import { buildMonthDays } from "../../../utils/monthGrid";
 import ScheduleCalendarCell from "./ScheduleCalendarCell";
+import WarpBorder from "../WarpBorder";
 
 interface Props {
   month: Date;
@@ -65,42 +66,44 @@ export default function ScheduleCalendar({
       </header>
 
       {/* 로딩 중에도 그리드를 그대로 둔다. 사라지면 이동 화살표가 튄다 */}
-      <div
-        className={`grid grid-cols-7 gap-1 transition-opacity ${
-          loading ? "opacity-50" : ""
-        }`}
-        aria-busy={loading}
-      >
-        {WEEKDAYS.map((label, i) => (
-          <div
-            key={label}
-            className={`pb-1 text-center text-xs font-semibold ${
-              i === 0
-                ? "text-danger"
-                : i === 6
-                  ? "text-accent"
-                  : "text-ink-faint"
-            }`}
-          >
-            {label}
-          </div>
-        ))}
+      <WarpBorder className="rounded-2xl p-3">
+        <div
+          className={`grid grid-cols-7 gap-1 transition-opacity ${
+            loading ? "opacity-50" : ""
+          }`}
+          aria-busy={loading}
+        >
+          {WEEKDAYS.map((label, i) => (
+            <div
+              key={label}
+              className={`pb-1 text-center text-xs font-semibold ${
+                i === 0
+                  ? "text-danger"
+                  : i === 6
+                    ? "text-accent"
+                    : "text-ink-faint"
+              }`}
+            >
+              {label}
+            </div>
+          ))}
 
-        {days.map((date) => {
-          const key = toLocalDate(date);
-          return (
-            <ScheduleCalendarCell
-              key={key}
-              date={date}
-              day={byDate.get(key) ?? { lanes: [], hidden: 0 }}
-              inCurrentMonth={date.getMonth() === month.getMonth()}
-              isToday={key === todayKey}
-              isSelected={key === selectedKey}
-              onSelect={onSelectDate}
-            />
-          );
-        })}
-      </div>
+          {days.map((date) => {
+            const key = toLocalDate(date);
+            return (
+              <ScheduleCalendarCell
+                key={key}
+                date={date}
+                day={byDate.get(key) ?? { lanes: [], hidden: 0 }}
+                inCurrentMonth={date.getMonth() === month.getMonth()}
+                isToday={key === todayKey}
+                isSelected={key === selectedKey}
+                onSelect={onSelectDate}
+              />
+            );
+          })}
+        </div>
+      </WarpBorder>
     </section>
   );
 }

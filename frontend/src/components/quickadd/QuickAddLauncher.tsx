@@ -48,7 +48,7 @@ export default function QuickAddLauncher({
         <WarpBorder
           role="dialog"
           aria-label="일정 추가"
-          className="fixed right-6 bottom-24 z-40 flex max-h-[75vh] w-120 flex-col rounded-2xl bg-surface p-5 text-line"
+          className="fixed right-6 bottom-24 z-40 flex max-h-[75vh] w-120 flex-col rounded-2xl bg-surface p-5"
         >
           {/* 넘치는 내용만 구른다. 일그러지는 겹이 함께 밀리지 않게 안쪽에 둔다 */}
           <div className="min-h-0 overflow-y-auto">

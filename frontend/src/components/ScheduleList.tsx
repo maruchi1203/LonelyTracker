@@ -11,6 +11,7 @@ import type {
   ScheduleStatus,
 } from "../types/schedule";
 import { toLocalInputValue } from "../utils/datetime";
+import WarpBorder from "./layouts/WarpBorder";
 
 interface Props {
   instances: ScheduleResponse[];
@@ -65,18 +66,20 @@ export default function ScheduleList({
   }
 
   return (
-    <ul className="flex list-none flex-col gap-2 p-0">
-      {instances.map((instance) => (
-        <ScheduleListItem
-          key={instanceKey(instance)}
-          instance={instance}
-          onToggleStatus={onToggleStatus}
-          onMove={onMove}
-          onSkip={onSkip}
-          onDelete={onDelete}
-        />
-      ))}
-    </ul>
+    <WarpBorder className="rounded-2xl p-2">
+      <ul className="flex list-none flex-col gap-2 p-0">
+        {instances.map((instance) => (
+          <ScheduleListItem
+            key={instanceKey(instance)}
+            instance={instance}
+            onToggleStatus={onToggleStatus}
+            onMove={onMove}
+            onSkip={onSkip}
+            onDelete={onDelete}
+          />
+        ))}
+      </ul>
+    </WarpBorder>
   );
 }
 

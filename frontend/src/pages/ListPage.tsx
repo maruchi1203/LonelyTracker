@@ -17,6 +17,7 @@ import {
 } from "../api/schedules";
 import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
 import ScheduleEditModal from "../components/schedule/ScheduleEditModal";
+import WarpBorder from "../components/layouts/WarpBorder";
 import {
   dropIntentAt,
   dropLevelAt,
@@ -217,7 +218,7 @@ export default function ListPage() {
         </p>
       )}
 
-      <section className="rounded-2xl border border-line bg-surface shadow-xs">
+      <WarpBorder className="rounded-2xl bg-surface shadow-xs">
         {rows.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-ink-faint">
             {loading ? "불러오는 중입니다…" : "아직 적어 둔 것이 없습니다."}
@@ -294,7 +295,7 @@ export default function ListPage() {
             여기에 놓으면 맨 아래로 갑니다
           </div>
         )}
-      </section>
+      </WarpBorder>
 
       {/* 다른 탭과 같은 자리에서 연다. 우하단 하나로 모은다 */}
       <QuickAddLauncher
