@@ -97,7 +97,7 @@ public class ScheduleService {
             return List.of();
         }
 
-        // 조건에 맞는 일정 후보 전체 검색
+        // 이어지는 조회들이 함께 쓸 id 목록
         List<Long> ids = candidates.stream().map(ScheduleEntity::getId).toList();
         // 반복 일정 정보
         Map<Long, ScheduleRecurEntity> recurs = new HashMap<>();
