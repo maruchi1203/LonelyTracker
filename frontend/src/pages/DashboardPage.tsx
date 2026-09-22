@@ -124,14 +124,11 @@ export default function DashboardPage() {
         <p className="px-5 py-8 text-center text-sm text-ink-faint">💫</p>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
-          {/* AI 사용량 판넬 */}
           <AiUsagePanel usage={data.usage} providers={data.providers} />
-          {/* 주간 목표 */}
           <TempPanel
             title="주간 목표"
-            summary="ver.2 에서 만듭니다. 이번 주 목표와 진행을 보여 줍니다."
+            summary="ver.1.1 에서 만듭니다. 이번 주 목표와 진행을 보여 줍니다."
           />
-          {/* 주간 목표 */}
           <ScheduleSummaryPanel
             instances={data.instances}
             items={data.items}
@@ -140,7 +137,6 @@ export default function DashboardPage() {
             onToggleInstance={handleToggleInstance}
             onCompleteItem={handleCompleteItem}
           />
-          {/* 주간 목표 */}
           <HabitPanel habits={data.habits} today={today} />
         </div>
       )}
