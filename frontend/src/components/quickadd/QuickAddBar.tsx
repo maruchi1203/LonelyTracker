@@ -8,7 +8,7 @@ import type { FormVariant, ScheduleForm } from "../../domain/scheduleForm";
 import { draftFromParsed, formToCreateRequest } from "../../domain/scheduleForm";
 import type { ParseQuestion } from "../../types/parse";
 import type { ScheduleCreateRequest } from "../../types/schedule";
-import ScheduleInputForm from "../ScheduleInputForm";
+import ScheduleInputForm from "../schedule/ScheduleInputForm";
 import ParsedDraftCard from "./ParsedDraftCard";
 
 interface Props {

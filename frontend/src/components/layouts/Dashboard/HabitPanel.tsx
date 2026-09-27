@@ -1,6 +1,6 @@
 import { Link } from "react-router";
-import { habitSummary } from "../../domain/dashboard";
-import type { Habit } from "../../types/habit";
+import { habitSummary } from "../../../domain/dashboard";
+import type { Habit } from "../../../types/habit";
 import DashboardPanel from "./DashboardPanel";
 
 interface Props {

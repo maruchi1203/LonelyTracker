@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import type { FormVariant, ScheduleForm } from "../domain/scheduleForm";
-import { emptyForm, formToCreateRequest, formValidationError } from "../domain/scheduleForm";
-import type { ScheduleCreateRequest } from "../types/schedule";
-import { toLocalDate } from "../utils/datetime";
-import ScheduleFields from "./schedule/ScheduleFields";
+import type { FormVariant, ScheduleForm } from "../../domain/scheduleForm";
+import { emptyForm, formToCreateRequest, formValidationError } from "../../domain/scheduleForm";
+import type { ScheduleCreateRequest } from "../../types/schedule";
+import { toLocalDate } from "../../utils/datetime";
+import ScheduleFields from "../schedule/ScheduleFields";
 
 interface Props {
   /** 저장에 성공했는지 돌려준다. 실패하면 입력값을 지우지 않는다 */

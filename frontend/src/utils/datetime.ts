@@ -46,3 +46,8 @@ export function nextHour(baseDate?: Date | null): string {
   }
   return toLocalInputValue(at)
 }
+
+/** "2026-09-15" → "9/15" */
+export function shortDate(day: string): string {
+  return `${Number(day.slice(5, 7))}/${Number(day.slice(8, 10))}`;
+}

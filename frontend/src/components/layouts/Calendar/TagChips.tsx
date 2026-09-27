@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { rankTags, TOP_TAGS } from "../../domain/filter";
+import { rankTags, TOP_TAGS } from "../../../domain/filter";
 
 interface Props {
   /** 이미 쓴 적 있는 태그. 이번 달에 안 나온 것도 후보로 남긴다 */

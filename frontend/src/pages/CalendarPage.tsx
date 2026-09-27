@@ -7,10 +7,10 @@ import {
   fetchTagNames,
   updateInstance,
 } from "../api/schedules";
-import CalendarToolbar from "../components/calendar/CalendarToolbar";
+import CalendarToolbar from "../components/layouts/Calendar/CalendarToolbar";
 import ScheduleCalendar from "../components/layouts/Calendar/ScheduleCalendar";
 import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
-import ScheduleList from "../components/ScheduleList";
+import ScheduleList from "../components/layouts/Calendar/ScheduleList";
 import { applyFilters, countByTag } from "../domain/filter";
 import { coversDate } from "../domain/instance";
 import { nearestOccurrences } from "../domain/occurrence";

@@ -1,4 +1,4 @@
-import ComingSoon from "../components/ComingSoon";
+import ComingSoon from "../components/layouts/ComingSoon";
 
 export default function ProjectsPage() {
   return (
