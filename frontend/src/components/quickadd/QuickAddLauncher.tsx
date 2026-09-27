@@ -1,27 +1,20 @@
-import { useEffect, useRef, useState } from "react";
-import type { FormVariant } from "../../domain/scheduleForm";
-import type { ScheduleCreateRequest } from "../../types/schedule";
+import { useEffect, useRef } from "react";
 import QuickAddBar from "./QuickAddBar";
 import WarpBorder from "../layouts/WarpBorder";
+import { useQuickAdd } from "./QuickAddContext";
 
-interface Props {
-  /** 달력에서 고른 날짜. 리스트처럼 날짜 개념이 없는 탭은 주지 않는다 */
-  defaultDate?: Date | null;
-  knownTags: string[];
-  /** 어느 탭의 폼인지. 날짜를 요구할지가 갈린다 */
-  variant?: FormVariant;
-  onCreate: (body: ScheduleCreateRequest) => Promise<boolean>;
-}
-
-/** 우하단에 떠 있는 일정 추가 입구. 자연어와 수동 입력이 모두 이 안에 있다 */
-export default function QuickAddLauncher({
-  defaultDate,
-  knownTags,
-  variant,
-  onCreate,
-}: Props) {
-  const [open, setOpen] = useState(false);
+/**
+ * 우하단에 떠 있는 일정 추가 입구. 자연어와 수동 입력이 모두 이 안에 있다.
+ *
+ * 화면마다 두지 않고 AppShell 하나에만 둔다. 어느 탭에서 열든 같은 자리이고,
+ * 탭을 옮겨도 읽어 둔 초안이 그대로 남는다
+ */
+export default function QuickAddLauncher() {
+  const { open, setOpen, state } = useQuickAdd();
   const root = useRef<HTMLDivElement>(null);
+
+  // 읽는 중에 닫히면 사용자가 무슨 일인지 모른 채 토큰만 쓰게 된다
+  const busy = state.mode === "parsing";
 
   useEffect(() => {
     if (!open) return;
@@ -40,7 +33,7 @@ export default function QuickAddLauncher({
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [open]);
+  }, [open, setOpen]);
 
   return (
     <div ref={root}>
@@ -52,14 +45,7 @@ export default function QuickAddLauncher({
         >
           {/* 넘치는 내용만 구른다. 일그러지는 겹이 함께 밀리지 않게 안쪽에 둔다 */}
           <div className="min-h-0 overflow-y-auto">
-            <QuickAddBar
-              defaultDate={defaultDate}
-              knownTags={knownTags}
-              variant={variant}
-              onCreate={onCreate}
-              onDone={() => setOpen(false)}
-              autoFocus
-            />
+            <QuickAddBar onDone={() => setOpen(false)} autoFocus />
           </div>
         </WarpBorder>
       )}
@@ -70,10 +56,8 @@ export default function QuickAddLauncher({
         aria-expanded={open}
         aria-label={open ? "일정 추가 닫기" : "일정 추가 열기"}
         className={`fixed right-6 bottom-6 z-40 flex size-14 items-center justify-center border text-3xl leading-none text-canvas shadow-lg transition-all focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-line ${
-          open
-            ? "rotate-45 bg-ink-soft hover:bg-ink"
-            : "bg-accent hover:bg-ink"
-        }`}
+          open ? "rotate-45 bg-ink-soft hover:bg-ink" : "bg-accent hover:bg-ink"
+        } ${busy ? "animate-pulse" : ""}`}
       >
         {open ? "!!!" : "..."}
       </button>

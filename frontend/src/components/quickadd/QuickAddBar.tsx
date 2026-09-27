@@ -1,66 +1,38 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { HttpError } from "../../api/http";
-import { parseSchedule } from "../../api/schedules";
-import { fetchAiProviders } from "../../api/users";
-import { knownQuestions } from "../../constants/parseQuestions";
-import type { FormVariant, ScheduleForm } from "../../domain/scheduleForm";
-import { draftFromParsed, formToCreateRequest } from "../../domain/scheduleForm";
-import type { ParseQuestion } from "../../types/parse";
+import type { ScheduleForm } from "../../domain/scheduleForm";
+import { formToCreateRequest } from "../../domain/scheduleForm";
 import type { ScheduleCreateRequest } from "../../types/schedule";
 import ScheduleInputForm from "../schedule/ScheduleInputForm";
 import ParsedDraftCard from "./ParsedDraftCard";
+import { useQuickAdd, type Draft } from "./QuickAddContext";
 
 interface Props {
-  /** 달력에서 고른 날짜. 리스트처럼 날짜 개념이 없는 탭은 주지 않는다 */
-  defaultDate?: Date | null;
-  knownTags: string[];
-  /** 어느 탭의 폼인지. 날짜를 요구할지가 갈린다 */
-  variant?: FormVariant;
-  onCreate: (body: ScheduleCreateRequest) => Promise<boolean>;
   /** 저장에 성공했을 때. 띄워둔 패널을 닫는 데 쓴다 */
   onDone?: () => void;
   autoFocus?: boolean;
 }
 
-/** 카드 한 장. key 는 목록에서 지워도 안 흔들리는 자리표다 */
-interface Draft {
-  key: number;
-  form: ScheduleForm;
-  questions: ParseQuestion[];
-  saving: boolean;
-}
-
-type State =
-  | { mode: "idle" }
-  | { mode: "parsing" }
-  | { mode: "drafts"; drafts: Draft[] }
-  // AI 는 답했지만 초안이 없다. 오류가 아니다
-  | { mode: "notice"; message: string }
-  | { mode: "error"; message: string; needsKey: boolean };
-
-/** 서버 읽기 타임아웃이 30초라 그보다 조금 뒤에 포기한다 */
-const GIVE_UP_MS = 35_000;
 const STEPS = ["문장을 읽는 중…", "일정으로 바꾸는 중…", "거의 다 됐어요…"];
 const STEP_MS = 2_500;
-/** 설정에 다녀오는 동안 친 문장을 잃지 않게 둘 자리 */
-const DRAFT_TEXT_KEY = "quickadd-text";
 
-export default function QuickAddBar({
-  defaultDate = null,
-  knownTags,
-  variant = "calendar",
-  onCreate,
-  onDone,
-  autoFocus,
-}: Props) {
-  const [text, setText] = useState(
-    () => sessionStorage.getItem(DRAFT_TEXT_KEY) ?? "",
-  );
-  const [state, setState] = useState<State>({ mode: "idle" });
-  const [manual, setManual] = useState(false);
+/** 입력줄과 초안 카드. 상태는 QuickAddProvider 가 들고 있다 */
+export default function QuickAddBar({ onDone, autoFocus }: Props) {
+  const {
+    defaultDate,
+    knownTags,
+    variant,
+    text,
+    setText,
+    state,
+    setState,
+    manual,
+    setManual,
+    parse,
+    create,
+  } = useQuickAdd();
+
   const [step, setStep] = useState(0);
-  const abort = useRef<AbortController | null>(null);
   const parsing = state.mode === "parsing";
 
   useEffect(() => {
@@ -80,67 +52,7 @@ export default function QuickAddBar({
     setText("");
     setState({ mode: "idle" });
     onDone?.();
-  }, [empty, onDone]);
-
-  const stop = () => {
-    abort.current?.abort();
-    abort.current = null;
-  };
-
-  useEffect(() => stop, []);
-
-  const parse = async () => {
-    const sentence = text.trim();
-    if (!sentence) return;
-
-    const controller = new AbortController();
-    abort.current = controller;
-    const giveUp = window.setTimeout(() => controller.abort(), GIVE_UP_MS);
-    setState({ mode: "parsing" });
-
-    try {
-      const parsed = await parseSchedule(sentence, controller.signal);
-      if (parsed.notice) {
-        setState({ mode: "notice", message: parsed.notice });
-        return;
-      }
-      setState({
-        mode: "drafts",
-        drafts: parsed.schedules.map((one, at) => ({
-          key: at,
-          form: draftFromParsed(one, defaultDate, variant),
-          questions: knownQuestions(one.questions),
-          saving: false,
-        })),
-      });
-      sessionStorage.removeItem(DRAFT_TEXT_KEY);
-    } catch (e) {
-      if (controller.signal.aborted) {
-        setState({
-          mode: "error",
-          message: "응답이 너무 늦습니다. 직접 입력해 주세요.",
-          needsKey: false,
-        });
-        return;
-      }
-      // 503 은 키 없음 말고도 서버 암호화 문제일 수 있어 상태를 한 번 더 확인한다
-      let needsKey = false;
-      if (e instanceof HttpError && e.status === 503) {
-        needsKey = await fetchAiProviders()
-          .then((l) => !l.serverConfigured && !l.providers.some((c) => c.active))
-          .catch(() => false);
-        if (needsKey) sessionStorage.setItem(DRAFT_TEXT_KEY, sentence);
-      }
-      setState({
-        mode: "error",
-        message: e instanceof Error ? e.message : "문장을 읽지 못했습니다",
-        needsKey,
-      });
-    } finally {
-      window.clearTimeout(giveUp);
-      abort.current = null;
-    }
-  };
+  }, [empty, onDone, setText, setState]);
 
   /** 그 카드만 바꾼다. 나머지는 그대로 둔다 */
   const mapDraft = (key: number, change: (d: Draft) => Draft) =>
@@ -168,13 +80,13 @@ export default function QuickAddBar({
 
     mapDraft(key, (d) => ({ ...d, saving: true }));
 
-    const created = await onCreate(formToCreateRequest(target.form));
+    const created = await create(formToCreateRequest(target.form));
     if (created) drop(key);
     else mapDraft(key, (d) => ({ ...d, saving: false }));
   };
 
   const createManually = async (body: ScheduleCreateRequest) => {
-    const created = await onCreate(body);
+    const created = await create(body);
     if (created) onDone?.();
     return created;
   };

@@ -9,7 +9,7 @@ import {
 } from "../api/schedules";
 import CalendarToolbar from "../components/layouts/Calendar/CalendarToolbar";
 import ScheduleCalendar from "../components/layouts/Calendar/ScheduleCalendar";
-import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
+import { useQuickAddTarget } from "../components/quickadd/QuickAddContext";
 import ScheduleList from "../components/layouts/Calendar/ScheduleList";
 import { applyFilters, countByTag } from "../domain/filter";
 import { coversDate } from "../domain/instance";
@@ -165,14 +165,14 @@ export default function CalendarPage() {
   const filtering = Boolean(tag) || query.trim().length > 0;
   const monthLabel = `${month.getFullYear()}년 ${month.getMonth() + 1}월`;
 
+  // 날짜를 골라 뒀으면 빠른 추가의 시작값이 된다
+  useQuickAddTarget(
+    { defaultDate: selectedDate, knownTags, variant: "calendar" },
+    handleCreate,
+  );
+
   return (
     <div className="flex flex-col gap-6">
-      <QuickAddLauncher
-        // 날짜를 골라둔 상태면 그 날짜로 시작값을 채워준다
-        defaultDate={selectedDate}
-        knownTags={knownTags}
-        onCreate={handleCreate}
-      />
 
       <CalendarToolbar
         query={query}

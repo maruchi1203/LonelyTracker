@@ -8,7 +8,7 @@ import {
   fetchTagNames,
   reorderSchedules,
 } from "../api/schedules";
-import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
+import { useQuickAddTarget } from "../components/quickadd/QuickAddContext";
 import ScheduleEditModal from "../components/schedule/ScheduleEditModal";
 import {
   planDrop,
@@ -107,6 +107,12 @@ export default function ListPage() {
       return false;
     }
   };
+
+  // 리스트는 날짜를 요구하지 않는다
+  useQuickAddTarget(
+    { defaultDate: null, knownTags, variant: "list" },
+    handleCreate,
+  );
 
   const handleToggle = async (item: ScheduleListItem, onDate?: string) => {
     setError(null);
@@ -279,12 +285,6 @@ export default function ListPage() {
         </div>
       )}
 
-      {/* 다른 탭과 같은 자리에서 연다. 우하단 하나로 모은다 */}
-      <QuickAddLauncher
-        knownTags={knownTags}
-        variant="list"
-        onCreate={handleCreate}
-      />
 
       {editingId !== null && (
         <ScheduleEditModal
