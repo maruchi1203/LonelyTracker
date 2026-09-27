@@ -10,14 +10,17 @@ import {
 } from "../api/schedules";
 import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
 import ScheduleEditModal from "../components/schedule/ScheduleEditModal";
-import WarpBorder from "../components/layouts/WarpBorder";
 import {
   planDrop,
   planDropAtEnd,
   type DropIntent,
   type DropPlan,
 } from "../domain/scheduleDrop";
-import { buildTree, flatten, type ListSort } from "../domain/scheduleTree";
+import {
+  buildTree,
+  type ListSort,
+  type TreeNode,
+} from "../domain/scheduleTree";
 import type {
   ScheduleCreateRequest,
   ScheduleListItem,
@@ -86,7 +89,7 @@ export default function ListPage() {
     void loadTags();
   }, [reload, loadTags]);
 
-  const rows = useMemo(() => flatten(buildTree(items, sort)), [items, sort]);
+  const tree = useMemo(() => buildTree(items, sort), [items, sort]);
 
   /** 성공 여부를 돌려준다. 실패했는데 입력이 지워지면 곤란하다 */
   const handleCreate = async (
@@ -162,6 +165,50 @@ export default function ListPage() {
     }
   };
 
+  /** 하위 행은 부모의 액자 안으로 들어간다. 그래서 평평하게 펴지 않는다 */
+  const renderNode = (node: TreeNode, depth = 0) => {
+    const { item } = node;
+
+    return (
+      <ListRow
+        key={item.id}
+        item={item}
+        depth={depth}
+        shownOn={peeked[item.id] ?? item.occurrenceOn}
+        onStep={(to) => setPeeked((seen) => ({ ...seen, [item.id]: to }))}
+        onRewind={() => setPeeked(({ [item.id]: _gone, ...rest }) => rest)}
+        onToggle={(onDate) => void handleToggle(item, onDate)}
+        onEdit={() => setEditingId(item.id)}
+        onDelete={() => void handleDelete(item)}
+        draggable={canDrag}
+        dragging={draggingId === item.id}
+        drop={
+          dropAt?.id === item.id
+            ? { intent: dropAt.intent, level: dropAt.plan.level }
+            : null
+        }
+        onDragStart={() => setDraggingId(item.id)}
+        onDragEnd={stopDragging}
+        onDragOverRow={(intent, level) => {
+          const plan =
+            draggingId === null
+              ? null
+              : planDrop(items, draggingId, item.id, intent, level);
+
+          // 못 놓는 자리에는 아무 표시도 하지 않는다
+          setDropAt(plan && { id: item.id, intent, plan });
+          setDropAtEnd(false);
+        }}
+        onDropAt={() => {
+          if (dropAt?.id !== item.id) return;
+          void handleDrop(dropAt.plan);
+        }}
+      >
+        {node.children.map((child) => renderNode(child, depth + 1))}
+      </ListRow>
+    );
+  };
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -194,84 +241,43 @@ export default function ListPage() {
         </p>
       )}
 
-      <WarpBorder className="rounded-2xl bg-surface shadow-xs">
-        {rows.length === 0 ? (
-          <p className="px-5 py-8 text-center text-sm text-ink-faint">
-            {loading ? "불러오는 중입니다…" : "아직 적어 둔 것이 없습니다."}
-          </p>
-        ) : (
-          <ul className="divide-y divide-line">
-            {rows.map(({ item, depth }) => (
-              <ListRow
-                key={item.id}
-                item={item}
-                depth={depth}
-                shownOn={peeked[item.id] ?? item.occurrenceOn}
-                onStep={(to) =>
-                  setPeeked((seen) => ({ ...seen, [item.id]: to }))
-                }
-                onRewind={() =>
-                  setPeeked(({ [item.id]: _gone, ...rest }) => rest)
-                }
-                onToggle={(onDate) => void handleToggle(item, onDate)}
-                onEdit={() => setEditingId(item.id)}
-                onDelete={() => void handleDelete(item)}
-                draggable={canDrag}
-                dragging={draggingId === item.id}
-                drop={
-                  dropAt?.id === item.id
-                    ? { intent: dropAt.intent, level: dropAt.plan.level }
-                    : null
-                }
-                onDragStart={() => setDraggingId(item.id)}
-                onDragEnd={stopDragging}
-                onDragOverRow={(intent, level) => {
-                  const plan =
-                    draggingId === null
-                      ? null
-                      : planDrop(items, draggingId, item.id, intent, level);
+      {tree.length === 0 ? (
+        <p className="px-5 py-8 text-center text-sm text-ink-faint">
+          {loading ? "불러오는 중입니다…" : "아직 적어 둔 것이 없습니다."}
+        </p>
+      ) : (
+        <ul data-list-root className="flex flex-col gap-y-2">
+          {tree.map((node) => renderNode(node))}
+        </ul>
+      )}
 
-                  // 못 놓는 자리에는 아무 표시도 하지 않는다
-                  setDropAt(plan && { id: item.id, intent, plan });
-                  setDropAtEnd(false);
-                }}
-                onDropAt={() => {
-                  if (dropAt?.id !== item.id) return;
-                  void handleDrop(dropAt.plan);
-                }}
-              />
-            ))}
-          </ul>
-        )}
+      {/* 마지막 행에 붙이지 않고도 최상위 끝으로 뺄 수 있어야 한다 */}
+      {draggingId !== null && (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDropAt(null);
+            setDropAtEnd(true);
+          }}
+          onDragLeave={() => setDropAtEnd(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            if (draggingId === null) return;
 
-        {/* 마지막 행에 붙이지 않고도 최상위 끝으로 뺄 수 있어야 한다 */}
-        {draggingId !== null && (
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDropAt(null);
-              setDropAtEnd(true);
-            }}
-            onDragLeave={() => setDropAtEnd(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              if (draggingId === null) return;
-
-              // 이미 끝자리면 옮길 것이 없다
-              const plan = planDropAtEnd(items, draggingId);
-              if (plan === null) stopDragging();
-              else void handleDrop(plan);
-            }}
-            className={`m-2 rounded-xl border-2 border-dashed py-3 text-center text-xs transition-colors ${
-              dropAtEnd
-                ? "border-accent bg-accent-soft text-accent"
-                : "border-line text-ink-faint"
-            }`}
-          >
-            여기에 놓으면 맨 아래로 갑니다
-          </div>
-        )}
-      </WarpBorder>
+            // 이미 끝자리면 옮길 것이 없다
+            const plan = planDropAtEnd(items, draggingId);
+            if (plan === null) stopDragging();
+            else void handleDrop(plan);
+          }}
+          className={`m-2 rounded-xl border-2 border-dashed py-3 text-center text-xs transition-colors ${
+            dropAtEnd
+              ? "border-accent bg-accent-soft text-accent"
+              : "border-line text-ink-faint"
+          }`}
+        >
+          여기에 놓으면 맨 아래로 갑니다
+        </div>
+      )}
 
       {/* 다른 탭과 같은 자리에서 연다. 우하단 하나로 모은다 */}
       <QuickAddLauncher
