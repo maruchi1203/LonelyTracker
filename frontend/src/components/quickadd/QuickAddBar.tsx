@@ -3,6 +3,8 @@ import { Link } from "react-router";
 import type { ScheduleForm } from "../../domain/scheduleForm";
 import { formToCreateRequest } from "../../domain/scheduleForm";
 import type { ScheduleCreateRequest } from "../../types/schedule";
+import IconButton from "../layouts/IconButton";
+import { PencilIcon, SparkIcon, StopIcon } from "../layouts/Icons";
 import ScheduleInputForm from "../schedule/ScheduleInputForm";
 import ParsedDraftCard from "./ParsedDraftCard";
 import { useQuickAdd, type Draft } from "./QuickAddContext";
@@ -29,6 +31,7 @@ export default function QuickAddBar({ onDone, autoFocus }: Props) {
     manual,
     setManual,
     parse,
+    stop,
     create,
   } = useQuickAdd();
 
@@ -96,49 +99,47 @@ export default function QuickAddBar({ onDone, autoFocus }: Props) {
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          className="min-w-0 flex-1 basis-64 rounded-full border border-line bg-surface px-4 py-2 text-ink placeholder:text-ink-faint transition-colors focus:border-accent focus:outline-none focus:ring-3 focus:ring-line"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") void parse();
-          }}
-          placeholder="예: 매주 월수금 아침 7시 헬스장에서 운동"
-          maxLength={500}
-          // disabled 로 두면 포커스를 잃고 접근성 트리에서도 빠진다
-          readOnly={parsing}
-          autoFocus={autoFocus}
-          aria-label="자연어로 일정 입력"
-        />
+      <input
+        className="w-full rounded-full border border-line bg-surface px-4 py-2 text-ink placeholder:text-ink-faint transition-colors focus:border-accent focus:outline-none focus:ring-3 focus:ring-line"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void parse();
+        }}
+        placeholder="예: 매주 월수금 아침 7시 헬스장에서 운동"
+        maxLength={500}
+        // disabled 로 두면 포커스를 잃고 접근성 트리에서도 빠진다
+        readOnly={parsing}
+        autoFocus={autoFocus}
+        aria-label="자연어로 일정 입력"
+      />
 
+      {/* 두 단추가 한 줄을 반씩 나눠 갖는다 */}
+      <div className="flex items-stretch gap-2">
         {parsing ? (
-          <button
-            type="button"
-            onClick={stop}
-            className="rounded-full border border-line px-4 py-2 text-sm text-ink-soft hover:bg-surface-soft"
-          >
-            취소
-          </button>
+          <IconButton wide label="읽기 그만두기" onClick={stop}>
+            <StopIcon />
+          </IconButton>
         ) : (
-          <button
-            type="button"
+          <IconButton
+            wide
+            label="AI로 읽기"
+            tone="solid"
             onClick={() => void parse()}
             disabled={!text.trim()}
-            className="rounded-full bg-accent px-5 py-2 text-sm font-semibold text-canvas transition-colors hover:bg-ink disabled:cursor-not-allowed disabled:opacity-50"
           >
-            AI로 추가
-          </button>
+            <SparkIcon />
+          </IconButton>
         )}
 
-        <button
-          type="button"
+        <IconButton
+          wide
+          label="직접 입력"
+          pressed={manual}
           onClick={() => setManual((v) => !v)}
-          aria-expanded={manual}
-          className="rounded-full border border-line px-4 py-2 text-sm text-ink-soft hover:bg-surface-soft"
         >
-          직접 입력
-        </button>
+          <PencilIcon />
+        </IconButton>
       </div>
 
       {parsing && (
@@ -221,6 +222,8 @@ export default function QuickAddBar({ onDone, autoFocus }: Props) {
           knownTags={knownTags}
           defaultDate={defaultDate}
           variant={variant}
+          // 이미 패널 액자 안이다. 제 액자까지 두면 테두리가 둘로 겹친다
+          flat
           // 문장을 못 읽었을 때 친 내용을 버리지 않는다
           initialTitle={
             state.mode === "error" || state.mode === "notice"

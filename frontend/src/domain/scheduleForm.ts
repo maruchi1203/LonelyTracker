@@ -6,7 +6,7 @@ import type {
   ScheduleDetailResponse,
   Weekday,
 } from "../types/schedule";
-import { toLocalDate, toLocalDateTime } from "../utils/datetime";
+import { addDays, toLocalDate, toLocalDateTime } from "../utils/datetime";
 
 /**
  * 탭마다 쓰는 칸이 달라 검증 절차와 화면이 이 값을 확인함
@@ -78,7 +78,10 @@ export interface ScheduleForm {
    * PUT 이 통째로 덮어쓰므로 안 실으면 이미 적어둔 값이 지워진다
    */
   twoMinuteAction: string;
-  /** "YYYY-MM-DD". 언제까지 해내야 하나 */
+  /**
+   * "YYYY-MM-DD". 언제까지 해내야 하나
+   * 폼에서는 내렸지만 값은 계속 들고 다닌다. 안 실으면 이미 정해둔 기한이 지워진다
+   */
   dueOn: string;
   /** 상위 일정 id. 빈 문자열이면 최상위 */
   parentId: string;
@@ -86,22 +89,20 @@ export interface ScheduleForm {
   priority: SchedulePriority | "";
 }
 
-/** 지금 이후의 가장 가까운 정각 */
-function nextHourTime(): string {
-  const at = new Date();
-  at.setHours(at.getHours() + 1, 0, 0, 0);
-  return `${String(at.getHours()).padStart(2, "0")}:00`;
-}
-
 export function emptyForm(defaultDate?: Date | null): ScheduleForm {
+  // 기간을 골랐을 때 바로 쓸 수 있게 하루짜리로 미리 잡는다.
+  // 오늘·내일이 아니라 고른 날을 기준으로 한다. 달력에서 15일을 골랐으면 15·16일이다
+  const start = defaultDate ?? new Date();
+
   return {
     title: "",
     kind: "simple",
     freq: "WEEKLY",
     tags: [],
-    startDate: toLocalDate(defaultDate ?? new Date()),
-    startTime: nextHourTime(),
-    endDate: "",
+    startDate: toLocalDate(start),
+    // 시각은 비워 둔다. 안 정하고 넘어가는 일이 더 많고, 비면 하루 종일로 저장된다
+    startTime: "",
+    endDate: toLocalDate(addDays(start, 1)),
     endTime: "",
     repeatEndsOn: "",
     durationHours: "",

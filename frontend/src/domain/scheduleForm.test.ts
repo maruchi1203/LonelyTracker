@@ -112,13 +112,21 @@ describe('저장 전 검증', () => {
   })
 
   it('종료가 시작보다 앞서면 막는다', () => {
-    const period = { kind: 'period' as const }
+    // 시각 비교는 같은 날일 때만 한다. 날짜를 적어 두지 않으면 기본값(다음 날)이 끼어든다
+    const period = { kind: 'period' as const, endDate: '2026-08-31' }
 
     expect(
       formValidationError(form({ ...period, endDate: '2026-08-30' })),
     ).not.toBeNull()
     expect(formValidationError(form({ ...period, endTime: '06:00' }))).not.toBeNull()
     expect(formValidationError(form({ ...period, endTime: '08:00' }))).toBeNull()
+  })
+
+  it('다음 날로 넘어가면 이른 종료시각도 받는다', () => {
+    // 기본값이 시작 다음 날이라, 07:00 시작에 06:00 종료는 21시간짜리 기간이다
+    expect(
+      formValidationError(form({ kind: 'period', endTime: '06:00' })),
+    ).toBeNull()
   })
 })
 
@@ -313,6 +321,24 @@ function detail(
     ...overrides,
   }
 }
+
+describe('빈 폼의 기본값', () => {
+  it('날짜는 하루짜리로 잡고 시각은 비워 둔다', () => {
+    const f = emptyForm(new Date(2026, 8, 30))
+
+    expect(f.startDate).toBe('2026-09-30')
+    expect(f.endDate).toBe('2026-10-01')
+    expect(f.startTime).toBe('')
+    expect(f.endTime).toBe('')
+  })
+
+  it('시각을 안 적은 채로 저장하면 하루 종일이 된다', () => {
+    const body = formToCreateRequest(emptyForm(new Date(2026, 8, 30)))
+
+    expect(body.allDay).toBe(true)
+    expect(body.startAt).toBe('2026-09-30T00:00:00')
+  })
+})
 
 describe('수정 폼으로 되돌리기', () => {
   it('시작일시를 날짜와 시각으로 나눈다', () => {

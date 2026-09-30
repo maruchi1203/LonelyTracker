@@ -16,7 +16,16 @@ interface Props {
   disabled?: boolean;
   /** 어느 탭의 폼인지. 날짜를 요구할지가 갈린다 */
   variant?: FormVariant;
+  /** 이미 액자 안에 들어가 있을 때. 제 테두리와 바탕을 벗는다 */
+  flat?: boolean;
 }
+
+/**
+ * 리스트는 "언젠가 할 일"을 적는 곳이라 날짜 칸을 미리 채우지 않는다.
+ * emptyForm 이 잡아 둔 오늘과 내일을 여기서 다시 비운다
+ */
+const undated = (variant: FormVariant) =>
+  variant === "list" ? { startDate: "", startTime: "", endDate: "" } : {};
 
 export default function ScheduleInputForm({
   onSubmit,
@@ -25,11 +34,11 @@ export default function ScheduleInputForm({
   initialTitle,
   disabled,
   variant = "calendar",
+  flat,
 }: Props) {
   const [form, setForm] = useState<ScheduleForm>(() => ({
     ...emptyForm(defaultDate),
-    // 리스트는 날짜를 안 정한 채로 적는 곳이라 시작일자를 미리 채우지 않는다
-    ...(variant === "list" ? { startDate: "", startTime: "" } : {}),
+    ...undated(variant),
     title: initialTitle ?? "",
   }));
 
@@ -56,16 +65,15 @@ export default function ScheduleInputForm({
 
     // 실패했는데 입력을 지우면 사용자가 처음부터 다시 써야 한다
     if (created) {
-      setForm({
-        ...emptyForm(defaultDate),
-        ...(variant === "list" ? { startDate: "", startTime: "" } : {}),
-      });
+      setForm({ ...emptyForm(defaultDate), ...undated(variant) });
     }
   };
 
   return (
     <form
-      className="flex flex-col gap-3.5 rounded-2xl border border-line bg-surface p-5 shadow-xs"
+      className={`flex flex-col gap-3.5 ${
+        flat ? "" : "rounded-2xl border border-line bg-surface p-5 shadow-xs"
+      }`}
       onSubmit={handleSubmit}
     >
       <ScheduleFields

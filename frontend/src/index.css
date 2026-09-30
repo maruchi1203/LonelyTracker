@@ -41,6 +41,12 @@
  */
 html {
   background-color: var(--color-canvas);
+  /*
+   * 브라우저가 그리는 부분의 명암. date·time 칸의 달력 아이콘과
+   * 눌러서 뜨는 팝업은 우리 CSS 가 아니라 이 값을 따른다.
+   * 없으면 밝은 화면으로 알고 검정 아이콘을 그려 어두운 바탕에 묻힌다
+   */
+  color-scheme: dark;
 }
 
 /*

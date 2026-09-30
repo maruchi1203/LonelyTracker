@@ -66,6 +66,8 @@ interface QuickAddValue extends Target {
   manual: boolean;
   setManual: React.Dispatch<React.SetStateAction<boolean>>;
   parse: () => Promise<void>;
+  /** 읽기를 그만둔다. 서버는 이미 부른 뒤라 쓴 토큰은 돌아오지 않는다 */
+  stop: () => void;
   create: Saver;
 
   /** 화면이 자기 값을 걸어 두는 자리. useQuickAddTarget 이 대신 부른다 */
@@ -91,6 +93,12 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
   const [target, setTarget] = useState<Target>(NO_TARGET);
 
   const abort = useRef<AbortController | null>(null);
+
+  /**
+   * 왜 끊겼는지. 사용자가 그만둔 것과 시간이 다 된 것을 갈라야 한다.
+   * 둘 다 같은 abort 로 끝나서 신호만으로는 구별되지 않는다
+   */
+  const cancelled = useRef(false);
 
   /**
    * 지금 화면의 저장 함수. state 가 아니라 ref 인 이유는
@@ -124,6 +132,7 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
 
     const controller = new AbortController();
     abort.current = controller;
+    cancelled.current = false;
     const giveUp = window.setTimeout(() => controller.abort(), GIVE_UP_MS);
     setState({ mode: "parsing" });
 
@@ -145,11 +154,14 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
       sessionStorage.removeItem(DRAFT_TEXT_KEY);
     } catch (e) {
       if (controller.signal.aborted) {
-        setState({
-          mode: "error",
-          message: "응답이 너무 늦습니다. 직접 입력해 주세요.",
-          needsKey: false,
-        });
+        // 사용자가 그만둔 것이면 stop 이 이미 입력줄로 되돌려 놓았다
+        if (!cancelled.current) {
+          setState({
+            mode: "error",
+            message: "응답이 너무 늦습니다. 직접 입력해 주세요.",
+            needsKey: false,
+          });
+        }
         return;
       }
       // 503 은 키 없음 말고도 서버 암호화 문제일 수 있어 상태를 한 번 더 확인한다
@@ -170,6 +182,12 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
       abort.current = null;
     }
   }, [text, target.defaultDate, target.variant]);
+
+  const stop = useCallback(() => {
+    cancelled.current = true;
+    abort.current?.abort();
+    setState({ mode: "idle" });
+  }, []);
 
   /**
    * 화면이 걸어 둔 저장 함수를 쓴다.
@@ -197,11 +215,12 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
       manual,
       setManual,
       parse,
+      stop,
       create,
       claim,
       release,
     }),
-    [target, open, text, state, manual, parse, create, claim, release],
+    [target, open, text, state, manual, parse, stop, create, claim, release],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
