@@ -11,11 +11,11 @@ import {
   dropIntentAt,
   dropLevelAt,
 } from "../../../domain/scheduleDrop";
+import { isDueSoon } from "../../../domain/scheduleTree";
 import type {
   ScheduleListItem,
   SchedulePriority,
 } from "../../../types/schedule";
-import WarpBorder from "../WarpBorder";
 
 const MENU_ITEM =
   "rounded-md px-2.5 py-1.5 text-left text-sm transition-colors";
@@ -139,9 +139,16 @@ export default function ListRow({
   const shelved = item.priority === "WONT";
   const badge = item.priority ? PRIORITY_BADGE[item.priority] : null;
 
+  /*
+   * 재는 때를 그릴 때마다 잡는다. 화면을 열어 둔 채로 시각이 넘어가면
+   * 다음에 다시 그려질 때 켜진다 — 초 단위로 지켜볼 일은 아니다
+   */
+  const soon = isDueSoon(item, new Date());
+
   return (
     <li className="list-none">
-      <WarpBorder className="rounded-2xl bg-surface shadow-xs">
+      {/* 행은 평범한 테두리를 쓴다. 일렁이는 액자는 목록 바깥에 하나뿐이다 */}
+      <div className="rounded-2xl border border-line bg-surface shadow-xs">
         <div
           ref={row}
           onContextMenu={(e) => {
@@ -215,15 +222,28 @@ export default function ListRow({
           />
 
           <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <button
-              type="button"
-              onClick={onEdit}
-              className={`truncate text-left text-sm hover:underline ${
-                done ? "text-ink-faint line-through" : "text-ink"
-              }`}
-            >
-              {item.title}
-            </button>
+            <div className="flex min-w-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={onEdit}
+                className={`min-w-0 truncate text-left text-sm hover:underline ${
+                  done ? "text-ink-faint line-through" : "text-ink"
+                }`}
+              >
+                {item.title}
+              </button>
+
+              {/*
+                하루 안에 끝내야 하는 일이 이름 옆에서 맥을 친다.
+                이름 앞이 아니라 뒤에 두는 것은, 앞에 두면 점 없는 행과 제목 왼쪽이 어긋나서다
+              */}
+              {soon && (
+                <span
+                  title="하루 안에 끝내야 합니다"
+                  className="size-2 shrink-0 animate-beat rounded-full bg-danger"
+                />
+              )}
+            </div>
 
             <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-faint">
               {badge && (
@@ -327,7 +347,7 @@ export default function ListRow({
         {children && (
           <ul className="flex flex-col gap-2 pr-2 pb-2 pl-8">{children}</ul>
         )}
-      </WarpBorder>
+      </div>
     </li>
   );
 }

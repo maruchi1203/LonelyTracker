@@ -26,6 +26,7 @@ import type {
   ScheduleListItem,
 } from "../types/schedule";
 import ListRow from "../components/layouts/List/ListRow";
+import WarpBorder from "../components/layouts/WarpBorder";
 
 const TOGGLE = "rounded-md border px-3 py-1 text-sm transition-colors";
 const TOGGLE_ON = "border-accent bg-accent text-canvas";
@@ -247,15 +248,21 @@ export default function ListPage() {
         </p>
       )}
 
-      {tree.length === 0 ? (
-        <p className="px-5 py-8 text-center text-sm text-ink-faint">
-          {loading ? "불러오는 중입니다…" : "아직 적어 둔 것이 없습니다."}
-        </p>
-      ) : (
-        <ul data-list-root className="flex flex-col gap-y-2">
-          {tree.map((node) => renderNode(node))}
-        </ul>
-      )}
+      {/*
+        일렁이는 액자는 목록 전체에 하나만 둔다. 행마다 두면 필터가 행 수만큼
+        돌고, 줄줄이 흔들려 글자를 읽기 어렵다. 달력이 격자를 감싸는 것과 같은 모양이다
+      */}
+      <WarpBorder className="rounded-2xl p-5">
+        {tree.length === 0 ? (
+          <p className="px-5 py-8 text-center text-sm text-ink-faint">
+            {loading ? "불러오는 중입니다…" : "아직 적어 둔 것이 없습니다."}
+          </p>
+        ) : (
+          <ul data-list-root className="flex flex-col gap-y-2">
+            {tree.map((node) => renderNode(node))}
+          </ul>
+        )}
+      </WarpBorder>
 
       {/* 마지막 행에 붙이지 않고도 최상위 끝으로 뺄 수 있어야 한다 */}
       {draggingId !== null && (

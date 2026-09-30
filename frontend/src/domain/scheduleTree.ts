@@ -40,6 +40,44 @@ export function sortDateOf(item: ScheduleListItem): string | undefined {
   return item.dueOn ?? item.startAt?.slice(0, 10);
 }
 
+/** 코앞이라고 볼 만한 남은 시간 */
+const SOON_MS = 24 * 60 * 60 * 1000;
+
+/** 그 날이 저무는 때. 기한은 날짜뿐이라 하루를 다 쓴 것으로 본다 */
+function endOfDay(day: string): Date {
+  return new Date(`${day}T23:59:59`);
+}
+
+/**
+ * 이 일이 끝나야 하는 때
+ *
+ * 묻는 것이 "언제까지"라 기한이 시작일시를 이긴다 — sortDateOf 와 같은 순서다.
+ * 다만 반복은 회차를 먼저 본다. 시작일시는 규칙이 처음 선 날이라
+ * 몇 달 전일 수 있고, 그것으로 재면 반복 일정이 늘 지난 것이 된다
+ *
+ * @returns 언제까지인지 정한 적이 없으면 undefined
+ */
+export function deadlineOf(item: ScheduleListItem): Date | undefined {
+  if (item.recurring) {
+    return item.occurrenceOn ? endOfDay(item.occurrenceOn) : undefined;
+  }
+  if (item.dueOn) return endOfDay(item.dueOn);
+  if (item.startAt) return new Date(item.startAt);
+  return undefined;
+}
+
+/**
+ * 하루 안에 끝내야 하는 일인가. 화면이 이걸로 눈길을 끈다
+ *
+ * 이미 지난 것도 참이다. 가장 급한 것이 조용하면 앞뒤가 맞지 않는다
+ */
+export function isDueSoon(item: ScheduleListItem, now: Date): boolean {
+  if (item.completedAt) return false;
+
+  const end = deadlineOf(item);
+  return end !== undefined && end.getTime() - now.getTime() <= SOON_MS;
+}
+
 /**
  * 평평한 목록을 부모-자식으로 묶는다
  * 부모를 못 찾은 항목은 최상위로 올린다. 화면에서 항목이 사라지는 것이 가장 나쁘다

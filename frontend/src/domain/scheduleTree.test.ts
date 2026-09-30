@@ -3,6 +3,7 @@ import type { ScheduleListItem } from '../types/schedule'
 import {
   buildTree,
   flatten,
+  isDueSoon,
   selfAndDescendantIds,
   sortDateOf,
 } from './scheduleTree'
@@ -163,5 +164,52 @@ describe('우선순위 정렬', () => {
 
     // 2 는 가장 높지만 1 의 자식이라 1 밑에 그대로 있다
     expect(rows.map((r) => r.item.id)).toEqual([3, 1, 2])
+  })
+})
+
+describe('하루 안에 끝내야 하는 일', () => {
+  const now = new Date('2026-09-30T14:00:00')
+
+  it('기한이 오늘이면 급하다', () => {
+    expect(isDueSoon(item(1, { dueOn: '2026-09-30' }), now)).toBe(true)
+  })
+
+  it('기한이 지났어도 급하다', () => {
+    expect(isDueSoon(item(1, { dueOn: '2026-09-01' }), now)).toBe(true)
+  })
+
+  it('기한이 모레면 아직 아니다', () => {
+    expect(isDueSoon(item(1, { dueOn: '2026-10-02' }), now)).toBe(false)
+  })
+
+  it('내일 기한은 그 날이 저물 때까지라 하루를 넘긴다', () => {
+    // 2026-10-01T23:59:59 는 지금으로부터 34시간 뒤다
+    expect(isDueSoon(item(1, { dueOn: '2026-10-01' }), now)).toBe(false)
+  })
+
+  it('기한이 없으면 시작일시로 잰다', () => {
+    expect(isDueSoon(item(1, { startAt: '2026-09-30T18:00:00' }), now)).toBe(true)
+    expect(isDueSoon(item(1, { startAt: '2026-10-05T18:00:00' }), now)).toBe(false)
+  })
+
+  it('반복은 시작일시가 아니라 이번 회차로 잰다', () => {
+    const 반복 = { recurring: true, startAt: '2026-01-01T07:00:00' }
+
+    // 규칙이 선 날로 재면 늘 지난 것이 되어 항상 급해진다
+    expect(isDueSoon(item(1, { ...반복, occurrenceOn: '2026-09-30' }), now)).toBe(true)
+    expect(isDueSoon(item(1, { ...반복, occurrenceOn: '2026-10-20' }), now)).toBe(false)
+  })
+
+  it('남은 회차가 없으면 급할 것도 없다', () => {
+    expect(isDueSoon(item(1, { recurring: true }), now)).toBe(false)
+  })
+
+  it('끝낸 일은 급하지 않다', () => {
+    const done = { dueOn: '2026-09-30', completedAt: '2026-09-30T10:00:00' }
+    expect(isDueSoon(item(1, done), now)).toBe(false)
+  })
+
+  it('언제까지인지 정한 적이 없으면 조용하다', () => {
+    expect(isDueSoon(item(1), now)).toBe(false)
   })
 })
