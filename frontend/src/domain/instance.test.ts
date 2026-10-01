@@ -9,6 +9,7 @@ import {
   instanceKey,
   replaceInstance,
   sameInstance,
+  sortByTimeOfDay,
 } from './instance'
 
 /** 반복 일정 하나가 펼쳐져 온 회차. id 가 같고 instanceDate 만 다르다 */
@@ -249,5 +250,50 @@ describe('조기 종료', () => {
     const future = instance(1, '2026-09-02')
 
     expect(isEarlyDone(future, TODAY)).toBe(false)
+  })
+})
+
+describe('하루 안에서의 차례', () => {
+  const day = '2026-10-01'
+
+  it('이른 시각이 먼저 선다', () => {
+    const 저녁 = instance(1, day, { startAt: `${day}T19:00:00`, title: '저녁' })
+    const 아침 = instance(2, day, { startAt: `${day}T07:00:00`, title: '아침' })
+
+    expect(sortByTimeOfDay([저녁, 아침]).map((i) => i.title)).toEqual([
+      '아침',
+      '저녁',
+    ])
+  })
+
+  it('하루 종일은 맨 앞에 선다', () => {
+    const 종일 = instance(1, day, { allDay: true, title: '종일' })
+    const 새벽 = instance(2, day, { startAt: `${day}T00:30:00`, title: '새벽' })
+
+    expect(sortByTimeOfDay([새벽, 종일]).map((i) => i.title)).toEqual([
+      '종일',
+      '새벽',
+    ])
+  })
+
+  it('같은 시각이면 제목으로 가른다', () => {
+    // 가르지 않으면 그릴 때마다 차례가 바뀌어 눈이 따라가지 못한다
+    const 나 = instance(1, day, { startAt: `${day}T09:00:00`, title: '나중' })
+    const 가 = instance(2, day, { startAt: `${day}T09:00:00`, title: '가장' })
+
+    expect(sortByTimeOfDay([나, 가]).map((i) => i.title)).toEqual([
+      '가장',
+      '나중',
+    ])
+  })
+
+  it('원본을 건드리지 않는다', () => {
+    const 늦게 = instance(1, day, { startAt: `${day}T19:00:00` })
+    const 일찍 = instance(2, day, { startAt: `${day}T07:00:00` })
+    const given = [늦게, 일찍]
+
+    sortByTimeOfDay(given)
+
+    expect(given[0]).toBe(늦게)
   })
 })

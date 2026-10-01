@@ -64,6 +64,28 @@ export function groupByDate(
   return map
 }
 
+/**
+ * 하루 안에서의 차례. 하루 종일이 맨 앞에 서고 그 뒤로 시각순이다.
+ *
+ * 여러 날에 걸친 일정은 뒷날에도 제 시작 시각으로 선다. 그 날 몇 시에 걸렸는지보다
+ * 몇 시에 하기로 한 일인지가 눈에 익다
+ */
+export function sortByTimeOfDay(
+  instances: ScheduleResponse[],
+): ScheduleResponse[] {
+  return [...instances].sort(
+    (a, b) =>
+      minuteOfDay(a) - minuteOfDay(b) || a.title.localeCompare(b.title, 'ko'),
+  )
+}
+
+/** 하루 종일이거나 시각이 없으면 -1 이라 맨 앞에 선다 */
+function minuteOfDay(instance: ScheduleResponse): number {
+  if (instance.allDay || !instance.startAt) return -1
+  const at = new Date(instance.startAt)
+  return at.getHours() * 60 + at.getMinutes()
+}
+
 /** 그 날짜에 걸쳐 있는 회차인지. 달력과 목록이 같은 기준을 써야 한다 */
 export function coversDate(instance: ScheduleResponse, date: Date): boolean {
   return instanceDateKeys(instance).includes(toLocalDate(date))

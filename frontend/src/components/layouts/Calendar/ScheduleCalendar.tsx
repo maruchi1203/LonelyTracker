@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { assignLanes } from "../../../domain/calendarLanes";
+import { groupByDate } from "../../../domain/instance";
 import type { ScheduleResponse } from "../../../types/schedule";
 import { toLocalDate } from "../../../utils/datetime";
 import { buildMonthDays } from "../../../utils/monthGrid";
@@ -13,12 +14,16 @@ interface Props {
   onSelectDate: (date: Date) => void;
   instances: ScheduleResponse[];
   loading?: boolean;
+  /** 펼친 칸에서 일정을 골랐을 때 */
+  onPickInstance: (instance: ScheduleResponse) => void;
+  onToggleStatus: (instance: ScheduleResponse) => void;
 }
 
 // 주간, 월간, 연간 (캘린더 형태와 목표를 이 3개로 나눌 예정)
 export const CYCLE_UNITS = ["Week", "Month", "Year"] as const;
 export type CycleUnit = (typeof CYCLE_UNITS)[number];
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+const DAYS_PER_WEEK = 7;
 
 // 월간 달력 (주간, 연간 추가 예정)
 export default function ScheduleCalendar({
@@ -28,9 +33,38 @@ export default function ScheduleCalendar({
   onSelectDate,
   instances,
   loading,
+  onPickInstance,
+  onToggleStatus,
 }: Props) {
   const days = useMemo(() => buildMonthDays(month), [month]);
   const byDate = useMemo(() => assignLanes(days, instances), [days, instances]);
+
+  // 펼친 칸은 띠가 아니라 그 날 일정을 통째로 세운다
+  const perDay = useMemo(() => groupByDate(instances), [instances]);
+
+  /**
+   * 펼칠 주. 고른 날이 없으면 오늘이 든 주를 편다.
+   * 오늘이 이 달 격자에 없으면 첫 주를 편다 — 첫 주에는 늘 1일이 있다
+   */
+  const openWeek = useMemo(() => {
+    const anchor = toLocalDate(selectedDate ?? new Date());
+    const at = days.findIndex((d) => toLocalDate(d) === anchor);
+    return at === -1 ? 0 : Math.floor(at / DAYS_PER_WEEK);
+  }, [days, selectedDate]);
+
+  /**
+   * 열 너비. 고른 요일만 넓다.
+   *
+   * 격자 하나가 요일 머리글부터 마지막 주까지 다 쥐고 있어, 여기 준 너비가
+   * 위아래로 그대로 맞는다. 펼친 주에만 따로 주면 그 줄만 어긋나 버린다.
+   * 대신 고른 요일은 모든 주에서 넓어진다 — 줄맞춤을 지키려면 치러야 하는 값이다
+   */
+  const columns = useMemo(() => {
+    const picked = selectedDate?.getDay() ?? -1;
+    return Array.from({ length: DAYS_PER_WEEK }, (_, at) =>
+      at === picked ? "2fr" : "1fr",
+    ).join(" ");
+  }, [selectedDate]);
 
   const shiftMonth = (delta: number) =>
     onMonthChange(new Date(month.getFullYear(), month.getMonth() + delta, 1));
@@ -67,10 +101,15 @@ export default function ScheduleCalendar({
 
       {/* 로딩 중에도 그리드를 그대로 둔다. 사라지면 이동 화살표가 튄다 */}
       <WarpBorder className="rounded-2xl p-3">
+        {/*
+          열 너비도 흐르게 바꾼다. fr 끼리는 사이값을 낼 수 있어
+          1fr 에서 2fr 로 가는 길이 그려진다 — 칸 수가 그대로여야 성립한다
+        */}
         <div
-          className={`grid grid-cols-7 gap-1 transition-opacity ${
+          className={`grid gap-1 transition-[grid-template-columns,opacity] duration-300 ease-out motion-reduce:transition-none ${
             loading ? "opacity-50" : ""
           }`}
+          style={{ gridTemplateColumns: columns }}
           aria-busy={loading}
         >
           {WEEKDAYS.map((label, i) => (
@@ -88,7 +127,7 @@ export default function ScheduleCalendar({
             </div>
           ))}
 
-          {days.map((date) => {
+          {days.map((date, at) => {
             const key = toLocalDate(date);
             return (
               <ScheduleCalendarCell
@@ -99,6 +138,10 @@ export default function ScheduleCalendar({
                 isToday={key === todayKey}
                 isSelected={key === selectedKey}
                 onSelect={onSelectDate}
+                expanded={Math.floor(at / DAYS_PER_WEEK) === openWeek}
+                instances={perDay.get(key) ?? []}
+                onPick={onPickInstance}
+                onToggleStatus={onToggleStatus}
               />
             );
           })}
