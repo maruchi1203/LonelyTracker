@@ -167,36 +167,45 @@ describe('우선순위 정렬', () => {
   })
 })
 
-describe('하루 안에 끝내야 하는 일', () => {
-  const now = new Date('2026-09-30T14:00:00')
+describe('하루 안에 끝나는 일', () => {
+  const now = new Date('2026-10-01T14:00:00')
 
-  it('기한이 오늘이면 급하다', () => {
-    expect(isDueSoon(item(1, { dueOn: '2026-09-30' }), now)).toBe(true)
+  it('끝이 코앞이면 급하다', () => {
+    const 끝남 = { startAt: '2026-10-01T15:00:00', durationMinutes: 60 }
+    expect(isDueSoon(item(1, 끝남), now)).toBe(true)
   })
 
-  it('기한이 지났어도 급하다', () => {
-    expect(isDueSoon(item(1, { dueOn: '2026-09-01' }), now)).toBe(true)
+  it('이미 끝난 시각이어도 급하다', () => {
+    const 지남 = { startAt: '2026-09-20T09:00:00', durationMinutes: 60 }
+    expect(isDueSoon(item(1, 지남), now)).toBe(true)
   })
 
-  it('기한이 모레면 아직 아니다', () => {
-    expect(isDueSoon(item(1, { dueOn: '2026-10-02' }), now)).toBe(false)
+  it('끝이 하루를 넘으면 아직 아니다', () => {
+    const 멀다 = { startAt: '2026-10-03T09:00:00', durationMinutes: 60 }
+    expect(isDueSoon(item(1, 멀다), now)).toBe(false)
   })
 
-  it('내일 기한은 그 날이 저물 때까지라 하루를 넘긴다', () => {
-    // 2026-10-01T23:59:59 는 지금으로부터 34시간 뒤다
-    expect(isDueSoon(item(1, { dueOn: '2026-10-01' }), now)).toBe(false)
+  it('소요시간이 길어 하루를 넘기면 급하지 않다', () => {
+    // 10/1 13시에 시작해 사흘 걸리는 일. 시작은 지났지만 끝은 멀다
+    const 긴일 = { startAt: '2026-10-01T13:00:00', durationMinutes: 3 * 24 * 60 }
+    expect(isDueSoon(item(1, 긴일), now)).toBe(false)
   })
 
-  it('기한이 없으면 시작일시로 잰다', () => {
-    expect(isDueSoon(item(1, { startAt: '2026-09-30T18:00:00' }), now)).toBe(true)
+  it('끝을 안 정했으면 시작으로 잰다', () => {
+    expect(isDueSoon(item(1, { startAt: '2026-10-01T18:00:00' }), now)).toBe(true)
     expect(isDueSoon(item(1, { startAt: '2026-10-05T18:00:00' }), now)).toBe(false)
+  })
+
+  it('기한은 보지 않는다', () => {
+    // 오늘이 기한이지만 언제 할지는 안 정한 항목. 리스트에만 남아 조용하다
+    expect(isDueSoon(item(1, { dueOn: '2026-10-01' }), now)).toBe(false)
   })
 
   it('반복은 시작일시가 아니라 이번 회차로 잰다', () => {
     const 반복 = { recurring: true, startAt: '2026-01-01T07:00:00' }
 
-    // 규칙이 선 날로 재면 늘 지난 것이 되어 항상 급해진다
-    expect(isDueSoon(item(1, { ...반복, occurrenceOn: '2026-09-30' }), now)).toBe(true)
+    // 규칙이 선 날로 재면 하나같이 지난 것이 되어 리스트 전체가 깜빡인다
+    expect(isDueSoon(item(1, { ...반복, occurrenceOn: '2026-10-01' }), now)).toBe(true)
     expect(isDueSoon(item(1, { ...반복, occurrenceOn: '2026-10-20' }), now)).toBe(false)
   })
 
@@ -205,11 +214,14 @@ describe('하루 안에 끝내야 하는 일', () => {
   })
 
   it('끝낸 일은 급하지 않다', () => {
-    const done = { dueOn: '2026-09-30', completedAt: '2026-09-30T10:00:00' }
+    const done = {
+      startAt: '2026-10-01T15:00:00',
+      completedAt: '2026-10-01T10:00:00',
+    }
     expect(isDueSoon(item(1, done), now)).toBe(false)
   })
 
-  it('언제까지인지 정한 적이 없으면 조용하다', () => {
+  it('언제인지 정한 적이 없으면 조용하다', () => {
     expect(isDueSoon(item(1), now)).toBe(false)
   })
 })

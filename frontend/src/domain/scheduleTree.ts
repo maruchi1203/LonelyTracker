@@ -49,21 +49,25 @@ function endOfDay(day: string): Date {
 }
 
 /**
- * 이 일이 끝나야 하는 때
+ * 이 일이 끝나는 때
  *
- * 묻는 것이 "언제까지"라 기한이 시작일시를 이긴다 — sortDateOf 와 같은 순서다.
- * 다만 반복은 회차를 먼저 본다. 시작일시는 규칙이 처음 선 날이라
- * 몇 달 전일 수 있고, 그것으로 재면 반복 일정이 늘 지난 것이 된다
+ * 끝을 먼저 보고, 끝을 안 정했으면 시작으로 본다. 기한(dueOn)은 쓰지 않는다 —
+ * 언제까지 해내야 하는지와 언제 끝나는지는 다른 물음이다 (정렬은 sortDateOf 가 기한으로 한다)
  *
- * @returns 언제까지인지 정한 적이 없으면 undefined
+ * 반복만 회차를 본다. 반복의 시작일시는 규칙이 처음 선 날이라 몇 달 전일 수 있고,
+ * 그것으로 재면 반복 일정이 하나같이 지난 것이 된다
+ *
+ * @returns 언제인지 정한 적이 없으면 undefined
  */
 export function deadlineOf(item: ScheduleListItem): Date | undefined {
   if (item.recurring) {
     return item.occurrenceOn ? endOfDay(item.occurrenceOn) : undefined;
   }
-  if (item.dueOn) return endOfDay(item.dueOn);
-  if (item.startAt) return new Date(item.startAt);
-  return undefined;
+  if (!item.startAt) return undefined;
+
+  const start = new Date(item.startAt);
+  if (item.durationMinutes === undefined) return start;
+  return new Date(start.getTime() + item.durationMinutes * 60_000);
 }
 
 /**

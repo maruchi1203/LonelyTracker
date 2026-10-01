@@ -17,6 +17,7 @@ import java.util.Set;
  *
  * @param dueOn       기한. 언제까지 해내야 하나
  * @param startAt     언제 하기로 했나. 없으면 아직 안 정한 항목이다
+ * @param durationMinutes 소요시간(분). 끝은 startAt 에 이걸 더해 구한다. 없으면 끝을 안 정한 것이다
  * @param completedAt 값이 있으면 완료다. 습관은 회차마다 상태를 가져 늘 비어 있다
  * @param recurring   반복 규칙이 붙었는지. 완료를 어느 경로로 보낼지가 여기서 갈린다
  * @param occurrenceOn 반복이면 아직 안 끝낸 가장 빠른 회차 날짜. 아니면 null
@@ -32,6 +33,7 @@ public record ScheduleListItemResponse(
         LocalDate dueOn,
         SchedulePriority priority,
         LocalDateTime startAt,
+        Integer durationMinutes,
         LocalDateTime completedAt,
         boolean recurring,
         LocalDate occurrenceOn,
@@ -53,6 +55,7 @@ public record ScheduleListItemResponse(
                 s.getDueOn(),
                 s.getPriority(),
                 s.getStartAt(),
+                s.getDurationMinutes(),
                 s.getCompletedAt(),
                 recur != null,
                 occurrenceOn,
