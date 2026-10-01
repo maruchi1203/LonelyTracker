@@ -47,6 +47,8 @@ export interface ScheduleResponse {
   /** 습관(반복)의 회차인지. 완료를 어느 경로로 보낼지가 여기서 갈린다 */
   recurring: boolean;
   status: ScheduleStatus;
+  /** 일정 단위 값이라 어느 회차를 봐도 같다. 없으면 COULD 로 본다 */
+  priority?: SchedulePriority;
   /** 태그도 장소처럼 일정 단위 값이라 어느 회차를 봐도 같다 */
   tags?: string[];
   /** 일정 단위 값이라 어느 회차를 봐도 같다 */

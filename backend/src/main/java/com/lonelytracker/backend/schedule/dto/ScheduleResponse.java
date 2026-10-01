@@ -1,5 +1,6 @@
 package com.lonelytracker.backend.schedule.dto;
 
+import com.lonelytracker.backend.schedule.domain.SchedulePriority;
 import com.lonelytracker.backend.schedule.domain.ScheduleStatus;
 
 import java.time.LocalDate;
@@ -12,6 +13,7 @@ import java.util.Set;
  * @param instanceDate 규칙이 만든 원래 날짜. 옮겨도 바뀌지 않는다.
  *                     null이면 날짜를 안 정한 항목이라 회차가 없다
  * @param recurring      반복 일정의 회차인지. 규칙 자체는 담지 않는다
+ * @param priority       일정 단위 값이라 어느 회차를 봐도 같다. 없으면 COULD 로 본다
  */
 public record ScheduleResponse(
                 Long id,
@@ -24,6 +26,7 @@ public record ScheduleResponse(
                 boolean allDay,
                 boolean recurring,
                 ScheduleStatus status,
+                SchedulePriority priority,
                 Set<String> tags,
                 String place,
                 String twoMinuteAction,
