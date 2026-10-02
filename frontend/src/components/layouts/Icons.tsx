@@ -197,3 +197,34 @@ export function ClockIcon() {
     </Glyph>
   );
 }
+
+/* ── 회차 상태 ────────────────────────────────── */
+
+/** 예정 — 아직 손대지 않은 것 */
+export function PlannedIcon() {
+  return (
+    <Glyph>
+      <circle cx="12" cy="12" r="7.5" />
+    </Glyph>
+  );
+}
+
+/** 완료 */
+export function DoneIcon() {
+  return (
+    <Glyph>
+      <circle cx="12" cy="12" r="7.5" />
+      <path d="m8.5 12 2.5 2.5 4.5-5" />
+    </Glyph>
+  );
+}
+
+/** 건너뜀 — 안 한 것을 안 했다고 남긴다 */
+export function SkipIcon() {
+  return (
+    <Glyph>
+      <circle cx="12" cy="12" r="7.5" />
+      <path d="M9 12h6" />
+    </Glyph>
+  );
+}

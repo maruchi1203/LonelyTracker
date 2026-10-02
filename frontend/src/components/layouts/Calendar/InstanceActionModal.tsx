@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   formatInstanceRange,
   isEarlyDone,
@@ -10,13 +10,37 @@ import type {
   ScheduleStatus,
 } from "../../../types/schedule";
 import { toLocalInputValue } from "../../../utils/datetime";
+import IconButton from "../IconButton";
+import { DoneIcon, PlannedIcon, SkipIcon } from "../Icons";
 import WarpBorder from "../WarpBorder";
 
-const STATUS_LABEL: Record<ScheduleStatus, string> = {
-  PLANNED: "예정",
-  DONE: "완료",
-  SKIPPED: "건너뜀",
-};
+/**
+ * 고를 수 있는 상태. 폼의 종류·우선순위와 같은 모양으로 세운다.
+ *
+ * 건너뜀은 반복에만 둔다 — 지키기로 한 규칙이 있어야 안 지킨 것도 성립한다
+ */
+const STATUSES: {
+  value: ScheduleStatus;
+  label: string;
+  hint: string;
+  Icon: () => ReactNode;
+  recurringOnly?: boolean;
+}[] = [
+  {
+    value: "PLANNED",
+    label: "예정",
+    hint: "아직 하지 않았습니다",
+    Icon: PlannedIcon,
+  },
+  { value: "DONE", label: "완료", hint: "끝냈습니다", Icon: DoneIcon },
+  {
+    value: "SKIPPED",
+    label: "건너뜀",
+    hint: "안 한 것을 안 했다고 남깁니다. 달성률의 분모에는 그대로 남습니다",
+    Icon: SkipIcon,
+    recurringOnly: true,
+  },
+];
 
 const ACTION =
   "rounded-md px-3 py-2 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40";
@@ -24,9 +48,8 @@ const ACTION =
 interface Props {
   instance: ScheduleResponse;
   onClose: () => void;
-  onToggleStatus: (instance: ScheduleResponse) => void;
+  onSetStatus: (instance: ScheduleResponse, status: ScheduleStatus) => void;
   onMove: (instance: ScheduleResponse, startAt: string) => void;
-  onSkip: (instance: ScheduleResponse) => void;
   onDelete: (instance: ScheduleResponse, scope: DeleteScope) => void;
 }
 
@@ -39,9 +62,8 @@ interface Props {
 export default function InstanceActionModal({
   instance,
   onClose,
-  onToggleStatus,
+  onSetStatus,
   onMove,
-  onSkip,
   onDelete,
 }: Props) {
   const [moving, setMoving] = useState(false);
@@ -56,8 +78,6 @@ export default function InstanceActionModal({
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
-
-  const done = instance.status === "DONE";
 
   /** 누르면 창을 닫는다. 바뀐 결과는 달력에서 바로 보인다 */
   const run = (act: () => void) => {
@@ -88,10 +108,6 @@ export default function InstanceActionModal({
             <p className="flex flex-wrap items-center gap-1.5 text-xs text-ink-soft">
               {formatInstanceRange(instance)}
 
-              <span className="rounded-full border border-line px-2 py-0.5 text-ink-faint">
-                {STATUS_LABEL[instance.status]}
-              </span>
-
               {/* 수행률만 보면 원래 날에 한 사람과 옮겨서 한 사람이 같아 보인다 */}
               {isMoved(instance) && (
                 <span
@@ -113,6 +129,24 @@ export default function InstanceActionModal({
               )}
             </p>
           </header>
+
+          {/* 상태는 셋 중 하나를 고르는 것이다. 누를 때마다 도는 단추로 두면 건너뜀에서 빠져나올 길이 없다 */}
+          <div className="flex items-stretch gap-2">
+            {STATUSES.filter(
+              ({ recurringOnly }) => !recurringOnly || instance.recurring,
+            ).map(({ value, label, hint, Icon }) => (
+              <IconButton
+                key={value}
+                wide
+                label={label}
+                title={hint}
+                pressed={instance.status === value}
+                onClick={() => run(() => onSetStatus(instance, value))}
+              >
+                <Icon />
+              </IconButton>
+            ))}
+          </div>
 
           {moving ? (
             <div className="flex flex-col gap-2 border-t border-line pt-3 text-sm">
@@ -147,14 +181,6 @@ export default function InstanceActionModal({
             <div className="flex flex-col gap-0.5 border-t border-line pt-3">
               <button
                 type="button"
-                onClick={() => run(() => onToggleStatus(instance))}
-                className={`${ACTION} text-ink hover:bg-accent-soft hover:text-accent`}
-              >
-                {done ? "완료 되돌리기" : "완료로 표시"}
-              </button>
-
-              <button
-                type="button"
                 onClick={() => setMoving(true)}
                 disabled={!instance.instanceDate}
                 title={
@@ -164,20 +190,6 @@ export default function InstanceActionModal({
               >
                 다른 날로 옮기기
               </button>
-
-              {/*
-                안 한 것을 안 했다고 남긴다. 달성률의 분모에 그대로 남는다.
-                지키기로 한 규칙이 있어야 안 지킨 것도 성립하므로 반복에만 둔다
-              */}
-              {instance.recurring && (
-                <button
-                  type="button"
-                  onClick={() => run(() => onSkip(instance))}
-                  className={`${ACTION} text-ink hover:bg-surface-soft`}
-                >
-                  건너뛰기
-                </button>
-              )}
 
               {/* 범위를 버튼 하나로 넘겨짚지 않는다 */}
               <button

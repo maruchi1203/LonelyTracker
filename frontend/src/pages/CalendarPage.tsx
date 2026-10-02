@@ -18,6 +18,7 @@ import type {
   DeleteScope,
   ScheduleCreateRequest,
   ScheduleResponse,
+  ScheduleStatus,
 } from "../types/schedule";
 
 export default function CalendarPage() {
@@ -114,16 +115,29 @@ export default function CalendarPage() {
     }
   };
 
-  /** 건너뛰기는 습관에만 있다. 지키기로 한 규칙이 있어야 안 지킨 것도 성립한다 */
-  const handleSkip = async (instance: ScheduleResponse) => {
+  /**
+   * 상태를 곧장 그 값으로 정한다.
+   *
+   * 토글로만 두면 건너뜀에서 예정으로 돌아올 길이 없다 — 토글은 둘 사이만 오간다.
+   * 건너뜀은 반복에만 있다. 지키기로 한 규칙이 있어야 안 지킨 것도 성립한다
+   */
+  const handleSetStatus = async (
+    instance: ScheduleResponse,
+    status: ScheduleStatus,
+  ) => {
     setError(null);
-    if (!instance.recurring || !instance.instanceDate) return;
     try {
       patchOne(
-        await changeInstanceStatus(instance.id, instance.instanceDate, "SKIPPED"),
+        instance.recurring && instance.instanceDate
+          ? await changeInstanceStatus(
+              instance.id,
+              instance.instanceDate,
+              status,
+            )
+          : await changeCompletion(instance.id, status === "DONE"),
       );
     } catch (e) {
-      fail(e, "건너뛰지 못했습니다");
+      fail(e, "상태를 변경하지 못했습니다");
     }
   };
 
@@ -211,9 +225,8 @@ export default function CalendarPage() {
         <InstanceActionModal
           instance={picked}
           onClose={() => setPicked(null)}
-          onToggleStatus={handleToggleStatus}
+          onSetStatus={handleSetStatus}
           onMove={handleMove}
-          onSkip={handleSkip}
           onDelete={handleDelete}
         />
       )}
