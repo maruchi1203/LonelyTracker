@@ -41,8 +41,8 @@ export default function HabitSection() {
         2분 법칙 적용 여부
       </label>
       <p className="text-xs text-ink-faint">
-        시작에 필요한 2분 이내의 행동을 미리 정해두면 실행될 확률이 높아집니다.
-        꺼도 이미 적어둔 2분 행동은 그대로 보입니다.
+        언제·어디서·2분 행동을 미리 정해두면 실행될 확률이 높아집니다. 끄면 습관일지에서
+        이 세 칸이 내려가고 제목만 남습니다. 적어둔 값은 지워지지 않아 다시 켜면 돌아옵니다.
       </p>
 
       {error && <p className="text-sm text-danger">{error}</p>}

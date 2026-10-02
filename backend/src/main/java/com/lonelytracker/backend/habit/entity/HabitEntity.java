@@ -63,6 +63,14 @@ public class HabitEntity {
     @Column(name = "two_minute_action", length = FieldLengths.TWO_MINUTE_ACTION)
     private String twoMinuteAction;
 
+    /** 언제 할지. 시각일 수도, "퇴근 후" 같은 상황일 수도 있다 */
+    @Column(name = "at_time", length = FieldLengths.HABIT_AT_TIME)
+    private String atTime;
+
+    /** 어디서 할지 */
+    @Column(length = FieldLengths.PLACE)
+    private String place;
+
     /** 같은 갈래 안에서의 자리 */
     @Column(name = "display_order", nullable = false)
     @Builder.Default
@@ -80,10 +88,13 @@ public class HabitEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public void update(String title, HabitCategory category, String twoMinuteAction) {
+    public void update(String title, HabitCategory category, String twoMinuteAction,
+            String atTime, String place) {
         this.title = title;
         this.category = category;
         this.twoMinuteAction = twoMinuteAction;
+        this.atTime = atTime;
+        this.place = place;
     }
 
     public void changeDisplayOrder(int displayOrder) {

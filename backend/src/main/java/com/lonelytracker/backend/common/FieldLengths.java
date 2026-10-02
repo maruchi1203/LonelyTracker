@@ -21,6 +21,12 @@ public final class FieldLengths {
     /** 시작에 필요한 2분 이내의 미니 행동 */
     public static final int TWO_MINUTE_ACTION = 200;
 
+    /**
+     * 습관을 시작할 때. "07:00" 도 "퇴근 후" 도 들어간다.
+     * 실행 의도의 신호는 시계가 아니라 상황인 경우가 많아 시각 타입으로 묶지 않았다
+     */
+    public static final int HABIT_AT_TIME = 100;
+
     /** OAuth 로그인 식별자(이메일 등)가 들어온다 */
     public static final int USERNAME = 100;
 

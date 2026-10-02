@@ -4,5 +4,7 @@ package com.lonelytracker.backend.habit.dto;
 public record HabitUpdateRequest(
         String title,
         com.lonelytracker.backend.habit.domain.HabitCategory category,
-        String twoMinuteAction) {
+        String twoMinuteAction,
+        String atTime,
+        String place) {
 }

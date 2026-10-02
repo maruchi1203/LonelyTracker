@@ -84,6 +84,8 @@ public class HabitService {
                 .title(request.title().strip())
                 .category(request.category())
                 .twoMinuteAction(request.twoMinuteAction())
+                .atTime(request.atTime())
+                .place(request.place())
                 .build());
 
         return HabitResponse.from(habit, List.of());
@@ -92,7 +94,8 @@ public class HabitService {
     @Transactional
     public HabitResponse update(Long id, HabitUpdateRequest request) {
         HabitEntity habit = getOwnedOrThrow(id);
-        habit.update(request.title(), request.category(), request.twoMinuteAction());
+        habit.update(request.title(), request.category(), request.twoMinuteAction(),
+                request.atTime(), request.place());
         return HabitResponse.from(habitRepository.saveAndFlush(habit), List.of());
     }
 
