@@ -42,8 +42,13 @@ export default function HabitsPage() {
   const [twoMinuteRule, setTwoMinuteRule] = useState(true);
 
   const [columns, setColumns] = useState(() => {
-    const saved = Number(localStorage.getItem(COLUMNS_KEY));
-    return COLUMNS.some((c) => c.count === saved) ? saved : 2;
+    // 쿠키를 막아 둔 브라우저는 읽기에서도 던진다. 쓰기만 감싸 두면 반쪽이다
+    try {
+      const saved = Number(localStorage.getItem(COLUMNS_KEY));
+      return COLUMNS.some((c) => c.count === saved) ? saved : 2;
+    } catch {
+      return 2;
+    }
   });
 
   const chooseColumns = (count: number) => {

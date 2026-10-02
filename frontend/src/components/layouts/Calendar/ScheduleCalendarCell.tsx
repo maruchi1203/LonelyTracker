@@ -134,7 +134,15 @@ export default function ScheduleCalendarCell({
             </div>
           </>
         ) : (
-          <ul className="flex list-none flex-col gap-0.5 p-0">
+          /*
+            띠는 누름을 돌려받는다. title 툴팁이 hover 로 뜨는데 가려 두면,
+            칸이 좁아 잘라 둔 제목을 확인할 길이 아예 없어진다.
+            대신 띠를 눌러도 날짜가 골라지도록 이 겹이 그 몫을 대신 받는다
+          */
+          <ul
+            onClick={() => onSelect(date)}
+            className="pointer-events-auto flex list-none flex-col gap-0.5 p-0"
+          >
             {day.lanes.map((slot, lane) =>
               slot ? (
                 <Bar
