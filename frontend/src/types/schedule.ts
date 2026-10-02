@@ -83,6 +83,11 @@ export interface ScheduleListItem {
   recurring: boolean;
   /** "YYYY-MM-DD". 반복이면 아직 안 끝낸 가장 빠른 회차. 끝내면 다음 것이 올라온다 */
   occurrenceOn?: string;
+  /**
+   * 이미 끝낸 회차 날짜들. 앞뒤 회차를 넘겨 볼 때 체크 여부를 여기서 안다.
+   * 끝없이 싣지 않도록 서버가 가까운 과거까지만 담는다
+   */
+  doneOn?: string[];
   /** 반복이면 그 규칙. 규칙을 적고 회차를 앞뒤로 세는 데 쓴다 */
   recurrence?: RecurrenceResponse;
   /** 없으면 COULD 로 본다. WONT 은 흐리게 남고 달력에서는 빠진다 */

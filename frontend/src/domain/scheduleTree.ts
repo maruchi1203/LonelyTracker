@@ -40,6 +40,22 @@ export function sortDateOf(item: ScheduleListItem): string | undefined {
   return item.dueOn ?? item.startAt?.slice(0, 10);
 }
 
+/**
+ * 지금 보고 있는 회차를 끝냈는지.
+ *
+ * 반복은 완료가 일정이 아니라 회차에 달려 있어 completedAt 이 늘 비어 있다.
+ * 그래서 끝낸 날짜 목록에 그 회차가 들었는지로 가른다
+ *
+ * @param shownOn 넘겨 보고 있는 회차 날짜. 반복인데 없으면 남은 회차가 없다는 뜻이다
+ */
+export function isOccurrenceDone(
+  item: ScheduleListItem,
+  shownOn?: string,
+): boolean {
+  if (!item.recurring) return Boolean(item.completedAt)
+  return shownOn !== undefined && (item.doneOn ?? []).includes(shownOn)
+}
+
 /** 코앞이라고 볼 만한 남은 시간 */
 const SOON_MS = 24 * 60 * 60 * 1000;
 

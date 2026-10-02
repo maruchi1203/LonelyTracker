@@ -11,7 +11,7 @@ import {
   dropIntentAt,
   dropLevelAt,
 } from "../../../domain/scheduleDrop";
-import { isDueSoon } from "../../../domain/scheduleTree";
+import { isDueSoon, isOccurrenceDone } from "../../../domain/scheduleTree";
 import type {
   ScheduleListItem,
   SchedulePriority,
@@ -134,7 +134,7 @@ export default function ListRow({
     };
   }, [menuOpen]);
 
-  const done = Boolean(item.completedAt);
+  const done = isOccurrenceDone(item, shownOn);
   // 안 하기로 한 일정. 지우지 않고 판단을 기록으로 남긴다
   const shelved = item.priority === "WONT";
   const badge = item.priority ? PRIORITY_BADGE[item.priority] : null;

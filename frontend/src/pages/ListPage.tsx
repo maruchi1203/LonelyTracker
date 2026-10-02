@@ -18,6 +18,7 @@ import {
 } from "../domain/scheduleDrop";
 import {
   buildTree,
+  isOccurrenceDone,
   type ListSort,
   type TreeNode,
 } from "../domain/scheduleTree";
@@ -121,12 +122,20 @@ export default function ListPage() {
       // 반복의 완료는 일정이 아니라 회차가 갖는다
       if (item.recurring) {
         if (onDate === undefined) return;
-        await changeInstanceStatus(item.id, onDate, "DONE");
+        // 끝낸 회차를 다시 누르면 되돌린다. 늘 DONE 을 보내면 해제할 길이 없다
+        await changeInstanceStatus(
+          item.id,
+          onDate,
+          isOccurrenceDone(item, onDate) ? "PLANNED" : "DONE",
+        );
       } else {
         await changeCompletion(item.id, !item.completedAt);
       }
-      // 넘겨 보던 회차는 완료와 함께 의미를 잃는다
-      setPeeked(({ [item.id]: _gone, ...rest }) => rest);
+      // 지금 할 회차를 끝냈으면 다음 회차가 올라온다. 넘겨 보던 자리는 뜻을 잃는다.
+      // 지난 회차를 손본 것이면 보던 자리를 그대로 둔다
+      if (onDate === undefined || onDate === item.occurrenceOn) {
+        setPeeked(({ [item.id]: _gone, ...rest }) => rest);
+      }
       await reload();
     } catch (e) {
       fail(e, "완료 상태를 바꾸지 못했습니다");

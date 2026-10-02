@@ -4,6 +4,7 @@ import {
   buildTree,
   flatten,
   isDueSoon,
+  isOccurrenceDone,
   selfAndDescendantIds,
   sortDateOf,
 } from './scheduleTree'
@@ -223,5 +224,40 @@ describe('하루 안에 끝나는 일', () => {
 
   it('언제인지 정한 적이 없으면 조용하다', () => {
     expect(isDueSoon(item(1), now)).toBe(false)
+  })
+})
+
+describe('회차를 끝냈는지', () => {
+  it('1회성은 완료 시각 하나로 끝난다', () => {
+    expect(isOccurrenceDone(item(1, { completedAt: '2026-10-01T09:00:00' }))).toBe(
+      true,
+    )
+    expect(isOccurrenceDone(item(1))).toBe(false)
+  })
+
+  it('반복은 completedAt 이 아니라 끝낸 날짜 목록으로 가른다', () => {
+    // 반복은 완료가 회차에 달려 있어 completedAt 이 늘 비어 있다.
+    // 이것을 그대로 믿으면 어느 회차로 가도 체크가 안 뜬다
+    const 반복 = item(1, {
+      recurring: true,
+      occurrenceOn: '2026-10-05',
+      doneOn: ['2026-09-28', '2026-10-02'],
+    })
+
+    expect(isOccurrenceDone(반복, '2026-10-02')).toBe(true)
+    expect(isOccurrenceDone(반복, '2026-09-28')).toBe(true)
+    expect(isOccurrenceDone(반복, '2026-10-05')).toBe(false)
+  })
+
+  it('반복인데 볼 회차가 없으면 끝낸 것이 아니다', () => {
+    const 반복 = item(1, { recurring: true, doneOn: ['2026-10-02'] })
+
+    expect(isOccurrenceDone(반복, undefined)).toBe(false)
+  })
+
+  it('끝낸 목록이 아예 안 왔어도 터지지 않는다', () => {
+    expect(isOccurrenceDone(item(1, { recurring: true }), '2026-10-02')).toBe(
+      false,
+    )
   })
 })
