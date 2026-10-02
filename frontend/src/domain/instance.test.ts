@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { ScheduleResponse } from '../types/schedule'
 import {
   coversDate,
+  entriesByDate,
   formatInstanceRange,
   groupByDate,
   isEarlyDone,
@@ -295,5 +296,48 @@ describe('하루 안에서의 차례', () => {
     sortByTimeOfDay(given)
 
     expect(given[0]).toBe(늦게)
+  })
+})
+
+describe('펼친 칸에 세울 줄', () => {
+  it('하루짜리는 줄로 서고 걸친 것은 빠진다', () => {
+    // 걸친 것은 띠가 맡는다. 줄로도 세우면 같은 일정이 두 번 보인다
+    const 하루 = instance(1, '2026-10-01')
+    const 사흘 = instance(2, '2026-10-01', {
+      startAt: '2026-10-01T09:00:00',
+      endAt: '2026-10-03T18:00:00',
+    })
+
+    const map = entriesByDate([하루, 사흘])
+
+    expect(map.get('2026-10-01')?.map((e) => e.instance.id)).toEqual([1])
+    expect(map.has('2026-10-02')).toBe(false)
+  })
+
+  it('기한은 걸친 일정의 것이라도 줄로 선다', () => {
+    const 사흘 = instance(1, '2026-10-01', {
+      startAt: '2026-10-01T09:00:00',
+      endAt: '2026-10-03T18:00:00',
+      dueOn: '2026-10-05',
+    })
+
+    const map = entriesByDate([사흘])
+
+    expect(map.get('2026-10-05')).toEqual([{ instance: 사흘, kind: 'due' }])
+  })
+
+  it('기한은 그 날의 끝이라 맨 뒤에 선다', () => {
+    const 아침 = instance(1, '2026-10-01', { startAt: '2026-10-01T07:00:00' })
+    const 마감 = instance(2, '2026-10-02', { dueOn: '2026-10-01' })
+
+    const kinds = entriesByDate([마감, 아침]).get('2026-10-01')
+
+    expect(kinds?.map((e) => e.kind)).toEqual(['span', 'due'])
+  })
+
+  it('시작도 기한도 같은 날이면 둘 다 선다', () => {
+    const one = instance(1, '2026-10-01', { dueOn: '2026-10-01' })
+
+    expect(entriesByDate([one]).get('2026-10-01')).toHaveLength(2)
   })
 })

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { assignLanes } from "../../../domain/calendarLanes";
-import { groupByDate } from "../../../domain/instance";
+import { entriesByDate, instanceDateKeys } from "../../../domain/instance";
 import type { ScheduleResponse } from "../../../types/schedule";
 import { toLocalDate } from "../../../utils/datetime";
 import { buildMonthDays } from "../../../utils/monthGrid";
@@ -39,8 +39,33 @@ export default function ScheduleCalendar({
   const days = useMemo(() => buildMonthDays(month), [month]);
   const byDate = useMemo(() => assignLanes(days, instances), [days, instances]);
 
-  // 펼친 칸은 띠가 아니라 그 날 일정을 통째로 세운다
-  const perDay = useMemo(() => groupByDate(instances), [instances]);
+  /*
+   * 펼친 칸은 둘로 나뉜다.
+   *
+   * 여러 날에 걸친 것은 띠로 남아야 일곱 칸을 가로질러 이어진다 — 그 자리는
+   * 레인이 정하므로 시각으로 줄 세울 수 없다. 하루 안에 끝나는 것만 시각순 줄이 된다
+   */
+  const [spanning, sameDay] = useMemo(() => {
+    const wide: ScheduleResponse[] = [];
+    const short: ScheduleResponse[] = [];
+    for (const one of instances) {
+      (instanceDateKeys(one).length > 1 ? wide : short).push(one);
+    }
+    return [wide, short];
+  }, [instances]);
+
+  /*
+   * 띠는 걸친 일정만 그린다. 기한은 걸치지 않고 하루에만 서므로 줄 쪽으로 넘긴다 —
+   * 안 떼면 같은 기한이 띠와 줄 양쪽에 두 번 뜬다
+   */
+  const bandByDate = useMemo(
+    () => assignLanes(days, spanning.map(withoutDue)),
+    [days, spanning],
+  );
+  const perDay = useMemo(
+    () => entriesByDate([...sameDay, ...spanning]),
+    [sameDay, spanning],
+  );
 
   /**
    * 펼칠 주. 고른 날이 없으면 오늘이 든 주를 편다.
@@ -137,9 +162,11 @@ export default function ScheduleCalendar({
                 inCurrentMonth={date.getMonth() === month.getMonth()}
                 isToday={key === todayKey}
                 isSelected={key === selectedKey}
+                selectedKey={selectedKey}
                 onSelect={onSelectDate}
                 expanded={Math.floor(at / DAYS_PER_WEEK) === openWeek}
-                instances={perDay.get(key) ?? []}
+                band={bandByDate.get(key) ?? { lanes: [], hidden: 0 }}
+                entries={perDay.get(key) ?? []}
                 onPick={onPickInstance}
                 onToggleStatus={onToggleStatus}
               />
@@ -170,4 +197,9 @@ function NavButton({
       {children}
     </button>
   );
+}
+
+/** 기한을 뗀 사본. 띠를 그릴 때만 쓴다 */
+function withoutDue(instance: ScheduleResponse): ScheduleResponse {
+  return instance.dueOn === undefined ? instance : { ...instance, dueOn: undefined };
 }
