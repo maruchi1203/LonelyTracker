@@ -7,20 +7,18 @@ import {
   fetchTagNames,
   updateInstance,
 } from "../api/schedules";
-import CalendarToolbar from "../components/calendar/CalendarToolbar";
+import CalendarToolbar from "../components/layouts/Calendar/CalendarToolbar";
 import ScheduleCalendar from "../components/layouts/Calendar/ScheduleCalendar";
-import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
-import ScheduleList from "../components/ScheduleList";
+import { useQuickAddTarget } from "../components/quickadd/QuickAddContext";
+import InstanceActionModal from "../components/layouts/Calendar/InstanceActionModal";
 import { applyFilters, countByTag } from "../domain/filter";
-import { coversDate } from "../domain/instance";
-import { nearestOccurrences } from "../domain/occurrence";
-import { toLocalDate } from "../utils/datetime";
 import { useCalendarViewState } from "../hooks/useCalendarViewState";
 import { useMonthInstances } from "../hooks/useMonthInstances";
 import type {
   DeleteScope,
   ScheduleCreateRequest,
   ScheduleResponse,
+  ScheduleStatus,
 } from "../types/schedule";
 
 export default function CalendarPage() {
@@ -39,6 +37,9 @@ export default function CalendarPage() {
     useMonthInstances(month);
 
   const [knownTags, setKnownTags] = useState<string[]>([]);
+
+  /** 칸에서 고른 회차. 무엇을 할지는 가운데 창이 묻는다 */
+  const [picked, setPicked] = useState<ScheduleResponse | null>(null);
 
   const fail = (e: unknown, fallback: string) =>
     setError(e instanceof Error ? e.message : fallback);
@@ -114,16 +115,29 @@ export default function CalendarPage() {
     }
   };
 
-  /** 건너뛰기는 습관에만 있다. 지키기로 한 규칙이 있어야 안 지킨 것도 성립한다 */
-  const handleSkip = async (instance: ScheduleResponse) => {
+  /**
+   * 상태를 곧장 그 값으로 정한다.
+   *
+   * 토글로만 두면 건너뜀에서 예정으로 돌아올 길이 없다 — 토글은 둘 사이만 오간다.
+   * 건너뜀은 반복에만 있다. 지키기로 한 규칙이 있어야 안 지킨 것도 성립한다
+   */
+  const handleSetStatus = async (
+    instance: ScheduleResponse,
+    status: ScheduleStatus,
+  ) => {
     setError(null);
-    if (!instance.recurring || !instance.instanceDate) return;
     try {
       patchOne(
-        await changeInstanceStatus(instance.id, instance.instanceDate, "SKIPPED"),
+        instance.recurring && instance.instanceDate
+          ? await changeInstanceStatus(
+              instance.id,
+              instance.instanceDate,
+              status,
+            )
+          : await changeCompletion(instance.id, status === "DONE"),
       );
     } catch (e) {
-      fail(e, "건너뛰지 못했습니다");
+      fail(e, "상태를 변경하지 못했습니다");
     }
   };
 
@@ -150,29 +164,19 @@ export default function CalendarPage() {
     [instances, tag, query],
   );
 
-  // 아래 목록에 그릴 것 — 고른 날짜까지 좁힌다.
-  // 여러 날에 걸친 일정은 첫날뿐 아니라 걸친 날 모두에서 보여야 한다
-  const forList = useMemo(
-    () =>
-      selectedDate
-        ? forCalendar.filter((o) => coversDate(o, selectedDate))
-        // 한 달 치가 다 오면 같은 반복이 여러 줄로 선다. 지금 할 회차만 남긴다
-        : nearestOccurrences(forCalendar, toLocalDate(new Date())),
-    [forCalendar, selectedDate],
-  );
-
-  const doneCount = forList.filter((o) => o.status === "DONE").length;
-  const filtering = Boolean(tag) || query.trim().length > 0;
   const monthLabel = `${month.getFullYear()}년 ${month.getMonth() + 1}월`;
+
+  // 걸러낸 것이 있으면 알려야 한다. 아무것도 없는 달력과 구별되지 않는다
+  const filtering = Boolean(tag) || query.trim().length > 0;
+
+  // 날짜를 골라 뒀으면 빠른 추가의 시작값이 된다
+  useQuickAddTarget(
+    { defaultDate: selectedDate, knownTags, variant: "calendar" },
+    handleCreate,
+  );
 
   return (
     <div className="flex flex-col gap-6">
-      <QuickAddLauncher
-        // 날짜를 골라둔 상태면 그 날짜로 시작값을 채워준다
-        defaultDate={selectedDate}
-        knownTags={knownTags}
-        onCreate={handleCreate}
-      />
 
       <CalendarToolbar
         query={query}
@@ -185,6 +189,27 @@ export default function CalendarPage() {
         onSelectTag={setTag}
       />
 
+      {error && (
+        <p className="rounded-xl border border-danger bg-danger-soft px-4 py-2.5 text-sm text-danger">
+          {error}
+        </p>
+      )}
+
+      {filtering && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface-soft px-4 py-2 text-sm text-ink-soft">
+          <span>
+            걸러서 보는 중입니다. {forCalendar.length}건만 달력에 섰습니다.
+          </span>
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="shrink-0 rounded-md border border-line px-3 py-1 text-xs transition-colors hover:bg-accent-soft hover:text-accent"
+          >
+            필터 지우기
+          </button>
+        </div>
+      )}
+
       <ScheduleCalendar
         month={month}
         onMonthChange={setMonth}
@@ -192,36 +217,19 @@ export default function CalendarPage() {
         onSelectDate={toggleDate}
         instances={forCalendar}
         loading={loading}
+        onPickInstance={setPicked}
+        onToggleStatus={handleToggleStatus}
       />
 
-      <section className="flex flex-col gap-2">
-        <div className="flex items-baseline gap-2">
-          <h2 className="text-lg font-semibold text-ink">
-            {selectedDate
-              ? `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일`
-              : "이 달 전체"}
-          </h2>
-          <p className="text-sm text-ink-soft">
-            {forList.length}건 · 완료 {doneCount}건
-          </p>
-        </div>
-
-        {error && (
-          <p className="rounded-xl border border-danger bg-danger-soft px-4 py-2.5 text-sm text-danger">
-            {error}
-          </p>
-        )}
-
-        <ScheduleList
-          instances={forList}
-          onToggleStatus={handleToggleStatus}
+      {picked && (
+        <InstanceActionModal
+          instance={picked}
+          onClose={() => setPicked(null)}
+          onSetStatus={handleSetStatus}
           onMove={handleMove}
-          onSkip={handleSkip}
           onDelete={handleDelete}
-          emptyReason={filtering ? "filtered-out" : "no-data"}
-          onClearFilters={clearFilters}
         />
-      </section>
+      )}
     </div>
   );
 }

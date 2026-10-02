@@ -7,10 +7,10 @@ import {
   fetchSchedules,
 } from "../api/schedules";
 import { fetchAiProviders, fetchAiUsage } from "../api/users";
-import ScheduleSummaryPanel from "../components/dashboard/AgendaPanel";
-import { TempPanel } from "../components/dashboard/DashboardPanel";
-import HabitPanel from "../components/dashboard/HabitPanel";
-import AiUsagePanel from "../components/dashboard/UsagePanel";
+import ScheduleSummaryPanel from "../components/layouts/Dashboard/AgendaPanel";
+import { TempPanel } from "../components/layouts/Dashboard/DashboardPanel";
+import HabitPanel from "../components/layouts/Dashboard/HabitPanel";
+import AiUsagePanel from "../components/layouts/Dashboard/UsagePanel";
 import { weekOf } from "../domain/dashboard";
 import type { Habit as HabitItem } from "../types/habit";
 import type {

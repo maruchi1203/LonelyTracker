@@ -1,11 +1,11 @@
 import { useState } from "react";
-import { providerLabel } from "../../constants/aiPresets";
-import { limitRatio } from "../../domain/dashboard";
+import { providerLabel } from "../../../constants/aiPresets";
+import { limitRatio } from "../../../domain/dashboard";
 import type {
   AiProvider,
   AiUsageSummary,
   ProviderUsage,
-} from "../../types/schedule";
+} from "../../../types/schedule";
 import DashboardPanel, { SegmentToggle } from "./DashboardPanel";
 
 type Period = "week" | "month";

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import WarpBorder from "../layouts/WarpBorder";
+import WarpBorder from "../../layouts/WarpBorder";
 
 interface Props {
   title: string;

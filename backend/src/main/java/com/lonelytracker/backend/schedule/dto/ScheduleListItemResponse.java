@@ -6,6 +6,8 @@ import com.lonelytracker.backend.schedule.entity.ScheduleRecurEntity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -17,9 +19,12 @@ import java.util.Set;
  *
  * @param dueOn       기한. 언제까지 해내야 하나
  * @param startAt     언제 하기로 했나. 없으면 아직 안 정한 항목이다
+ * @param durationMinutes 소요시간(분). 끝은 startAt 에 이걸 더해 구한다. 없으면 끝을 안 정한 것이다
  * @param completedAt 값이 있으면 완료다. 습관은 회차마다 상태를 가져 늘 비어 있다
  * @param recurring   반복 규칙이 붙었는지. 완료를 어느 경로로 보낼지가 여기서 갈린다
  * @param occurrenceOn 반복이면 아직 안 끝낸 가장 빠른 회차 날짜. 아니면 null
+ * @param doneOn      이미 끝낸 회차 날짜들. 화면이 앞뒤 회차를 넘겨 볼 때 체크 여부를 여기서 안다.
+ *                    끝없이 싣지 않도록 가까운 과거까지만 담는다
  * @param recurrence  반복이면 그 규칙. 화면이 "매주 월·수·금"을 적고 회차를 세는 데 쓴다
  * @param priority    없으면 COULD 로 본다. WONT 은 흐리게 남는다
  */
@@ -32,9 +37,11 @@ public record ScheduleListItemResponse(
         LocalDate dueOn,
         SchedulePriority priority,
         LocalDateTime startAt,
+        Integer durationMinutes,
         LocalDateTime completedAt,
         boolean recurring,
         LocalDate occurrenceOn,
+        List<LocalDate> doneOn,
         ScheduleRecurrenceResponse recurrence,
         Set<String> tags,
         String place,
@@ -43,7 +50,7 @@ public record ScheduleListItemResponse(
         LocalDateTime updatedAt) {
 
     public static ScheduleListItemResponse from(ScheduleEntity s, ScheduleRecurEntity recur,
-            LocalDate occurrenceOn) {
+            LocalDate occurrenceOn, Set<LocalDate> doneDates) {
         return new ScheduleListItemResponse(
                 s.getId(),
                 s.getParentId(),
@@ -53,9 +60,11 @@ public record ScheduleListItemResponse(
                 s.getDueOn(),
                 s.getPriority(),
                 s.getStartAt(),
+                s.getDurationMinutes(),
                 s.getCompletedAt(),
                 recur != null,
                 occurrenceOn,
+                doneDates.stream().sorted(Comparator.naturalOrder()).toList(),
                 (recur == null) ? null : ScheduleRecurrenceResponse.from(recur),
                 // 지연 로딩 컬렉션을 그대로 내보내면 세션이 닫힌 뒤 직렬화가 깨진다
                 s.tagsCopy(),

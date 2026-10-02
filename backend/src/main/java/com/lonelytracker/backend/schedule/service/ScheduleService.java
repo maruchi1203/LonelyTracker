@@ -202,30 +202,39 @@ public class ScheduleService {
                 .collect(Collectors.toMap(ScheduleRecurEntity::getScheduleId, r -> r));
 
         LocalDate today = LocalDate.now();
-        Map<Long, Set<LocalDate>> doneDates = doneDatesFrom(recurs.keySet(), today);
+        Map<Long, Set<LocalDate>> doneDates = doneDatesFrom(recurs.keySet(),
+                today.minusMonths(LIST_DONE_LOOKBACK_MONTHS));
 
         return schedules.stream()
                 .sorted(LIST_ORDER)
                 .map(s -> {
                     ScheduleRecurEntity recur = recurs.get(s.getId());
+                    Set<LocalDate> done = doneDates.getOrDefault(s.getId(), Set.of());
                     return ScheduleListItemResponse.from(s, recur,
-                            ScheduleUtil.currentOccurrence(s, recur,
-                                    doneDates.getOrDefault(s.getId(), Set.of()), today));
+                            ScheduleUtil.currentOccurrence(s, recur, done, today), done);
                 })
                 .toList();
     }
 
+
     /**
-     * 오늘 이후로 이미 끝낸 회차 날짜.
-     * 지난 회차는 보지 않는다. 리스트가 세는 회차가 오늘부터라 쓸 데가 없다.
+     * 끝낸 회차를 얼마나 거슬러 실을지.
+     * 화면이 앞 회차를 넘겨 볼 수 있어 지난 것도 조금은 있어야 하고,
+     * 끝없이 실으면 매일 반복이 한 해만 지나도 365개가 된다
      */
-    private Map<Long, Set<LocalDate>> doneDatesFrom(Set<Long> recurringIds, LocalDate today) {
+    private static final int LIST_DONE_LOOKBACK_MONTHS = 3;
+
+    /**
+     * 이미 끝낸 회차 날짜.
+     * 지금 할 회차를 고르는 데 쓰고, 화면이 앞뒤를 넘겨 볼 때 체크 여부로도 쓴다.
+     */
+    private Map<Long, Set<LocalDate>> doneDatesFrom(Set<Long> recurringIds, LocalDate from) {
         if (recurringIds.isEmpty()) {
             return Map.of();
         }
 
         return progressRepository
-                .findByScheduleIdInAndOnDateGreaterThanEqual(List.copyOf(recurringIds), today)
+                .findByScheduleIdInAndOnDateGreaterThanEqual(List.copyOf(recurringIds), from)
                 .stream()
                 .filter(p -> p.getStatus() == ScheduleStatus.DONE)
                 .collect(Collectors.groupingBy(

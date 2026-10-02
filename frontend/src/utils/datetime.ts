@@ -46,3 +46,15 @@ export function nextHour(baseDate?: Date | null): string {
   }
   return toLocalInputValue(at)
 }
+
+/** 그 날의 며칠 뒤·앞. 원본은 건드리지 않는다 */
+export function addDays(date: Date, days: number): Date {
+  const moved = new Date(date)
+  moved.setDate(moved.getDate() + days)
+  return moved
+}
+
+/** "2026-09-15" → "9/15" */
+export function shortDate(day: string): string {
+  return `${Number(day.slice(5, 7))}/${Number(day.slice(8, 10))}`;
+}

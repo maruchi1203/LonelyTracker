@@ -3,6 +3,8 @@ import type { ScheduleListItem } from '../types/schedule'
 import {
   buildTree,
   flatten,
+  isDueSoon,
+  isOccurrenceDone,
   selfAndDescendantIds,
   sortDateOf,
 } from './scheduleTree'
@@ -163,5 +165,99 @@ describe('우선순위 정렬', () => {
 
     // 2 는 가장 높지만 1 의 자식이라 1 밑에 그대로 있다
     expect(rows.map((r) => r.item.id)).toEqual([3, 1, 2])
+  })
+})
+
+describe('하루 안에 끝나는 일', () => {
+  const now = new Date('2026-10-01T14:00:00')
+
+  it('끝이 코앞이면 급하다', () => {
+    const 끝남 = { startAt: '2026-10-01T15:00:00', durationMinutes: 60 }
+    expect(isDueSoon(item(1, 끝남), now)).toBe(true)
+  })
+
+  it('이미 끝난 시각이어도 급하다', () => {
+    const 지남 = { startAt: '2026-09-20T09:00:00', durationMinutes: 60 }
+    expect(isDueSoon(item(1, 지남), now)).toBe(true)
+  })
+
+  it('끝이 하루를 넘으면 아직 아니다', () => {
+    const 멀다 = { startAt: '2026-10-03T09:00:00', durationMinutes: 60 }
+    expect(isDueSoon(item(1, 멀다), now)).toBe(false)
+  })
+
+  it('소요시간이 길어 하루를 넘기면 급하지 않다', () => {
+    // 10/1 13시에 시작해 사흘 걸리는 일. 시작은 지났지만 끝은 멀다
+    const 긴일 = { startAt: '2026-10-01T13:00:00', durationMinutes: 3 * 24 * 60 }
+    expect(isDueSoon(item(1, 긴일), now)).toBe(false)
+  })
+
+  it('끝을 안 정했으면 시작으로 잰다', () => {
+    expect(isDueSoon(item(1, { startAt: '2026-10-01T18:00:00' }), now)).toBe(true)
+    expect(isDueSoon(item(1, { startAt: '2026-10-05T18:00:00' }), now)).toBe(false)
+  })
+
+  it('기한은 보지 않는다', () => {
+    // 오늘이 기한이지만 언제 할지는 안 정한 항목. 리스트에만 남아 조용하다
+    expect(isDueSoon(item(1, { dueOn: '2026-10-01' }), now)).toBe(false)
+  })
+
+  it('반복은 시작일시가 아니라 이번 회차로 잰다', () => {
+    const 반복 = { recurring: true, startAt: '2026-01-01T07:00:00' }
+
+    // 규칙이 선 날로 재면 하나같이 지난 것이 되어 리스트 전체가 깜빡인다
+    expect(isDueSoon(item(1, { ...반복, occurrenceOn: '2026-10-01' }), now)).toBe(true)
+    expect(isDueSoon(item(1, { ...반복, occurrenceOn: '2026-10-20' }), now)).toBe(false)
+  })
+
+  it('남은 회차가 없으면 급할 것도 없다', () => {
+    expect(isDueSoon(item(1, { recurring: true }), now)).toBe(false)
+  })
+
+  it('끝낸 일은 급하지 않다', () => {
+    const done = {
+      startAt: '2026-10-01T15:00:00',
+      completedAt: '2026-10-01T10:00:00',
+    }
+    expect(isDueSoon(item(1, done), now)).toBe(false)
+  })
+
+  it('언제인지 정한 적이 없으면 조용하다', () => {
+    expect(isDueSoon(item(1), now)).toBe(false)
+  })
+})
+
+describe('회차를 끝냈는지', () => {
+  it('1회성은 완료 시각 하나로 끝난다', () => {
+    expect(isOccurrenceDone(item(1, { completedAt: '2026-10-01T09:00:00' }))).toBe(
+      true,
+    )
+    expect(isOccurrenceDone(item(1))).toBe(false)
+  })
+
+  it('반복은 completedAt 이 아니라 끝낸 날짜 목록으로 가른다', () => {
+    // 반복은 완료가 회차에 달려 있어 completedAt 이 늘 비어 있다.
+    // 이것을 그대로 믿으면 어느 회차로 가도 체크가 안 뜬다
+    const 반복 = item(1, {
+      recurring: true,
+      occurrenceOn: '2026-10-05',
+      doneOn: ['2026-09-28', '2026-10-02'],
+    })
+
+    expect(isOccurrenceDone(반복, '2026-10-02')).toBe(true)
+    expect(isOccurrenceDone(반복, '2026-09-28')).toBe(true)
+    expect(isOccurrenceDone(반복, '2026-10-05')).toBe(false)
+  })
+
+  it('반복인데 볼 회차가 없으면 끝낸 것이 아니다', () => {
+    const 반복 = item(1, { recurring: true, doneOn: ['2026-10-02'] })
+
+    expect(isOccurrenceDone(반복, undefined)).toBe(false)
+  })
+
+  it('끝낸 목록이 아예 안 왔어도 터지지 않는다', () => {
+    expect(isOccurrenceDone(item(1, { recurring: true }), '2026-10-02')).toBe(
+      false,
+    )
   })
 })

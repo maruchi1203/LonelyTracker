@@ -369,20 +369,27 @@ class ScheduleListApiTest extends IntegrationTest {
     @Test
     @DisplayName("반복 일정은 아직 안 끝낸 가장 빠른 회차를 싣는다")
     void carriesTheCurrentOccurrence() throws Exception {
-        long recurring = create("{\"title\":\"매일 운동\",\"startAt\":\"2026-10-01T07:00:00\""
-                + ",\"recurrence\":{\"freq\":\"DAILY\"}}");
+        // 지금 할 회차는 오늘부터 센다. 날짜를 박아 두면 그 날이 지나는 순간 깨진다
+        String today = java.time.LocalDate.now().toString();
+        String tomorrow = java.time.LocalDate.now().plusDays(1).toString();
+
+        long recurring = create("{\"title\":\"매일 운동\",\"startAt\":\"" + today
+                + "T07:00:00\",\"recurrence\":{\"freq\":\"DAILY\"}}");
 
         mvc.perform(get(BASE + "/list"))
-                .andExpect(jsonPath("$[0].occurrenceOn").value("2026-10-01"));
+                .andExpect(jsonPath("$[0].occurrenceOn").value(today))
+                .andExpect(jsonPath("$[0].doneOn.length()").value(0));
 
-        mvc.perform(patch(BASE + "/" + recurring + "/instances/2026-10-01/status")
+        mvc.perform(patch(BASE + "/" + recurring + "/instances/" + today + "/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"DONE\"}"))
                 .andExpect(status().isOk());
 
-        // 끝낸 회차는 물러나고 다음 것이 올라온다
+        // 끝낸 회차는 물러나고 다음 것이 올라온다. 물러난 회차는 끝낸 목록에 남아
+        // 화면이 앞 회차로 넘겨 봤을 때 체크를 보여줄 수 있다
         mvc.perform(get(BASE + "/list"))
-                .andExpect(jsonPath("$[0].occurrenceOn").value("2026-10-02"));
+                .andExpect(jsonPath("$[0].occurrenceOn").value(tomorrow))
+                .andExpect(jsonPath("$[0].doneOn[0]").value(today));
     }
 
     @Test

@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type DragEvent,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   changeCompletion,
   changeInstanceStatus,
@@ -15,34 +8,26 @@ import {
   fetchTagNames,
   reorderSchedules,
 } from "../api/schedules";
-import QuickAddLauncher from "../components/quickadd/QuickAddLauncher";
+import { useQuickAddTarget } from "../components/quickadd/QuickAddContext";
 import ScheduleEditModal from "../components/schedule/ScheduleEditModal";
-import WarpBorder from "../components/layouts/WarpBorder";
 import {
-  dropIntentAt,
-  dropLevelAt,
-  INDENT_PX,
   planDrop,
   planDropAtEnd,
   type DropIntent,
   type DropPlan,
 } from "../domain/scheduleDrop";
-import { describeRecurrence, stepOccurrence } from "../domain/recurrence";
-import { buildTree, flatten, type ListSort } from "../domain/scheduleTree";
+import {
+  buildTree,
+  isOccurrenceDone,
+  type ListSort,
+  type TreeNode,
+} from "../domain/scheduleTree";
 import type {
   ScheduleCreateRequest,
   ScheduleListItem,
-  SchedulePriority,
 } from "../types/schedule";
-
-/**
- * 깊이만큼 들여쓴다. 계층은 3단까지라 세 칸이면 된다
- * 한 칸이 INDENT_PX 와 같아야 끌 때 손이 가리키는 단과 눈에 보이는 단이 맞는다
- */
-const INDENT = ["", "pl-8", "pl-16"];
-
-const MENU_ITEM =
-  "rounded-md px-2.5 py-1.5 text-left text-sm transition-colors";
+import ListRow from "../components/layouts/List/ListRow";
+import WarpBorder from "../components/layouts/WarpBorder";
 
 const TOGGLE = "rounded-md border px-3 py-1 text-sm transition-colors";
 const TOGGLE_ON = "border-accent bg-accent text-canvas";
@@ -54,15 +39,6 @@ const SORTS: { value: ListSort; label: string }[] = [
   { value: "priority", label: "우선순위순" },
 ];
 
-/** 값이 없으면 뱃지를 달지 않는다. 정렬에서만 선택으로 본다 */
-const PRIORITY_BADGE: Record<SchedulePriority, { label: string; style: string }> =
-  {
-    MUST: { label: "필수", style: "bg-danger-soft text-danger" },
-    SHOULD: { label: "권장", style: "bg-accent-soft text-accent" },
-    COULD: { label: "선택", style: "bg-surface-soft text-ink-soft" },
-    WONT: { label: "보류", style: "bg-surface-soft text-ink-faint" },
-  };
-
 export default function ListPage() {
   const [items, setItems] = useState<ScheduleListItem[]>([]);
   const [knownTags, setKnownTags] = useState<string[]>([]);
@@ -73,9 +49,11 @@ export default function ListPage() {
   const [peeked, setPeeked] = useState<Record<number, string>>({});
   const [draggingId, setDraggingId] = useState<number | null>(null);
   // 놓을 수 있을 때만 채운다. 화면은 세울 자리를 스스로 셈하지 않는다
-  const [dropAt, setDropAt] = useState<
-    { id: number; intent: DropIntent; plan: DropPlan } | null
-  >(null);
+  const [dropAt, setDropAt] = useState<{
+    id: number;
+    intent: DropIntent;
+    plan: DropPlan;
+  } | null>(null);
 
   // 마지막 행이 깊은 곳에 있으면 그 아래에는 최상위 자리가 없다
   const [dropAtEnd, setDropAtEnd] = useState(false);
@@ -113,11 +91,12 @@ export default function ListPage() {
     void loadTags();
   }, [reload, loadTags]);
 
-  const rows = useMemo(() => flatten(buildTree(items, sort)), [items, sort]);
-
+  const tree = useMemo(() => buildTree(items, sort), [items, sort]);
 
   /** 성공 여부를 돌려준다. 실패했는데 입력이 지워지면 곤란하다 */
-  const handleCreate = async (body: ScheduleCreateRequest): Promise<boolean> => {
+  const handleCreate = async (
+    body: ScheduleCreateRequest,
+  ): Promise<boolean> => {
     setError(null);
     try {
       await createSchedule(body);
@@ -131,18 +110,32 @@ export default function ListPage() {
     }
   };
 
+  // 리스트는 날짜를 요구하지 않는다
+  useQuickAddTarget(
+    { defaultDate: null, knownTags, variant: "list" },
+    handleCreate,
+  );
+
   const handleToggle = async (item: ScheduleListItem, onDate?: string) => {
     setError(null);
     try {
       // 반복의 완료는 일정이 아니라 회차가 갖는다
       if (item.recurring) {
         if (onDate === undefined) return;
-        await changeInstanceStatus(item.id, onDate, "DONE");
+        // 끝낸 회차를 다시 누르면 되돌린다. 늘 DONE 을 보내면 해제할 길이 없다
+        await changeInstanceStatus(
+          item.id,
+          onDate,
+          isOccurrenceDone(item, onDate) ? "PLANNED" : "DONE",
+        );
       } else {
         await changeCompletion(item.id, !item.completedAt);
       }
-      // 넘겨 보던 회차는 완료와 함께 의미를 잃는다
-      setPeeked(({ [item.id]: _gone, ...rest }) => rest);
+      // 지금 할 회차를 끝냈으면 다음 회차가 올라온다. 넘겨 보던 자리는 뜻을 잃는다.
+      // 지난 회차를 손본 것이면 보던 자리를 그대로 둔다
+      if (onDate === undefined || onDate === item.occurrenceOn) {
+        setPeeked(({ [item.id]: _gone, ...rest }) => rest);
+      }
       await reload();
     } catch (e) {
       fail(e, "완료 상태를 바꾸지 못했습니다");
@@ -170,7 +163,9 @@ export default function ListPage() {
   };
 
   const handleDelete = async (item: ScheduleListItem) => {
-    if (!window.confirm(`"${item.title}" 을(를) 지울까요? 되돌릴 수 없습니다.`)) {
+    if (
+      !window.confirm(`"${item.title}" 을(를) 지울까요? 되돌릴 수 없습니다.`)
+    ) {
       return;
     }
 
@@ -184,6 +179,50 @@ export default function ListPage() {
     } catch (e) {
       fail(e, "지우지 못했습니다");
     }
+  };
+
+  /** 하위 행은 부모의 액자 안으로 들어간다. 그래서 평평하게 펴지 않는다 */
+  const renderNode = (node: TreeNode, depth = 0) => {
+    const { item } = node;
+
+    return (
+      <ListRow
+        key={item.id}
+        item={item}
+        depth={depth}
+        shownOn={peeked[item.id] ?? item.occurrenceOn}
+        onStep={(to) => setPeeked((seen) => ({ ...seen, [item.id]: to }))}
+        onRewind={() => setPeeked(({ [item.id]: _gone, ...rest }) => rest)}
+        onToggle={(onDate) => void handleToggle(item, onDate)}
+        onEdit={() => setEditingId(item.id)}
+        onDelete={() => void handleDelete(item)}
+        draggable={canDrag}
+        dragging={draggingId === item.id}
+        drop={
+          dropAt?.id === item.id
+            ? { intent: dropAt.intent, level: dropAt.plan.level }
+            : null
+        }
+        onDragStart={() => setDraggingId(item.id)}
+        onDragEnd={stopDragging}
+        onDragOverRow={(intent, level) => {
+          const plan =
+            draggingId === null
+              ? null
+              : planDrop(items, draggingId, item.id, intent, level);
+
+          // 못 놓는 자리에는 아무 표시도 하지 않는다
+          setDropAt(plan && { id: item.id, intent, plan });
+          setDropAtEnd(false);
+        }}
+        onDropAt={() => {
+          if (dropAt?.id !== item.id) return;
+          void handleDrop(dropAt.plan);
+        }}
+      >
+        {node.children.map((child) => renderNode(child, depth + 1))}
+      </ListRow>
+    );
   };
 
   return (
@@ -208,8 +247,8 @@ export default function ListPage() {
 
       <p className="text-xs text-ink-faint">
         날짜를 안 정한 일도 적어 둘 수 있습니다. 끌 때 행의 가운데에 놓으면 그
-        일정의 막내 하위로, 위아래 틈에 놓으면 형제로 들어갑니다. 틈에서는 좌우로
-        움직여 몇 단에 설지 고릅니다.
+        일정의 막내 하위로, 위아래 틈에 놓으면 형제로 들어갑니다. 틈에서는
+        좌우로 움직여 몇 단에 설지 고릅니다.
       </p>
 
       {error && (
@@ -218,91 +257,50 @@ export default function ListPage() {
         </p>
       )}
 
-      <WarpBorder className="rounded-2xl bg-surface shadow-xs">
-        {rows.length === 0 ? (
+      {/*
+        일렁이는 액자는 목록 전체에 하나만 둔다. 행마다 두면 필터가 행 수만큼
+        돌고, 줄줄이 흔들려 글자를 읽기 어렵다. 달력이 격자를 감싸는 것과 같은 모양이다
+      */}
+      <WarpBorder className="rounded-2xl p-5">
+        {tree.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-ink-faint">
             {loading ? "불러오는 중입니다…" : "아직 적어 둔 것이 없습니다."}
           </p>
         ) : (
-          <ul className="divide-y divide-line">
-            {rows.map(({ item, depth }) => (
-              <ListRow
-                key={item.id}
-                item={item}
-                depth={depth}
-                shownOn={peeked[item.id] ?? item.occurrenceOn}
-                onStep={(to) =>
-                  setPeeked((seen) => ({ ...seen, [item.id]: to }))
-                }
-                onRewind={() =>
-                  setPeeked(({ [item.id]: _gone, ...rest }) => rest)
-                }
-                onToggle={(onDate) => void handleToggle(item, onDate)}
-                onEdit={() => setEditingId(item.id)}
-                onDelete={() => void handleDelete(item)}
-                draggable={canDrag}
-                dragging={draggingId === item.id}
-                drop={
-                  dropAt?.id === item.id
-                    ? { intent: dropAt.intent, level: dropAt.plan.level }
-                    : null
-                }
-                onDragStart={() => setDraggingId(item.id)}
-                onDragEnd={stopDragging}
-                onDragOverRow={(intent, level) => {
-                  const plan =
-                    draggingId === null
-                      ? null
-                      : planDrop(items, draggingId, item.id, intent, level);
-
-                  // 못 놓는 자리에는 아무 표시도 하지 않는다
-                  setDropAt(plan && { id: item.id, intent, plan });
-                  setDropAtEnd(false);
-                }}
-                onDropAt={() => {
-                  if (dropAt?.id !== item.id) return;
-                  void handleDrop(dropAt.plan);
-                }}
-              />
-            ))}
+          <ul data-list-root className="flex flex-col gap-y-2">
+            {tree.map((node) => renderNode(node))}
           </ul>
-        )}
-
-        {/* 마지막 행에 붙이지 않고도 최상위 끝으로 뺄 수 있어야 한다 */}
-        {draggingId !== null && (
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDropAt(null);
-              setDropAtEnd(true);
-            }}
-            onDragLeave={() => setDropAtEnd(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              if (draggingId === null) return;
-
-              // 이미 끝자리면 옮길 것이 없다
-              const plan = planDropAtEnd(items, draggingId);
-              if (plan === null) stopDragging();
-              else void handleDrop(plan);
-            }}
-            className={`m-2 rounded-xl border-2 border-dashed py-3 text-center text-xs transition-colors ${
-              dropAtEnd
-                ? "border-accent bg-accent-soft text-accent"
-                : "border-line text-ink-faint"
-            }`}
-          >
-            여기에 놓으면 맨 아래로 갑니다
-          </div>
         )}
       </WarpBorder>
 
-      {/* 다른 탭과 같은 자리에서 연다. 우하단 하나로 모은다 */}
-      <QuickAddLauncher
-        knownTags={knownTags}
-        variant="list"
-        onCreate={handleCreate}
-      />
+      {/* 마지막 행에 붙이지 않고도 최상위 끝으로 뺄 수 있어야 한다 */}
+      {draggingId !== null && (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDropAt(null);
+            setDropAtEnd(true);
+          }}
+          onDragLeave={() => setDropAtEnd(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            if (draggingId === null) return;
+
+            // 이미 끝자리면 옮길 것이 없다
+            const plan = planDropAtEnd(items, draggingId);
+            if (plan === null) stopDragging();
+            else void handleDrop(plan);
+          }}
+          className={`m-2 rounded-xl border-2 border-dashed py-3 text-center text-xs transition-colors ${
+            dropAtEnd
+              ? "border-accent bg-accent-soft text-accent"
+              : "border-line text-ink-faint"
+          }`}
+        >
+          여기에 놓으면 맨 아래로 갑니다
+        </div>
+      )}
+
 
       {editingId !== null && (
         <ScheduleEditModal
@@ -318,284 +316,5 @@ export default function ListPage() {
         />
       )}
     </div>
-  );
-}
-
-/** 회차를 앞뒤로 옮기는 화살표. 규칙 밖이면 눌리지 않는다 */
-function StepButton({
-  label,
-  to,
-  onStep,
-  children,
-}: {
-  label: string;
-  to: string | null;
-  onStep: (to: string) => void;
-  children: string;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      disabled={to === null}
-      onClick={() => to !== null && onStep(to)}
-      className="rounded px-1 leading-none transition-colors enabled:hover:bg-accent-soft disabled:text-ink-faint"
-    >
-      {children}
-    </button>
-  );
-}
-
-/** 커서 자리를 읽는다. 위아래가 뜻을, 좌우가 단을 정한다 */
-function spotAtPointer(e: DragEvent<HTMLElement>): [DropIntent, number] {
-  const box = e.currentTarget.getBoundingClientRect();
-  return [
-    dropIntentAt((e.clientY - box.top) / box.height),
-    dropLevelAt(e.clientX - box.left),
-  ];
-}
-
-interface RowProps {
-  item: ScheduleListItem;
-  depth: number;
-  /** 반복이면 지금 보고 있는 회차 날짜. 화살표로 옮겨 다닌다 */
-  shownOn?: string;
-  onStep: (to: string) => void;
-  /** 넘겨 보던 것을 접고 지금 할 회차로 돌아간다 */
-  onRewind: () => void;
-  onToggle: (onDate?: string) => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  /** 내 순서로 보는 중일 때만 끌 수 있다 */
-  draggable: boolean;
-  dragging: boolean;
-  /** 지금 이 행에 놓으면 어떻게 되는지. 끌고 있지 않으면 null */
-  drop: { intent: DropIntent; level: number } | null;
-  onDragStart: () => void;
-  onDragEnd: () => void;
-  onDragOverRow: (intent: DropIntent, level: number) => void;
-  onDropAt: () => void;
-}
-
-function ListRow({
-  item,
-  depth,
-  shownOn,
-  onStep,
-  onRewind,
-  onToggle,
-  onEdit,
-  onDelete,
-  draggable,
-  dragging,
-  drop,
-  onDragStart,
-  onDragEnd,
-  onDragOverRow,
-  onDropAt,
-}: RowProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const row = useRef<HTMLLIElement>(null);
-
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    const close = (e: Event) => {
-      if (e instanceof KeyboardEvent && e.key !== "Escape") return;
-      // 메뉴 항목을 누른 것이면 닫기와 동작이 서로 싸운다
-      if (e.type === "pointerdown" && row.current?.contains(e.target as Node)) {
-        return;
-      }
-      setMenuOpen(false);
-    };
-
-    document.addEventListener("keydown", close);
-    document.addEventListener("pointerdown", close);
-    return () => {
-      document.removeEventListener("keydown", close);
-      document.removeEventListener("pointerdown", close);
-    };
-  }, [menuOpen]);
-
-  const done = Boolean(item.completedAt);
-  // 안 하기로 한 일정. 지우지 않고 판단을 기록으로 남긴다
-  const shelved = item.priority === "WONT";
-  const badge = item.priority ? PRIORITY_BADGE[item.priority] : null;
-
-  return (
-    <li
-      ref={row}
-      // 우클릭도 같은 메뉴를 연다. 자리는 항상 같아야 다음에 어디를 볼지 안다
-      onContextMenu={(e) => {
-        e.preventDefault();
-        setMenuOpen(true);
-      }}
-      onDragOver={(e) => {
-        // 막지 않으면 브라우저가 놓기를 거부한다
-        if (!draggable) return;
-        e.preventDefault();
-        onDragOverRow(...spotAtPointer(e));
-      }}
-      onDrop={(e) => {
-        e.preventDefault();
-        onDropAt();
-      }}
-      className={`relative flex items-start gap-2 px-3 py-3 transition-opacity ${
-        INDENT[depth] ?? ""
-      } ${dragging ? "opacity-40" : ""} ${shelved ? "opacity-50" : ""} ${
-        drop?.intent === "inside" ? "bg-accent-soft ring-2 ring-inset ring-line" : ""
-      }`}
-    >
-      {/* 어느 틈에 몇 단으로 설지를 선의 자리와 들여쓰기로 보여준다 */}
-      {drop !== null && drop.intent !== "inside" && (
-        <span
-          aria-hidden
-          style={{ marginLeft: drop.level * INDENT_PX }}
-          className={`pointer-events-none absolute right-3 left-3 h-0.5 rounded-full bg-accent ${
-            drop.intent === "before" ? "top-0" : "bottom-0"
-          }`}
-        />
-      )}
-
-      {/* 손잡이만 끈다. 행 전체를 끌면 글자를 고르는 것과 부딪힌다 */}
-      <button
-        type="button"
-        draggable={draggable}
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        disabled={!draggable}
-        title={
-          draggable
-            ? "끌어서 자리 바꾸기. 오른쪽으로 밀면 위 일정의 하위로 들어갑니다"
-            : "내 순서로 볼 때만 자리를 바꿀 수 있습니다"
-        }
-        aria-label={`${item.title} 순서 바꾸기`}
-        className={`mt-0.5 shrink-0 px-1 ${
-          draggable
-            ? "cursor-grab text-ink-faint hover:text-ink-soft active:cursor-grabbing"
-            : "cursor-not-allowed text-ink-faint"
-        }`}
-      >
-        ⠿
-      </button>
-
-      {/* 반복은 회차 하나만 걸려 있다. 끝내면 다음 회차가 올라와 늘 비어 보인다 */}
-      <input
-        type="checkbox"
-        checked={done}
-        onChange={() => onToggle(shownOn)}
-        disabled={item.recurring && shownOn === undefined}
-        aria-label={`${item.title} 완료`}
-        className="mt-1 size-4 shrink-0 accent-accent"
-      />
-
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <button
-          type="button"
-          onClick={onEdit}
-          className={`truncate text-left text-sm hover:underline ${
-            done ? "text-ink-faint line-through" : "text-ink"
-          }`}
-        >
-          {item.title}
-        </button>
-
-        <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink-faint">
-          {badge && (
-            <span className={`rounded-full px-2 py-0.5 ${badge.style}`}>
-              {badge.label}
-            </span>
-          )}
-          {item.recurring && item.recurrence && (
-            <span className="flex items-center gap-1 text-accent">
-              ⟳ {describeRecurrence(item.recurrence)}
-              {shownOn === undefined ? (
-                "· 남은 회차 없음"
-              ) : (
-                <>
-                  <StepButton
-                    label={`${item.title} 이전 회차`}
-                    to={stepOccurrence(item.recurrence, shownOn, -1)}
-                    onStep={onStep}
-                  >
-                    ‹
-                  </StepButton>
-                  <span className="tabular-nums">{shownOn}</span>
-                  <button
-                    type="button"
-                    aria-label={`${item.title} 지금 할 회차로`}
-                    title="지금 할 회차로 돌아가기"
-                    disabled={shownOn === item.occurrenceOn}
-                    onClick={onRewind}
-                    className="leading-none transition-colors enabled:text-accent enabled:hover:text-accent disabled:text-ink-faint"
-                  >
-                    ◉
-                  </button>
-                  <StepButton
-                    label={`${item.title} 다음 회차`}
-                    to={stepOccurrence(item.recurrence, shownOn, 1)}
-                    onStep={onStep}
-                  >
-                    ›
-                  </StepButton>
-                </>
-              )}
-            </span>
-          )}
-          {item.dueOn && <span>기한 {item.dueOn}</span>}
-          {item.startAt && <span>시작 {item.startAt.slice(0, 10)}</span>}
-          {item.place && <span>{item.place}</span>}
-          {item.tags?.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-full bg-accent-soft px-2 py-0.5 text-accent"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <button
-        type="button"
-        aria-label={`${item.title} 작업 메뉴`}
-        aria-expanded={menuOpen}
-        onClick={() => setMenuOpen((open) => !open)}
-        className="shrink-0 rounded-md border border-transparent px-2 py-1 text-ink-faint transition-colors hover:border-line hover:bg-surface-soft hover:text-ink focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-line"
-      >
-        ⋯
-      </button>
-
-      {menuOpen && (
-        <div
-          role="menu"
-          className="absolute top-10 right-3 z-20 flex w-40 flex-col gap-0.5 rounded-xl border border-line bg-surface p-1.5 shadow-lg"
-        >
-          <button
-            type="button"
-            role="menuitem"
-            className={`${MENU_ITEM} text-ink hover:bg-surface-soft`}
-            onClick={() => {
-              setMenuOpen(false);
-              onEdit();
-            }}
-          >
-            수정
-          </button>
-
-          <button
-            type="button"
-            role="menuitem"
-            className={`${MENU_ITEM} text-danger hover:bg-danger-soft`}
-            onClick={() => {
-              setMenuOpen(false);
-              onDelete();
-            }}
-          >
-            삭제
-          </button>
-        </div>
-      )}
-    </li>
   );
 }

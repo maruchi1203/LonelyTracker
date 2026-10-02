@@ -41,6 +41,64 @@ export function sortDateOf(item: ScheduleListItem): string | undefined {
 }
 
 /**
+ * 지금 보고 있는 회차를 끝냈는지.
+ *
+ * 반복은 완료가 일정이 아니라 회차에 달려 있어 completedAt 이 늘 비어 있다.
+ * 그래서 끝낸 날짜 목록에 그 회차가 들었는지로 가른다
+ *
+ * @param shownOn 넘겨 보고 있는 회차 날짜. 반복인데 없으면 남은 회차가 없다는 뜻이다
+ */
+export function isOccurrenceDone(
+  item: ScheduleListItem,
+  shownOn?: string,
+): boolean {
+  if (!item.recurring) return Boolean(item.completedAt)
+  return shownOn !== undefined && (item.doneOn ?? []).includes(shownOn)
+}
+
+/** 코앞이라고 볼 만한 남은 시간 */
+const SOON_MS = 24 * 60 * 60 * 1000;
+
+/** 그 날이 저무는 때. 기한은 날짜뿐이라 하루를 다 쓴 것으로 본다 */
+function endOfDay(day: string): Date {
+  return new Date(`${day}T23:59:59`);
+}
+
+/**
+ * 이 일이 끝나는 때
+ *
+ * 끝을 먼저 보고, 끝을 안 정했으면 시작으로 본다. 기한(dueOn)은 쓰지 않는다 —
+ * 언제까지 해내야 하는지와 언제 끝나는지는 다른 물음이다 (정렬은 sortDateOf 가 기한으로 한다)
+ *
+ * 반복만 회차를 본다. 반복의 시작일시는 규칙이 처음 선 날이라 몇 달 전일 수 있고,
+ * 그것으로 재면 반복 일정이 하나같이 지난 것이 된다
+ *
+ * @returns 언제인지 정한 적이 없으면 undefined
+ */
+export function deadlineOf(item: ScheduleListItem): Date | undefined {
+  if (item.recurring) {
+    return item.occurrenceOn ? endOfDay(item.occurrenceOn) : undefined;
+  }
+  if (!item.startAt) return undefined;
+
+  const start = new Date(item.startAt);
+  if (item.durationMinutes === undefined) return start;
+  return new Date(start.getTime() + item.durationMinutes * 60_000);
+}
+
+/**
+ * 하루 안에 끝내야 하는 일인가. 화면이 이걸로 눈길을 끈다
+ *
+ * 이미 지난 것도 참이다. 가장 급한 것이 조용하면 앞뒤가 맞지 않는다
+ */
+export function isDueSoon(item: ScheduleListItem, now: Date): boolean {
+  if (item.completedAt) return false;
+
+  const end = deadlineOf(item);
+  return end !== undefined && end.getTime() - now.getTime() <= SOON_MS;
+}
+
+/**
  * 평평한 목록을 부모-자식으로 묶는다
  * 부모를 못 찾은 항목은 최상위로 올린다. 화면에서 항목이 사라지는 것이 가장 나쁘다
  *

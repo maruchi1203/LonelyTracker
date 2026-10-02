@@ -64,6 +64,77 @@ export function groupByDate(
   return map
 }
 
+/** 펼친 칸에 세울 줄 하나. 같은 일정이라도 시작과 기한은 따로 선다 */
+export interface DayEntry {
+  instance: ScheduleResponse
+  kind: 'span' | 'due'
+}
+
+/**
+ * 펼친 칸이 줄로 세울 것들을 날짜별로 모은다.
+ *
+ * 여러 날에 걸친 일정은 담지 않는다 — 그것은 띠가 맡아야 일곱 칸을 가로질러 이어진다.
+ * 기한은 걸치지 않고 하루에만 서므로 걸친 일정의 기한이라도 여기로 온다.
+ *
+ * 줄 차례는 시각순이고, 기한은 그 날의 끝이라 맨 뒤에 세운다
+ */
+export function entriesByDate(
+  instances: ScheduleResponse[],
+): Map<string, DayEntry[]> {
+  const spans = new Map<string, DayEntry[]>()
+  const dues = new Map<string, DayEntry[]>()
+
+  const push = (map: Map<string, DayEntry[]>, key: string, entry: DayEntry) => {
+    const bucket = map.get(key)
+    if (bucket) bucket.push(entry)
+    else map.set(key, [entry])
+  }
+
+  for (const instance of instances) {
+    const covered = instanceDateKeys(instance)
+    if (covered.length === 1) {
+      push(spans, covered[0], { instance, kind: 'span' })
+    }
+    if (instance.dueOn) {
+      push(dues, instance.dueOn, { instance, kind: 'due' })
+    }
+  }
+
+  const result = new Map<string, DayEntry[]>()
+  for (const key of new Set([...spans.keys(), ...dues.keys()])) {
+    const ofDay = spans.get(key) ?? []
+    const sorted = sortByTimeOfDay(ofDay.map((e) => e.instance))
+    result.set(key, [
+      ...sorted.map((instance) => ({ instance, kind: 'span' as const })),
+      ...(dues.get(key) ?? []),
+    ])
+  }
+
+  return result
+}
+
+/**
+ * 하루 안에서의 차례. 하루 종일이 맨 앞에 서고 그 뒤로 시각순이다.
+ *
+ * 여러 날에 걸친 일정은 뒷날에도 제 시작 시각으로 선다. 그 날 몇 시에 걸렸는지보다
+ * 몇 시에 하기로 한 일인지가 눈에 익다
+ */
+export function sortByTimeOfDay(
+  instances: ScheduleResponse[],
+): ScheduleResponse[] {
+  return [...instances].sort(
+    (a, b) =>
+      minuteOfDay(a) - minuteOfDay(b) || a.title.localeCompare(b.title, 'ko'),
+  )
+}
+
+/** 하루 종일이거나 시각이 없으면 -1 이라 맨 앞에 선다 */
+function minuteOfDay(instance: ScheduleResponse): number {
+  if (instance.allDay || !instance.startAt) return -1
+  const at = new Date(instance.startAt)
+  return at.getHours() * 60 + at.getMinutes()
+}
+
 /** 그 날짜에 걸쳐 있는 회차인지. 달력과 목록이 같은 기준을 써야 한다 */
 export function coversDate(instance: ScheduleResponse, date: Date): boolean {
   return instanceDateKeys(instance).includes(toLocalDate(date))

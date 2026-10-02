@@ -1,4 +1,19 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import IconButton from "../layouts/IconButton";
+import {
+  ClockIcon,
+  CloseIcon,
+  CouldIcon,
+  DailyIcon,
+  MomentIcon,
+  MonthlyIcon,
+  MustIcon,
+  RangeIcon,
+  RepeatIcon,
+  ShouldIcon,
+  WeeklyIcon,
+  WontIcon,
+} from "../layouts/Icons";
 import {
   type FormFieldId,
   type FormFreq,
@@ -22,19 +37,36 @@ interface Props {
 const INPUT =
   "w-full rounded-md border bg-surface px-2.5 py-2 text-ink placeholder:text-ink-faint transition-colors focus:border-accent focus:outline-none focus:ring-3 focus:ring-line";
 const LABEL = "text-xs font-semibold tracking-wide text-ink-soft";
-const HINT = "text-xs text-ink-faint";
+
+/** 그림 하나를 그리는 함수. 표에 담아 두고 자리에서 불러 쓴다 */
+type Icon = () => ReactNode;
 
 /** 폼을 가르는 종류. 고른 것에 따라 아래 칸이 바뀐다 */
-const KINDS: { value: FormKind; label: string; hint: string }[] = [
-  { value: "simple", label: "간단", hint: "언제 할지만 적습니다" },
-  { value: "period", label: "기간", hint: "시작과 끝, 마감이 있는 일입니다" },
-  { value: "repeat", label: "반복", hint: "되풀이하는 일입니다" },
+const KINDS: { value: FormKind; label: string; hint: string; Icon: Icon }[] = [
+  {
+    value: "simple",
+    label: "간단",
+    hint: "언제 할지만 적습니다",
+    Icon: MomentIcon,
+  },
+  {
+    value: "period",
+    label: "기간",
+    hint: "시작과 끝이 있는 일입니다",
+    Icon: RangeIcon,
+  },
+  {
+    value: "repeat",
+    label: "반복",
+    hint: "되풀이하는 일입니다",
+    Icon: RepeatIcon,
+  },
 ];
 
-const FREQ: { value: FormFreq; label: string; ready: boolean }[] = [
-  { value: "DAILY", label: "매일", ready: true },
-  { value: "WEEKLY", label: "매주", ready: true },
-  { value: "MONTHLY", label: "매월", ready: false },
+const FREQ: { value: FormFreq; label: string; ready: boolean; Icon: Icon }[] = [
+  { value: "DAILY", label: "매일", ready: true, Icon: DailyIcon },
+  { value: "WEEKLY", label: "매주", ready: true, Icon: WeeklyIcon },
+  { value: "MONTHLY", label: "매월", ready: false, Icon: MonthlyIcon },
 ];
 
 const WEEKDAYS: { value: Weekday; label: string }[] = [
@@ -48,14 +80,30 @@ const WEEKDAYS: { value: Weekday; label: string }[] = [
 ];
 
 /** MoSCoW. 값을 비우면 아직 안 정한 것이고, 정렬에서는 COULD 로 본다 */
-const PRIORITIES: { value: SchedulePriority; label: string; hint: string }[] = [
-  { value: "MUST", label: "필수", hint: "반드시 해야 합니다" },
-  { value: "SHOULD", label: "권장", hint: "하는 편이 좋습니다" },
-  { value: "COULD", label: "선택", hint: "여유가 되면 합니다" },
-  { value: "WONT", label: "보류", hint: "안 하기로 했습니다. 달력에서 빠집니다" },
+const PRIORITIES: {
+  value: SchedulePriority;
+  label: string;
+  hint: string;
+  Icon: Icon;
+}[] = [
+  { value: "MUST", label: "필수", hint: "반드시 해야 합니다", Icon: MustIcon },
+  {
+    value: "SHOULD",
+    label: "권장",
+    hint: "하는 편이 좋습니다",
+    Icon: ShouldIcon,
+  },
+  { value: "COULD", label: "선택", hint: "여유가 되면 합니다", Icon: CouldIcon },
+  {
+    value: "WONT",
+    label: "보류",
+    hint: "안 하기로 했습니다. 달력에서 빠집니다",
+    Icon: WontIcon,
+  },
 ];
 
-const TOGGLE = "rounded-md border px-3 py-1 text-sm transition-colors";
+/** 한 줄을 고르게 나눠 갖는다. 고를 것이 몇 개든 줄이 넘치지 않는다 */
+const ROW = "flex items-stretch gap-2";
 const TOGGLE_ON = "border-accent bg-accent text-canvas";
 const TOGGLE_OFF = "border-line text-ink-soft hover:bg-accent-soft";
 
@@ -73,6 +121,12 @@ export default function ScheduleFields({
     `${INPUT} ${decorate?.(name) ?? "border-line"}`;
 
   const [tagDraft, setTagDraft] = useState("");
+
+  /**
+   * 시각 칸을 펼쳐 두라고 손으로 이른 것.
+   * 적어 둔 값이 있으면 이르지 않아도 펼친다 — AI 초안이나 수정 폼이 그렇다
+   */
+  const [asked, setAsked] = useState({ start: false, end: false });
 
   /** 같은 태그를 두 번 넣지 않는다 */
   const addTag = (raw: string) => {
@@ -94,18 +148,18 @@ export default function ScheduleFields({
       {/* 1. 종류 — 아래 칸이 여기서 갈린다 */}
       <div className="flex flex-col gap-1.5">
         <span className={LABEL}>종류 *</span>
-        <div className="flex items-center gap-1.5">
-          {KINDS.map(({ value, label, hint }) => (
-            <button
+        <div className={ROW}>
+          {KINDS.map(({ value, label, hint, Icon }) => (
+            <IconButton
               key={value}
-              type="button"
+              wide
+              label={label}
               title={hint}
+              pressed={form.kind === value}
               onClick={() => onChange({ kind: value })}
-              aria-pressed={form.kind === value}
-              className={`${TOGGLE} ${form.kind === value ? TOGGLE_ON : TOGGLE_OFF}`}
             >
-              {label}
-            </button>
+              <Icon />
+            </IconButton>
           ))}
         </div>
       </div>
@@ -129,22 +183,20 @@ export default function ScheduleFields({
       {/* 3. 우선순위 — 안 고르면 "선택"이 눌린 것처럼 보이되 값은 비어 있다 */}
       <div className="flex flex-col gap-1.5">
         <span className={LABEL}>우선순위 *</span>
-        <div ref={ref("priority")} className="flex flex-wrap items-center gap-1.5">
-          {PRIORITIES.map(({ value, label, hint }) => {
-            const on = (form.priority || "COULD") === value;
-            return (
-              <button
-                key={value}
-                type="button"
-                title={hint}
-                onClick={() => onChange({ priority: value })}
-                aria-pressed={on}
-                className={`${TOGGLE} ${on ? TOGGLE_ON : TOGGLE_OFF}`}
-              >
-                {label}
-              </button>
-            );
-          })}
+        <div ref={ref("priority")} className={ROW}>
+          {PRIORITIES.map(({ value, label, hint, Icon }) => (
+            <IconButton
+              key={value}
+              wide
+              label={label}
+              title={hint}
+              // 안 고른 상태에서도 "선택"이 눌린 것처럼 보인다. 값은 여전히 비어 있다
+              pressed={(form.priority || "COULD") === value}
+              onClick={() => onChange({ priority: value })}
+            >
+              <Icon />
+            </IconButton>
+          ))}
         </div>
       </div>
 
@@ -204,110 +256,82 @@ export default function ScheduleFields({
       </div>
 
       {/* 5. 시작 — 세 종류 모두 쓴다 */}
-      <div className="flex flex-wrap gap-3">
-        <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
-          <label className={LABEL} htmlFor={id("startDate")}>
-            시작일자
-          </label>
-          <input
-            id={id("startDate")}
-            ref={ref("startDate")}
-            type="date"
-            className={box("startDate")}
-            value={form.startDate}
-            onChange={(e) => onChange({ startDate: e.target.value })}
-          />
-        </div>
+      <div className="flex flex-col gap-3">
+        <DateRow
+          label="시작일자"
+          id={id("startDate")}
+          inputRef={ref("startDate")}
+          className={box("startDate")}
+          value={form.startDate}
+          onChange={(startDate) => onChange({ startDate })}
+          timeShown={asked.start || Boolean(form.startTime)}
+          onAddTime={() => setAsked((a) => ({ ...a, start: true }))}
+        />
 
-        <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
-          <label className={LABEL} htmlFor={id("startTime")}>
-            시작시각
-          </label>
-          <input
+        {(asked.start || form.startTime) && (
+          <TimeRow
+            label="시작시각"
             id={id("startTime")}
-            ref={ref("startTime")}
-            type="time"
+            inputRef={ref("startTime")}
             className={box("startTime")}
             value={form.startTime}
-            onChange={(e) => onChange({ startTime: e.target.value })}
+            onChange={(startTime) => onChange({ startTime })}
+            onDrop={() => {
+              onChange({ startTime: "" });
+              setAsked((a) => ({ ...a, start: false }));
+            }}
           />
-          <span className={HINT}>비우면 하루 종일로 저장됩니다.</span>
-        </div>
+        )}
       </div>
 
-      {/* 6. 기간 — 끝과 마감 */}
+      {/* 6. 기간 — 끝 */}
       {form.kind === "period" && (
-        <>
-          <div className="flex flex-wrap gap-3">
-            <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
-              <label className={LABEL} htmlFor={id("endDate")}>
-                종료일자
-              </label>
-              <input
-                id={id("endDate")}
-                ref={ref("endDate")}
-                type="date"
-                className={box("endDate")}
-                value={form.endDate}
-                onChange={(e) => onChange({ endDate: e.target.value })}
-              />
-              <span className={HINT}>비우면 시작일자와 같은 날로 봅니다.</span>
-            </div>
+        <div className="flex flex-col gap-3">
+          <DateRow
+            label="종료일자"
+            id={id("endDate")}
+            inputRef={ref("endDate")}
+            className={box("endDate")}
+            value={form.endDate}
+            onChange={(endDate) => onChange({ endDate })}
+            timeShown={asked.end || Boolean(form.endTime)}
+            onAddTime={() => setAsked((a) => ({ ...a, end: true }))}
+          />
 
-            <div className="flex min-w-0 flex-1 basis-40 flex-col gap-1.5">
-              <label className={LABEL} htmlFor={id("endTime")}>
-                종료시각
-              </label>
-              <input
-                id={id("endTime")}
-                ref={ref("endTime")}
-                type="time"
-                className={box("endTime")}
-                value={form.endTime}
-                onChange={(e) => onChange({ endTime: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label className={LABEL} htmlFor={id("dueOn")}>
-              마감기한
-            </label>
-            <input
-              id={id("dueOn")}
-              ref={ref("dueOn")}
-              type="date"
-              className={box("dueOn")}
-              value={form.dueOn}
-              onChange={(e) => onChange({ dueOn: e.target.value })}
+          {(asked.end || form.endTime) && (
+            <TimeRow
+              label="종료시각"
+              id={id("endTime")}
+              inputRef={ref("endTime")}
+              className={box("endTime")}
+              value={form.endTime}
+              onChange={(endTime) => onChange({ endTime })}
+              onDrop={() => {
+                onChange({ endTime: "" });
+                setAsked((a) => ({ ...a, end: false }));
+              }}
             />
-            <span className={HINT}>
-              언제까지 해내야 하는지입니다. 시작일시와는 다릅니다.
-            </span>
-          </div>
-        </>
+          )}
+        </div>
       )}
 
       {/* 7. 반복 — 주기 */}
       {form.kind === "repeat" && (
         <div className="flex flex-col gap-1.5">
           <span className={LABEL}>주기 *</span>
-          <div ref={ref("freq")} className="flex items-center gap-1.5">
-            {FREQ.map(({ value: freq, label, ready }) => (
-              <button
+          <div ref={ref("freq")} className={ROW}>
+            {FREQ.map(({ value: freq, label, ready, Icon }) => (
+              <IconButton
                 key={freq}
-                type="button"
+                wide
+                label={label}
                 disabled={!ready}
                 title={ready ? undefined : "준비 중입니다"}
+                pressed={form.freq === freq}
                 onClick={() => onChange({ freq })}
-                aria-pressed={form.freq === freq}
-                className={`${TOGGLE} disabled:cursor-not-allowed disabled:opacity-40 ${
-                  form.freq === freq ? TOGGLE_ON : TOGGLE_OFF
-                }`}
               >
-                {label}
-                {!ready && " (준비 중)"}
-              </button>
+                <Icon />
+              </IconButton>
             ))}
           </div>
         </div>
@@ -320,7 +344,7 @@ export default function ScheduleFields({
           <div
             ref={ref("byWeekday")}
             tabIndex={-1}
-            className={`flex flex-wrap gap-1 rounded-md ${decorate?.("byWeekday") ?? ""}`}
+            className={`${ROW} rounded-md ${decorate?.("byWeekday") ?? ""}`}
           >
             {WEEKDAYS.map(({ value: day, label }) => (
               <button
@@ -328,7 +352,7 @@ export default function ScheduleFields({
                 type="button"
                 onClick={() => toggleWeekday(day)}
                 aria-pressed={form.byWeekday.includes(day)}
-                className={`size-8 rounded-full border text-sm transition-colors ${
+                className={`h-9 flex-1 rounded-full border text-sm transition-colors ${
                   form.byWeekday.includes(day) ? TOGGLE_ON : TOGGLE_OFF
                 }`}
               >
@@ -349,5 +373,97 @@ export default function ScheduleFields({
         </div>
       )}
     </div>
+  );
+}
+
+/** 칸 하나와 그 옆에 붙는 동그란 단추. 일자와 시각 줄이 같은 모양을 쓴다 */
+function FieldRow({
+  label,
+  id,
+  children,
+  button,
+}: {
+  label: string;
+  id: string;
+  children: ReactNode;
+  button: ReactNode;
+}) {
+  return (
+    <div className="flex items-end gap-2">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <label className={LABEL} htmlFor={id}>
+          {label}
+        </label>
+        {children}
+      </div>
+      {button}
+    </div>
+  );
+}
+
+interface RowProps {
+  label: string;
+  id: string;
+  inputRef: ((el: HTMLElement | null) => void) | undefined;
+  className: string;
+  value: string;
+  onChange: (value: string) => void;
+}
+
+/** 일자 한 줄. 시각을 아직 안 적었으면 옆 단추로 불러낸다 */
+function DateRow({
+  timeShown,
+  onAddTime,
+  ...field
+}: RowProps & { timeShown: boolean; onAddTime: () => void }) {
+  return (
+    <FieldRow
+      label={field.label}
+      id={field.id}
+      button={
+        timeShown ? null : (
+          <IconButton
+            label="시각 넣기"
+            title="시각을 안 정하면 하루 종일로 저장됩니다"
+            onClick={onAddTime}
+          >
+            <ClockIcon />
+          </IconButton>
+        )
+      }
+    >
+      <input
+        id={field.id}
+        ref={field.inputRef}
+        type="date"
+        className={field.className}
+        value={field.value}
+        onChange={(e) => field.onChange(e.target.value)}
+      />
+    </FieldRow>
+  );
+}
+
+/** 시각 한 줄. 옆 단추로 다시 접으면 값도 함께 지운다 */
+function TimeRow({ onDrop, ...field }: RowProps & { onDrop: () => void }) {
+  return (
+    <FieldRow
+      label={field.label}
+      id={field.id}
+      button={
+        <IconButton label="시각 빼기" onClick={onDrop}>
+          <CloseIcon />
+        </IconButton>
+      }
+    >
+      <input
+        id={field.id}
+        ref={field.inputRef}
+        type="time"
+        className={field.className}
+        value={field.value}
+        onChange={(e) => field.onChange(e.target.value)}
+      />
+    </FieldRow>
   );
 }

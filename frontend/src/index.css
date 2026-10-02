@@ -33,14 +33,54 @@
 
   --color-info: #7dd3fc;
   --color-info-soft: #14212b;
+
+  /*
+   * 두 번 치고 쉰다. 고르게 깜빡이면 기계가 되고, 이 리듬이라야 맥으로 읽힌다.
+   * 급한 것과 덜 급한 것은 같은 리듬을 빠르기로만 가른다
+   */
+  --animate-beat: beat 1.6s ease-in-out infinite;
+
+  @keyframes beat {
+    0%,
+    55%,
+    100% {
+      transform: scale(1);
+      opacity: 0.5;
+    }
+    12% {
+      transform: scale(1.6);
+      opacity: 1;
+    }
+    26% {
+      transform: scale(1);
+      opacity: 0.65;
+    }
+    38% {
+      transform: scale(1.35);
+      opacity: 0.9;
+    }
+  }
 }
 
 /*
  * 페이지 바탕색. body 에 클래스를 붙이려면 index.html 을 건드려야 해서 여기서 잡는다.
  * 이 파일에서 유틸리티로 대체할 수 없는 유일한 부분이다.
  */
+/* 움직임을 꺼 둔 사람에게는 점이 뛰지 않는다. 색만으로도 우선순위는 읽힌다 */
+@media (prefers-reduced-motion: reduce) {
+  .animate-beat {
+    animation: none;
+  }
+}
+
 html {
   background-color: var(--color-canvas);
+  /*
+   * 브라우저가 그리는 부분의 명암. date·time 칸의 달력 아이콘과
+   * 눌러서 뜨는 팝업은 우리 CSS 가 아니라 이 값을 따른다.
+   * 없으면 밝은 화면으로 알고 검정 아이콘을 그려 어두운 바탕에 묻힌다
+   */
+  color-scheme: dark;
 }
 
 /*
