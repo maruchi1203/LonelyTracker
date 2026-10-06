@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
- * @param categoryId      묶일 갈래. 사용자가 만든 것 중 하나라 값으로 받지 않고 id 로 받는다
+ * @param categoryId      묶일 카테고리. 사용자가 만든 것 중 하나라 값으로 받지 않고 id 로 받는다
  * @param twoMinuteAction 시작에 필요한 2분 이내의 행동. 없어도 된다
  * @param atTime          언제 할지. 시각이든 "퇴근 후" 같은 상황이든 글자 그대로 받는다
  * @param place           어디서 할지

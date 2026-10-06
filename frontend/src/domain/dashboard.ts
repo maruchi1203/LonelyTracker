@@ -1,4 +1,4 @@
-import type { Habit } from "../types/habit";
+import type { Habit, HabitCategory } from "../types/habit";
 import type {
   AiProvider,
   ProviderUsage,
@@ -122,11 +122,15 @@ export interface HabitSummary {
   total: number;
   /** 연속일이 긴 순으로 셋까지 */
   topStreaks: { habit: Habit; streak: number }[];
-  /** 아직 습관이 없는 갈래 이름 */
+  /** 만들어 두고 아직 습관을 넣지 않은 카테고리 이름 */
   emptyCategories: string[];
 }
 
-export function habitSummary(habits: Habit[], today: string): HabitSummary {
+export function habitSummary(
+  habits: Habit[],
+  today: string,
+  categories: HabitCategory[],
+): HabitSummary {
   const active = habits.filter((h) => !h.archived);
 
   return {
@@ -137,9 +141,9 @@ export function habitSummary(habits: Habit[], today: string): HabitSummary {
       .filter((s) => s.streak > 0)
       .sort((a, b) => b.streak - a.streak)
       .slice(0, 3),
-    emptyCategories: groupByCategory(active)
+    emptyCategories: groupByCategory(active, categories)
       .filter((g) => g.habits.length === 0)
-      .map((g) => g.label),
+      .map((g) => g.category.name),
   };
 }
 

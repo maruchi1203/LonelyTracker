@@ -36,7 +36,7 @@ public class HabitService {
     private static final int WINDOW_DAYS = 14;
 
     /**
-     * 갈래별로 묶기 전의 순서.
+     * 카테고리별로 묶기 전의 순서.
      * 사용자가 세운 자리를 지키고, 아직 정한 적이 없으면 만든 순서로 남는다.
      */
     private static final Comparator<HabitEntity> HABIT_ORDER =
@@ -155,10 +155,10 @@ public class HabitService {
                 .build());
     }
 
-    /** 남의 갈래에 습관을 넣지 못하게 소유자까지 본다. 갈래 쪽과 같은 규칙이다 */
+    /** 남의 카테고리에 습관을 넣지 못하게 소유자까지 본다. 카테고리 쪽과 같은 규칙이다 */
     private HabitCategoryEntity categoryOrThrow(Long categoryId) {
         return categoryRepository.findOwned(categoryId, currentUserProvider.get().getId())
-                .orElseThrow(() -> new NotFoundException("갈래를 찾을 수 없습니다"));
+                .orElseThrow(() -> new NotFoundException("카테고리를 찾을 수 없습니다"));
     }
 
     /** 남의 습관은 없는 것으로 취급한다. 400을 내면 그 습관의 존재가 새어 나간다 */

@@ -1,18 +1,21 @@
 import { Link } from "react-router";
 import { habitSummary } from "../../../domain/dashboard";
-import type { Habit } from "../../../types/habit";
+import type { Habit, HabitCategory } from "../../../types/habit";
 import DashboardPanel from "./DashboardPanel";
 
 interface Props {
   habits: Habit[];
   today: string;
+  /** 빈 카테고리를 세려면 습관이 없는 카테고리까지 알아야 한다 */
+  categories: HabitCategory[];
 }
 
 /** 습관 요약. 기록은 습관일지 탭에서 한다 */
-export default function HabitPanel({ habits, today }: Props) {
+export default function HabitPanel({ habits, today, categories }: Props) {
   const { doneToday, total, topStreaks, emptyCategories } = habitSummary(
     habits,
     today,
+    categories,
   );
 
   const more = (
@@ -64,7 +67,7 @@ export default function HabitPanel({ habits, today }: Props) {
 
       {emptyCategories.length > 0 && (
         <p className="text-xs text-ink-faint">
-          비어 있는 갈래: {emptyCategories.join(" · ")}
+          비어 있는 카테고리: {emptyCategories.join(" · ")}
         </p>
       )}
     </DashboardPanel>

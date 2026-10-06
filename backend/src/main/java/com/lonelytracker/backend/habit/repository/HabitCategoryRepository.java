@@ -10,12 +10,12 @@ import java.util.Optional;
 
 public interface HabitCategoryRepository extends JpaRepository<HabitCategoryEntity, Long> {
 
-    /** 그 사람의 갈래 전부. 화면에 늘어놓을 차례로 온다 */
+    /** 그 사람의 카테고리 전부. 화면에 늘어놓을 차례로 온다 */
     @Query("select c from HabitCategoryEntity c where c.user.id = :userId"
             + " order by c.displayOrder, c.id")
     List<HabitCategoryEntity> findAllOf(@Param("userId") Long userId);
 
-    /** 남의 갈래를 건드리지 못하게 소유자까지 함께 본다 */
+    /** 남의 카테고리를 건드리지 못하게 소유자까지 함께 본다 */
     @Query("select c from HabitCategoryEntity c where c.id = :id and c.user.id = :userId")
     Optional<HabitCategoryEntity> findOwned(@Param("id") Long id, @Param("userId") Long userId);
 
@@ -25,7 +25,7 @@ public interface HabitCategoryRepository extends JpaRepository<HabitCategoryEnti
     boolean existsOtherWithName(@Param("userId") Long userId, @Param("name") String name,
             @Param("exceptId") Long exceptId);
 
-    /** 새 갈래를 맨 뒤에 붙이기 위한 자리. 갈래가 없으면 -1 이 와서 첫 자리가 0 이 된다 */
+    /** 새 카테고리를 맨 뒤에 붙이기 위한 자리. 카테고리가 없으면 -1 이 와서 첫 자리가 0 이 된다 */
     @Query("select coalesce(max(c.displayOrder), -1) from HabitCategoryEntity c"
             + " where c.user.id = :userId")
     int lastOrderOf(@Param("userId") Long userId);

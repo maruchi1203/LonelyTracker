@@ -1,11 +1,16 @@
 import type {
   Habit,
+  HabitCategory,
+  HabitCategoryRequest,
   HabitCreateRequest,
   HabitUpdateRequest,
 } from '../types/habit'
 import { handle } from './http'
 
 const BASE = '/api/habits'
+
+/** 카테고리는 길이 따로다. 습관이 하나도 없는 카테고리도 화면에 있어야 한다 */
+const CATEGORIES = '/api/habit-categories'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
 
@@ -71,5 +76,42 @@ export async function archiveHabit(
 
 export async function deleteHabit(id: number): Promise<void> {
   const res = await fetch(`${BASE}/${id}`, { method: 'DELETE' })
+  return handle<void>(res)
+}
+
+/** 카테고리 전부. 화면에 늘어놓을 차례로 온다 */
+export async function fetchHabitCategories(): Promise<HabitCategory[]> {
+  const res = await fetch(CATEGORIES)
+  return handle<HabitCategory[]>(res)
+}
+
+/** 맨 뒤에 붙는다 */
+export async function createHabitCategory(
+  body: HabitCategoryRequest,
+): Promise<HabitCategory> {
+  const res = await fetch(CATEGORIES, {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  })
+  return handle<HabitCategory>(res)
+}
+
+/** 이름만 고친다. 안의 습관은 id 로 붙어 있어 그대로다 */
+export async function renameHabitCategory(
+  id: number,
+  body: HabitCategoryRequest,
+): Promise<HabitCategory> {
+  const res = await fetch(`${CATEGORIES}/${id}`, {
+    method: 'PUT',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(body),
+  })
+  return handle<HabitCategory>(res)
+}
+
+/** 카테고리와 그 안의 습관, 그 기록까지 함께 사라진다. 마지막 하나는 서버가 막는다(409) */
+export async function deleteHabitCategory(id: number): Promise<void> {
+  const res = await fetch(`${CATEGORIES}/${id}`, { method: 'DELETE' })
   return handle<void>(res)
 }

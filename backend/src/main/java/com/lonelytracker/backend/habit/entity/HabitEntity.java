@@ -52,8 +52,8 @@ public class HabitEntity {
     private String title;
 
     /**
-     * 기르는 갈래. 화면이 갈래마다 묶어 보여준다.
-     * 갈래가 지워지면 이 습관도 함께 간다 — 갈래 없는 습관은 둘 자리가 없다
+     * 기르는 카테고리. 화면이 카테고리마다 묶어 보여준다.
+     * 카테고리가 지워지면 이 습관도 함께 간다 — 카테고리 없는 습관은 둘 자리가 없다
      */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
@@ -72,7 +72,7 @@ public class HabitEntity {
     @Column(length = FieldLengths.PLACE)
     private String place;
 
-    /** 같은 갈래 안에서의 자리 */
+    /** 같은 카테고리 안에서의 자리 */
     @Column(name = "display_order", nullable = false)
     @Builder.Default
     private int displayOrder = 0;

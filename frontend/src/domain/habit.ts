@@ -1,30 +1,24 @@
 import type { Habit, HabitCategory } from "../types/habit";
 
-/** 화면에 적는 갈래 이름. 차례도 이 순서를 따른다 */
-export const HABIT_CATEGORIES: { value: HabitCategory; label: string }[] = [
-  { value: "BODY", label: "운동" },
-  { value: "MIND", label: "마음챙김" },
-  { value: "SIDE_JOB", label: "부업" },
-  { value: "ART", label: "예술" },
-  { value: "LEARNING", label: "학습" },
-  { value: "RELATIONSHIP", label: "인간관계" },
-];
-
 export interface CategoryGroup {
   category: HabitCategory;
-  label: string;
   habits: Habit[];
 }
 
 /**
- * 갈래마다 묶는다
- * 비어 있는 갈래도 자리를 남긴다. 여섯 갈래를 채우기를 권하는 화면이라 빈 칸이 보여야 한다
+ * 카테고리마다 묶는다
+ *
+ * 카테고리 목록을 받아서 도는 까닭은, 습관에서 카테고리를 모으면 비어 있는 카테고리가 사라져서다.
+ * 빈 카테고리도 자리를 지켜야 거기에 습관을 넣는 단추가 걸린다.
+ * 차례는 목록이 온 순서를 그대로 쓴다 — 서버가 display_order 로 정렬해 준다
  */
-export function groupByCategory(habits: Habit[]): CategoryGroup[] {
-  return HABIT_CATEGORIES.map(({ value, label }) => ({
-    category: value,
-    label,
-    habits: habits.filter((h) => h.category === value),
+export function groupByCategory(
+  habits: Habit[],
+  categories: HabitCategory[],
+): CategoryGroup[] {
+  return categories.map((category) => ({
+    category,
+    habits: habits.filter((h) => h.categoryId === category.id),
   }));
 }
 

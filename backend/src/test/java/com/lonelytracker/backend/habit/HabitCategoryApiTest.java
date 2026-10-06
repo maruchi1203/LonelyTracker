@@ -26,9 +26,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 사용자가 가진 갈래를 다루는 길을 검증한다.
+ * 사용자가 가진 카테고리를 다루는 길을 검증한다.
  * <p>
- * {@code @Transactional} 을 붙이지 않는다. 갈래를 지울 때 안의 습관이 함께 사라지는 일은
+ * {@code @Transactional} 을 붙이지 않는다. 카테고리를 지울 때 안의 습관이 함께 사라지는 일은
  * 테이블의 ON DELETE CASCADE 가 하므로, 트랜잭션이 되돌려지면 그 일이 일어났는지 볼 수 없다.
  */
 @AutoConfigureMockMvc
@@ -37,7 +37,7 @@ class HabitCategoryApiTest extends IntegrationTest {
     private static final String BASE = "/api/habit-categories";
     private static final String HABITS = "/api/habits";
 
-    /** V3 가 심어 둔 갈래. 테스트가 만든 것만 치우고 이것들은 남겨 둔다 */
+    /** V3 가 심어 둔 카테고리. 테스트가 만든 것만 치우고 이것들은 남겨 둔다 */
     private static final List<String> SEEDED =
             List.of("운동", "마음챙김", "부업", "예술", "학습", "인간관계");
 
@@ -64,10 +64,10 @@ class HabitCategoryApiTest extends IntegrationTest {
     }
 
     /**
-     * 갈래를 심어 둔 모습으로 되돌린다.
+     * 카테고리를 심어 둔 모습으로 되돌린다.
      * <p>
-     * DB 를 테스트 클래스 전부가 함께 쓴다. 여기서 갈래를 지워 놓고 가면 뒤의 것들이
-     * 이름으로 갈래를 못 찾는다. 만든 것은 치우고, 지운 것은 제자리에 다시 심는다.
+     * DB 를 테스트 클래스 전부가 함께 쓴다. 여기서 카테고리를 지워 놓고 가면 뒤의 것들이
+     * 이름으로 카테고리를 못 찾는다. 만든 것은 치우고, 지운 것은 제자리에 다시 심는다.
      */
     private void restoreSeeded() {
         categoryRepository.deleteAll(categoryRepository.findAll().stream()
@@ -91,7 +91,7 @@ class HabitCategoryApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("쓰고 있던 여섯 갈래가 줄로 옮겨져 있다")
+    @DisplayName("쓰고 있던 카테고리 여섯이 줄로 옮겨져 있다")
     void carriesTheSixSeededOnes() throws Exception {
         mvc.perform(get(BASE))
                 .andExpect(status().isOk())
@@ -101,7 +101,7 @@ class HabitCategoryApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("새 갈래는 맨 뒤에 붙는다")
+    @DisplayName("새 카테고리는 맨 뒤에 붙는다")
     void addsToTheEnd() throws Exception {
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"요리\"}"))
@@ -141,7 +141,7 @@ class HabitCategoryApiTest extends IntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("살림"));
 
-        // 습관은 id 로 갈래를 가리킨다. 이름이 바뀌어도 가리키는 줄이 그대로다
+        // 습관은 id 로 카테고리를 가리킨다. 이름이 바뀌어도 가리키는 줄이 그대로다
         mvc.perform(get(HABITS))
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].id").value((int) habit))
@@ -149,7 +149,7 @@ class HabitCategoryApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("갈래를 지우면 안의 습관과 그 기록까지 사라진다")
+    @DisplayName("카테고리를 지우면 안의 습관과 그 기록까지 사라진다")
     void deleteTakesTheHabitsAndLogs() throws Exception {
         long category = create("요리");
         long habit = addHabit(category, "설거지");
@@ -167,7 +167,7 @@ class HabitCategoryApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("마지막 갈래는 지울 수 없다")
+    @DisplayName("마지막 카테고리는 지울 수 없다")
     void refusesToDeleteTheLastOne() throws Exception {
         List<Long> ids = categoryRepository.findAll().stream()
                 .map(HabitCategoryEntity::getId)
@@ -180,7 +180,7 @@ class HabitCategoryApiTest extends IntegrationTest {
 
         /*
          * 409 다. 보낸 것이 잘못된 게 아니라 지금 상태가 받아 주지 않는 것이고,
-         * 갈래가 둘이 되면 같은 요청이 그대로 통한다
+         * 카테고리가 둘이 되면 같은 요청이 그대로 통한다
          */
         mvc.perform(delete(BASE + "/" + ids.getLast()))
                 .andExpect(status().isConflict());
@@ -189,13 +189,13 @@ class HabitCategoryApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("없는 갈래는 404다")
+    @DisplayName("없는 카테고리는 404다")
     void missingCategoryIsNotFound() throws Exception {
         mvc.perform(delete(BASE + "/999999")).andExpect(status().isNotFound());
     }
 
     @Test
-    @DisplayName("없는 갈래에는 습관을 넣을 수 없다")
+    @DisplayName("없는 카테고리에는 습관을 넣을 수 없다")
     void refusesAHabitInAMissingCategory() throws Exception {
         mvc.perform(post(HABITS).contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"무언가\",\"categoryId\":999999}"))

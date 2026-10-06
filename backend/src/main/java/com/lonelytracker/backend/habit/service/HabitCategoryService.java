@@ -15,17 +15,17 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * 습관을 묶는 갈래를 다룬다.
+ * 습관을 묶는 카테고리를 다룬다.
  * <p>
- * 습관 자체와 길을 나누는 까닭은, 갈래 목록은 습관이 하나도 없어도 화면에 있어야 해서다.
- * 습관 응답에 이름을 실어 보내면 빈 갈래가 화면에서 사라진다.
+ * 습관 자체와 길을 나누는 까닭은, 카테고리 목록은 습관이 하나도 없어도 화면에 있어야 해서다.
+ * 습관 응답에 이름을 실어 보내면 빈 카테고리가 화면에서 사라진다.
  */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class HabitCategoryService {
 
-    /** 아직 줄이 없다는 뜻. 어떤 갈래도 id 가 0 일 수 없어 "나를 뺀 전부"가 전부가 된다 */
+    /** 아직 줄이 없다는 뜻. 어떤 카테고리도 id 가 0 일 수 없어 "나를 뺀 전부"가 전부가 된다 */
     private static final long NO_ROW = 0L;
 
     private final HabitCategoryRepository categoryRepository;
@@ -66,7 +66,7 @@ public class HabitCategoryService {
     }
 
     /**
-     * 갈래와 그 안의 습관을 통째로 지운다.
+     * 카테고리와 그 안의 습관을 통째로 지운다.
      * <p>
      * 습관을 함께 지우는 일은 테이블의 ON DELETE CASCADE 가 한다. 습관의 지난 기록도
      * habit_log 의 같은 규칙을 타고 이어서 사라진다. 화면이 먼저 몇 개가 사라지는지 알린다.
@@ -87,13 +87,13 @@ public class HabitCategoryService {
     /** 같은 이름이 둘이면 어느 쪽에 넣었는지 사람이 가릴 수 없다 */
     private void requireFreeName(Long userId, String name, Long exceptId) {
         if (categoryRepository.existsOtherWithName(userId, name, exceptId)) {
-            throw new ConflictException("이미 있는 갈래입니다: " + name);
+            throw new ConflictException("이미 있는 카테고리입니다: " + name);
         }
     }
 
-    /** 남의 갈래는 없는 것으로 취급한다. 400을 내면 그 갈래의 존재가 새어 나간다 */
+    /** 남의 카테고리는 없는 것으로 취급한다. 400을 내면 그 카테고리의 존재가 새어 나간다 */
     private HabitCategoryEntity getOwnedOrThrow(Long id) {
         return categoryRepository.findOwned(id, currentUserProvider.get().getId())
-                .orElseThrow(() -> new NotFoundException("갈래를 찾을 수 없습니다"));
+                .orElseThrow(() -> new NotFoundException("카테고리를 찾을 수 없습니다"));
     }
 }

@@ -28,7 +28,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 /**
- * 습관을 묶는 갈래 하나. 사용자가 만들고 지운다.
+ * 습관을 묶는 카테고리 하나. 사용자가 만들고 지운다.
  * <p>
  * 이름이 그대로 값이다. 습관은 id 로 가리키므로 이름을 고쳐도 붙어 있던 습관이 따라온다.
  */

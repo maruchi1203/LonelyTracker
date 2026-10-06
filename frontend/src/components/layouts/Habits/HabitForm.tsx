@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { HABIT_CATEGORIES } from "../../../domain/habit";
 import type {
   Habit,
   HabitCategory,
@@ -7,6 +6,7 @@ import type {
 } from "../../../types/habit";
 
 interface Props {
+  /** 이 습관이 들어갈 카테고리. 이름을 글머리에 적고 id 를 실어 보낸다 */
   category: HabitCategory;
   /** 고치는 중이면 그 습관. 없으면 새로 만드는 것이다 */
   habit?: Habit;
@@ -23,7 +23,7 @@ const FIELD =
   "w-full rounded-md border border-line bg-surface px-2.5 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none";
 const LABEL = "text-xs font-semibold text-ink-soft";
 
-/** 갈래 안에서 바로 적고 고친다. 칸이 적어 모달까지 갈 일이 아니다 */
+/** 카테고리 안에서 바로 적고 고친다. 칸이 적어 모달까지 갈 일이 아니다 */
 export default function HabitForm({
   category,
   habit,
@@ -36,8 +36,6 @@ export default function HabitForm({
   const [atTime, setAtTime] = useState(habit?.atTime ?? "");
   const [place, setPlace] = useState(habit?.place ?? "");
 
-  const label = HABIT_CATEGORIES.find((c) => c.value === category)?.label ?? "";
-
   return (
     <form
       onSubmit={(e) => {
@@ -45,7 +43,7 @@ export default function HabitForm({
         if (!title.trim()) return;
         onSubmit({
           title: title.trim(),
-          category,
+          categoryId: category.id,
           /*
            * 칸을 내려 둔 채로 저장하면 안 보이는 값이 실려 간다.
            * 다만 고치는 중이라면 이미 적어 둔 값을 지워서는 안 된다 — PUT 이 통째로 덮어쓴다
@@ -60,7 +58,7 @@ export default function HabitForm({
       className="flex flex-col gap-2 rounded-md border border-line bg-accent-soft/40 p-3"
     >
       <label className="flex flex-col gap-1">
-        <span className={LABEL}>{label} 습관 *</span>
+        <span className={LABEL}>{category.name} 습관 *</span>
         <input
           autoFocus
           value={title}

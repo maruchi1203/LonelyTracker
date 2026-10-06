@@ -27,7 +27,7 @@ public final class FieldLengths {
      */
     public static final int HABIT_AT_TIME = 100;
 
-    /** 습관을 묶는 갈래 이름. 화면의 작은 칸에 들어가야 해서 짧게 잡는다 */
+    /** 습관을 묶는 카테고리 이름. 화면의 작은 칸에 들어가야 해서 짧게 잡는다 */
     public static final int HABIT_CATEGORY_NAME = 50;
 
     /** OAuth 로그인 식별자(이메일 등)가 들어온다 */

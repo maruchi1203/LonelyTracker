@@ -19,8 +19,8 @@ import java.net.URI;
 import java.util.List;
 
 /**
- * 습관을 묶는 갈래.
- * 습관과 길을 나눠 두어, 습관이 하나도 없는 갈래도 화면이 받아 그릴 수 있다.
+ * 습관을 묶는 카테고리.
+ * 습관과 길을 나눠 두어, 습관이 하나도 없는 카테고리도 화면이 받아 그릴 수 있다.
  */
 @RestController
 @RequestMapping("/api/habit-categories")
@@ -29,7 +29,7 @@ public class HabitCategoryController {
 
     private final HabitCategoryService habitCategoryService;
 
-    /** 갈래 전부. 화면에 늘어놓을 차례로 온다 */
+    /** 카테고리 전부. 화면에 늘어놓을 차례로 온다 */
     @GetMapping
     public List<HabitCategoryResponse> findAll() {
         return habitCategoryService.findAll();
@@ -49,7 +49,7 @@ public class HabitCategoryController {
         return habitCategoryService.rename(id, request);
     }
 
-    /** 갈래와 그 안의 습관을 통째로 지움. 지난 기록도 함께 사라짐 */
+    /** 카테고리와 그 안의 습관을 통째로 지움. 지난 기록도 함께 사라짐 */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         habitCategoryService.delete(id);

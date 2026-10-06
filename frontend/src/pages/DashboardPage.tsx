@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchHabits } from "../api/habits";
+import { fetchHabitCategories, fetchHabits } from "../api/habits";
 import {
   changeCompletion,
   changeInstanceStatus,
@@ -12,7 +12,7 @@ import { TempPanel } from "../components/layouts/Dashboard/DashboardPanel";
 import HabitPanel from "../components/layouts/Dashboard/HabitPanel";
 import AiUsagePanel from "../components/layouts/Dashboard/UsagePanel";
 import { weekOf } from "../domain/dashboard";
-import type { Habit as HabitItem } from "../types/habit";
+import type { Habit as HabitItem, HabitCategory } from "../types/habit";
 import type {
   AiProvider,
   AiUsageSummary,
@@ -28,6 +28,7 @@ interface Data {
   instances: ScheduleResponse[];
   items: ScheduleListItem[];
   habits: HabitItem[];
+  categories: HabitCategory[];
   usage: AiUsageSummary;
   providers: AiProvider[];
 }
@@ -50,20 +51,23 @@ export default function DashboardPage() {
     since.setDate(since.getDate() - HABIT_HISTORY_DAYS);
 
     try {
-      const [instances, items, habits, usage, providers] = await Promise.all([
-        fetchSchedules({
-          from: `${week.from}T00:00:00`,
-          to: `${week.to}T23:59:59`,
-        }),
-        fetchScheduleList(),
-        fetchHabits(toLocalDate(since), now),
-        fetchAiUsage(),
-        fetchAiProviders(),
-      ]);
+      const [instances, items, habits, categories, usage, providers] =
+        await Promise.all([
+          fetchSchedules({
+            from: `${week.from}T00:00:00`,
+            to: `${week.to}T23:59:59`,
+          }),
+          fetchScheduleList(),
+          fetchHabits(toLocalDate(since), now),
+          fetchHabitCategories(),
+          fetchAiUsage(),
+          fetchAiProviders(),
+        ]);
       setData({
         instances,
         items,
         habits,
+        categories,
         usage,
         providers: providers.providers,
       });
@@ -137,7 +141,11 @@ export default function DashboardPage() {
             onToggleInstance={handleToggleInstance}
             onCompleteItem={handleCompleteItem}
           />
-          <HabitPanel habits={data.habits} today={today} />
+          <HabitPanel
+            habits={data.habits}
+            today={today}
+            categories={data.categories}
+          />
         </div>
       )}
     </div>

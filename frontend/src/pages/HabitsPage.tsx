@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import {
   archiveHabit,
   createHabit,
   deleteHabit,
+  fetchHabitCategories,
   fetchHabits,
   logHabit,
+  renameHabitCategory,
   updateHabit,
 } from "../api/habits";
 import { fetchSettings } from "../api/users";
 import { groupByCategory, recentDays } from "../domain/habit";
 import type { Habit, HabitCategory, HabitCreateRequest } from "../types/habit";
 import { toLocalDate } from "../utils/datetime";
+import CategoryHeader from "../components/layouts/Habits/CategoryHeader";
 import HabitRow from "../components/layouts/Habits/HabitRow";
 import HabitForm from "../components/layouts/Habits/HabitForm";
 
@@ -31,7 +35,9 @@ const COLUMNS_KEY = "habits-columns";
 
 export default function HabitsPage() {
   const [habits, setHabits] = useState<Habit[]>([]);
-  const [adding, setAdding] = useState<HabitCategory | null>(null);
+  const [categories, setCategories] = useState<HabitCategory[]>([]);
+  /** 습관을 적는 중인 카테고리의 id */
+  const [adding, setAdding] = useState<number | null>(null);
   /** 고치는 중인 습관의 id. 그 자리에서 폼이 줄을 대신한다 */
   const [editing, setEditing] = useState<number | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -69,7 +75,13 @@ export default function HabitsPage() {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      setHabits(await fetchHabits(recentDays(toLocalDate(new Date()), DAYS)[0]));
+      // 카테고리를 따로 받는 까닭은, 습관이 하나도 없는 카테고리도 칸을 가져야 해서다
+      const [list, cats] = await Promise.all([
+        fetchHabits(recentDays(toLocalDate(new Date()), DAYS)[0]),
+        fetchHabitCategories(),
+      ]);
+      setHabits(list);
+      setCategories(cats);
       setError(null);
     } catch (e) {
       fail(e, "습관을 불러오지 못했습니다");
@@ -90,58 +102,50 @@ export default function HabitsPage() {
   }, []);
 
   const groups = useMemo(
-    () => groupByCategory(habits.filter((h) => showArchived || !h.archived)),
-    [habits, showArchived],
+    () =>
+      groupByCategory(
+        habits.filter((h) => showArchived || !h.archived),
+        categories,
+      ),
+    [habits, categories, showArchived],
   );
 
-  // 여섯 갈래를 고루 채우기를 권한다. 비어 있는 갈래를 세어 알린다
-  const emptyCount = groupByCategory(habits.filter((h) => !h.archived)).filter(
-    (g) => g.habits.length === 0,
-  ).length;
-
-  const handleToggle = async (habit: Habit, onDate: string) => {
+  /** 고치고 나면 늘 다시 받는다. 서버가 눌러 앉힌 값까지 화면에 맞춘다 */
+  const run = async (action: () => Promise<unknown>, fallback: string) => {
     setError(null);
     try {
-      await logHabit(habit.id, onDate, !habit.doneDates.includes(onDate));
+      await action();
       await reload();
     } catch (e) {
-      fail(e, "기록을 바꾸지 못했습니다");
+      fail(e, fallback);
     }
   };
 
-  const handleAdd = async (body: HabitCreateRequest) => {
-    setError(null);
-    try {
+  const handleToggle = (habit: Habit, onDate: string) =>
+    run(
+      () => logHabit(habit.id, onDate, !habit.doneDates.includes(onDate)),
+      "기록을 바꾸지 못했습니다",
+    );
+
+  const handleAdd = (body: HabitCreateRequest) =>
+    run(async () => {
       await createHabit(body);
       setAdding(null);
-      await reload();
-    } catch (e) {
-      fail(e, "습관을 만들지 못했습니다");
-    }
-  };
+    }, "습관을 만들지 못했습니다");
 
-  const handleUpdate = async (id: number, body: HabitCreateRequest) => {
-    setError(null);
-    try {
+  const handleUpdate = (id: number, body: HabitCreateRequest) =>
+    run(async () => {
       await updateHabit(id, body);
       setEditing(null);
-      await reload();
-    } catch (e) {
-      fail(e, "습관을 고치지 못했습니다");
-    }
-  };
+    }, "습관을 고치지 못했습니다");
 
-  const handleArchive = async (habit: Habit) => {
-    setError(null);
-    try {
-      await archiveHabit(habit.id, !habit.archived);
-      await reload();
-    } catch (e) {
-      fail(e, "상태를 바꾸지 못했습니다");
-    }
-  };
+  const handleArchive = (habit: Habit) =>
+    run(
+      () => archiveHabit(habit.id, !habit.archived),
+      "상태를 바꾸지 못했습니다",
+    );
 
-  const handleDelete = async (habit: Habit) => {
+  const handleDelete = (habit: Habit) => {
     if (
       !window.confirm(
         `"${habit.title}" 을(를) 지울까요? 지난 기록도 함께 사라집니다.`,
@@ -149,15 +153,11 @@ export default function HabitsPage() {
     ) {
       return;
     }
-
-    setError(null);
-    try {
-      await deleteHabit(habit.id);
-      await reload();
-    } catch (e) {
-      fail(e, "지우지 못했습니다");
-    }
+    return run(() => deleteHabit(habit.id), "지우지 못했습니다");
   };
+
+  const handleRenameCategory = (id: number, name: string) =>
+    run(() => renameHabitCategory(id, { name }), "이름을 고치지 못했습니다");
 
   return (
     <div className="flex flex-col gap-5">
@@ -198,9 +198,16 @@ export default function HabitsPage() {
 
       <p className="text-xs text-ink-faint">
         {twoMinuteRule &&
-          "언제·어디서·2분 행동을 적어 두면 실행될 확률이 높아집니다."}
-        {emptyCount > 0 &&
-          ` 아직 비어 있는 갈래가 ${emptyCount}개 있습니다 — 갈래마다 하나씩 두는 것을 권합니다.`}
+          "언제·어디서·2분 행동을 적어 두면 실행될 확률이 높아집니다. "}
+        {/*
+          카테고리를 만들고 지우는 길이 이 화면에 없으므로 어디 있는지는 알려 둬야 한다.
+          이름은 칸 머리에서 바로 고친다 — 되돌릴 수 있는 일이라 여기 남겼다
+        */}
+        카테고리를 추가하거나 삭제하려면{" "}
+        <Link to="/settings" className="text-accent hover:underline">
+          설정
+        </Link>
+        으로 가세요. 이름은 카테고리 제목을 눌러 바로 고칩니다.
       </p>
 
       {error && (
@@ -220,71 +227,69 @@ export default function HabitsPage() {
           }`}
         >
           {groups.map((group) => (
-          <section
-            key={group.category}
-            className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-4 shadow-xs"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="font-semibold text-ink">{group.label}</h3>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setAdding(adding === group.category ? null : group.category)
-                }
-                aria-expanded={adding === group.category}
-                className="rounded-md border border-line px-2.5 py-1 text-xs text-ink-soft transition-colors hover:bg-accent-soft"
-              >
-                + 습관
-              </button>
-            </div>
-
-            {group.habits.length === 0 && adding !== group.category && (
-              <p className="rounded-md border border-dashed border-line px-3 py-3 text-center text-xs text-ink-faint">
-                아직 없습니다. 2분이면 되는 것부터 하나 두어 보세요.
-              </p>
-            )}
-
-            {adding === group.category && (
-              <HabitForm
+            <section
+              key={group.category.id}
+              className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-4 shadow-xs"
+            >
+              <CategoryHeader
                 category={group.category}
-                twoMinuteRule={twoMinuteRule}
-                onCancel={() => setAdding(null)}
-                onSubmit={handleAdd}
+                adding={adding === group.category.id}
+                onToggleAdd={() =>
+                  setAdding(
+                    adding === group.category.id ? null : group.category.id,
+                  )
+                }
+                onRename={(name) =>
+                  void handleRenameCategory(group.category.id, name)
+                }
               />
-            )}
 
-            {group.habits.length > 0 && (
-              <ul className="flex list-none flex-col gap-2 p-0">
-                {group.habits.map((habit) =>
-                  editing === habit.id ? (
-                    // 고치는 동안에는 줄 자리를 폼이 대신한다. 어느 것을 고치는지가 분명하다
-                    <li key={habit.id} className="list-none">
-                      <HabitForm
-                        category={habit.category}
+              {group.habits.length === 0 && adding !== group.category.id && (
+                <p className="rounded-md border border-dashed border-line px-3 py-3 text-center text-xs text-ink-faint">
+                  아직 없습니다. 2분이면 되는 것부터 하나 두어 보세요.
+                </p>
+              )}
+
+              {adding === group.category.id && (
+                <HabitForm
+                  category={group.category}
+                  twoMinuteRule={twoMinuteRule}
+                  onCancel={() => setAdding(null)}
+                  onSubmit={(body) => void handleAdd(body)}
+                />
+              )}
+
+              {group.habits.length > 0 && (
+                <ul className="flex list-none flex-col gap-2 p-0">
+                  {group.habits.map((habit) =>
+                    editing === habit.id ? (
+                      // 고치는 동안에는 줄 자리를 폼이 대신한다. 어느 것을 고치는지가 분명하다
+                      <li key={habit.id} className="list-none">
+                        <HabitForm
+                          category={group.category}
+                          habit={habit}
+                          twoMinuteRule={twoMinuteRule}
+                          onCancel={() => setEditing(null)}
+                          onSubmit={(body) => void handleUpdate(habit.id, body)}
+                        />
+                      </li>
+                    ) : (
+                      <HabitRow
+                        key={habit.id}
                         habit={habit}
+                        days={days}
+                        today={today}
                         twoMinuteRule={twoMinuteRule}
-                        onCancel={() => setEditing(null)}
-                        onSubmit={(body) => void handleUpdate(habit.id, body)}
+                        onToggle={(onDate) => void handleToggle(habit, onDate)}
+                        onEdit={() => setEditing(habit.id)}
+                        onArchive={() => void handleArchive(habit)}
+                        onDelete={() => void handleDelete(habit)}
                       />
-                    </li>
-                  ) : (
-                    <HabitRow
-                      key={habit.id}
-                      habit={habit}
-                      days={days}
-                      today={today}
-                      twoMinuteRule={twoMinuteRule}
-                      onToggle={(onDate) => void handleToggle(habit, onDate)}
-                      onEdit={() => setEditing(habit.id)}
-                      onArchive={() => void handleArchive(habit)}
-                      onDelete={() => void handleDelete(habit)}
-                    />
-                  ),
-                )}
-              </ul>
-            )}
-          </section>
+                    ),
+                  )}
+                </ul>
+              )}
+            </section>
           ))}
         </div>
       )}

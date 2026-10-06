@@ -66,7 +66,7 @@ class HabitApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("갈래는 필수다")
+    @DisplayName("카테고리는 필수다")
     void requiresCategory() throws Exception {
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"무언가\"}"))
@@ -152,7 +152,7 @@ class HabitApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("수정하면 갈래도 바뀐다")
+    @DisplayName("수정하면 카테고리도 바뀐다")
     void updatesCategory() throws Exception {
         long id = create("{\"title\":\"명상\",\"categoryId\":"
                 + categoryId("마음챙김") + "}");
@@ -183,12 +183,12 @@ class HabitApiTest extends IntegrationTest {
         mvc.perform(delete(BASE + "/999999")).andExpect(status().isNotFound());
     }
 
-    /** V3 가 심어 둔 갈래. id 는 DB 가 정하므로 이름으로 찾는다 */
+    /** V3 가 심어 둔 카테고리. id 는 DB 가 정하므로 이름으로 찾는다 */
     private long categoryId(String name) {
         return categoryRepository.findAll().stream()
                 .filter(c -> c.getName().equals(name))
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException("심어 둔 갈래가 없다: " + name))
+                .orElseThrow(() -> new IllegalStateException("심어 둔 카테고리가 없다: " + name))
                 .getId();
     }
 

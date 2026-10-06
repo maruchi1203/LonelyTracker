@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { fetchMe } from "../api/users";
 import AiProviderSection from "../components/settings/AiProviderSection";
+import HabitCategorySection from "../components/settings/HabitCategorySection";
 import HabitSection from "../components/settings/HabitSection";
 import type { UserResponse } from "../types/schedule";
 
@@ -34,6 +35,8 @@ export default function SettingsPage() {
       <AiProviderSection autoFocus={params.get("focus") === "ai-key"} />
 
       <HabitSection />
+
+      <HabitCategorySection />
     </div>
   );
 }
