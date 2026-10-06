@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
@@ -43,6 +44,8 @@ public class HabitService {
     private final HabitRepository habitRepository;
     private final HabitLogRepository logRepository;
     private final UserProvider currentUserProvider;
+    /** "오늘"을 밖에서 받는다. 직접 now() 를 부르면 테스트가 날짜를 고정할 수 없다 */
+    private final Clock clock;
 
     /**
      * 습관 목록과 최근 기록.
@@ -53,7 +56,7 @@ public class HabitService {
     public List<HabitResponse> findAll(LocalDate from, LocalDate to) {
         Long userId = currentUserProvider.get().getId();
 
-        LocalDate windowTo = (to != null) ? to : LocalDate.now();
+        LocalDate windowTo = (to != null) ? to : LocalDate.now(clock);
         LocalDate windowFrom = (from != null) ? from : windowTo.minusDays(WINDOW_DAYS - 1L);
 
         List<HabitEntity> habits = habitRepository.findAllOf(userId);
