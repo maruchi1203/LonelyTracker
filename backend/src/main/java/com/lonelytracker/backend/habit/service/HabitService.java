@@ -5,8 +5,10 @@ import com.lonelytracker.backend.habit.dto.HabitCreateRequest;
 import com.lonelytracker.backend.habit.dto.HabitLogRequest;
 import com.lonelytracker.backend.habit.dto.HabitResponse;
 import com.lonelytracker.backend.habit.dto.HabitUpdateRequest;
+import com.lonelytracker.backend.habit.entity.HabitCategoryEntity;
 import com.lonelytracker.backend.habit.entity.HabitEntity;
 import com.lonelytracker.backend.habit.entity.HabitLogEntity;
+import com.lonelytracker.backend.habit.repository.HabitCategoryRepository;
 import com.lonelytracker.backend.habit.repository.HabitLogRepository;
 import com.lonelytracker.backend.habit.repository.HabitRepository;
 import com.lonelytracker.backend.user.service.UserProvider;
@@ -42,6 +44,7 @@ public class HabitService {
                     .thenComparing(HabitEntity::getId);
 
     private final HabitRepository habitRepository;
+    private final HabitCategoryRepository categoryRepository;
     private final HabitLogRepository logRepository;
     private final UserProvider currentUserProvider;
     /** "오늘"을 밖에서 받는다. 직접 now() 를 부르면 테스트가 날짜를 고정할 수 없다 */
@@ -85,7 +88,7 @@ public class HabitService {
         HabitEntity habit = habitRepository.save(HabitEntity.builder()
                 .user(currentUserProvider.get())
                 .title(request.title().strip())
-                .category(request.category())
+                .category(categoryOrThrow(request.categoryId()))
                 .twoMinuteAction(request.twoMinuteAction())
                 .atTime(request.atTime())
                 .place(request.place())
@@ -97,7 +100,8 @@ public class HabitService {
     @Transactional
     public HabitResponse update(Long id, HabitUpdateRequest request) {
         HabitEntity habit = getOwnedOrThrow(id);
-        habit.update(request.title(), request.category(), request.twoMinuteAction(),
+        habit.update(request.title(), categoryOrThrow(request.categoryId()),
+                request.twoMinuteAction(),
                 request.atTime(), request.place());
         return HabitResponse.from(habitRepository.saveAndFlush(habit), List.of());
     }
@@ -149,6 +153,12 @@ public class HabitService {
                 .onDate(onDate)
                 .note(request.note())
                 .build());
+    }
+
+    /** 남의 갈래에 습관을 넣지 못하게 소유자까지 본다. 갈래 쪽과 같은 규칙이다 */
+    private HabitCategoryEntity categoryOrThrow(Long categoryId) {
+        return categoryRepository.findOwned(categoryId, currentUserProvider.get().getId())
+                .orElseThrow(() -> new NotFoundException("갈래를 찾을 수 없습니다"));
     }
 
     /** 남의 습관은 없는 것으로 취급한다. 400을 내면 그 습관의 존재가 새어 나간다 */

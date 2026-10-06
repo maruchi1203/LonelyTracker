@@ -1,13 +1,10 @@
 package com.lonelytracker.backend.habit.entity;
 
 import com.lonelytracker.backend.common.FieldLengths;
-import com.lonelytracker.backend.habit.domain.HabitCategory;
 import com.lonelytracker.backend.user.entity.UserEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -54,10 +51,14 @@ public class HabitEntity {
     @Column(nullable = false, length = FieldLengths.TITLE)
     private String title;
 
-    /** 기르는 갈래. 화면이 갈래마다 묶어 보여준다 */
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private HabitCategory category;
+    /**
+     * 기르는 갈래. 화면이 갈래마다 묶어 보여준다.
+     * 갈래가 지워지면 이 습관도 함께 간다 — 갈래 없는 습관은 둘 자리가 없다
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private HabitCategoryEntity category;
 
     /** 시작에 필요한 2분 이내의 행동. 습관마다 하나다 */
     @Column(name = "two_minute_action", length = FieldLengths.TWO_MINUTE_ACTION)
@@ -88,7 +89,7 @@ public class HabitEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public void update(String title, HabitCategory category, String twoMinuteAction,
+    public void update(String title, HabitCategoryEntity category, String twoMinuteAction,
             String atTime, String place) {
         this.title = title;
         this.category = category;
