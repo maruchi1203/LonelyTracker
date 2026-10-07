@@ -14,6 +14,12 @@ import { createSchedule, parseSchedule } from "../../api/schedules";
 import { fetchAiProviders } from "../../api/users";
 import { knownHabitQuestions } from "../../constants/habitQuestions";
 import { knownQuestions } from "../../constants/parseQuestions";
+import {
+  fitsHere,
+  keepDrafts,
+  readKept,
+  type Kept,
+} from "../../domain/keptDrafts";
 import type { FormVariant, ScheduleForm } from "../../domain/scheduleForm";
 import { draftFromParsed } from "../../domain/scheduleForm";
 import type { ParseQuestion } from "../../types/parse";
@@ -56,6 +62,9 @@ export type QuickAddState =
   // AI 는 답했지만 초안이 없다. 오류가 아니다
   | { mode: "notice"; message: string }
   | { mode: "error"; message: string; needsKey: boolean };
+
+/** 지켜 둘 수 있는 상태. 토큰을 써서 받은 초안이 든 두 가지뿐이다 */
+type DraftModes = Extract<QuickAddState, { mode: "drafts" | "habitDrafts" }>;
 
 /** 서버 읽기 타임아웃이 30초라 그보다 조금 뒤에 포기한다 */
 const GIVE_UP_MS = 35_000;
@@ -140,6 +149,48 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
   const [target, setTarget] = useState<Target>(NO_TARGET);
 
   const abort = useRef<AbortController | null>(null);
+
+  /*
+   * 지켜 둔 초안을 한 번만 읽어 손에 들고 있는다.
+   * 아래 저장 효과가 idle 을 보고 저장소를 비우므로, 그 전에 값을 떠 둬야 한다
+   */
+  const kept = useRef<Kept<DraftModes> | null | undefined>(undefined);
+  if (kept.current === undefined) {
+    kept.current = readKept<DraftModes>(sessionStorage);
+  }
+
+  /**
+   * 되살리기는 화면이 자리를 걸어 준 뒤에 한다.
+   *
+   * 새로고침 직후 variant 는 아직 기본값이라, 그때 맞춰 보면 습관 초안이 늘 버려진다.
+   * 맞지 않으면 그대로 두어, 습관일지로 옮겨 가는 순간 되살아나게 한다
+   */
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current) return;
+
+    const found = kept.current;
+    if (!found) {
+      restored.current = true;
+      return;
+    }
+    if (!fitsHere(found.variant, target.variant)) return;
+
+    restored.current = true;
+    setState(found.state);
+    // 닫아 두면 지킨 것이 보이지 않아, 사용자가 AI 를 한 번 더 부른다
+    setOpen(true);
+  }, [target.variant]);
+
+  /**
+   * 초안이 생기거나 바뀔 때마다 써 둔다.
+   *
+   * beforeunload 를 쓰지 않는 까닭은 sessionStorage 쓰기가 즉시 끝나서다.
+   * 바뀔 때 써 두면 창이 닫히는 순간에는 이미 저장되어 있다
+   */
+  useEffect(() => {
+    keepDrafts(sessionStorage, target.variant, state);
+  }, [state, target.variant]);
 
   /**
    * 왜 끊겼는지. 사용자가 그만둔 것과 시간이 다 된 것을 갈라야 한다.
