@@ -14,6 +14,7 @@ import { fetchSettings } from "../api/users";
 import { groupByCategory, recentDays } from "../domain/habit";
 import type { Habit, HabitCategory, HabitCreateRequest } from "../types/habit";
 import { toLocalDate } from "../utils/datetime";
+import { useQuickAddTarget } from "../components/quickadd/QuickAddContext";
 import CategoryHeader from "../components/layouts/Habits/CategoryHeader";
 import HabitRow from "../components/layouts/Habits/HabitRow";
 import HabitForm from "../components/layouts/Habits/HabitForm";
@@ -32,6 +33,9 @@ const COLUMNS = [
 
 /** 고른 열 수를 브라우저가 기억한다. 화면 넓이는 사람마다 다르다 */
 const COLUMNS_KEY = "habits-columns";
+
+/** 습관에는 태그가 없다. 자리마다 [] 를 새로 만들지 않도록 한 번만 만든다 */
+const NO_TAGS: string[] = [];
 
 export default function HabitsPage() {
   const [habits, setHabits] = useState<Habit[]>([]);
@@ -158,6 +162,27 @@ export default function HabitsPage() {
 
   const handleRenameCategory = (id: number, name: string) =>
     run(() => renameHabitCategory(id, { name }), "이름을 고치지 못했습니다");
+
+  /*
+   * 우하단 폼이 이 탭에서는 일정이 아니라 습관을 만들게 한다.
+   * 카테고리와 2분 법칙 여부는 이 화면만 알고 있어 걸어 주어야 한다
+   */
+  useQuickAddTarget(
+    {
+      defaultDate: null,
+      knownTags: NO_TAGS,
+      variant: "habit",
+      categories,
+      twoMinuteRule,
+    },
+    {
+      habit: async (body) => {
+        await run(() => createHabit(body), "습관을 만들지 못했습니다");
+        // run 이 오류를 배너로 올린다. 폼은 닫히고 목록이 다시 읽힌다
+        return true;
+      },
+    },
+  );
 
   return (
     <div className="flex flex-col gap-5">

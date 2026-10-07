@@ -8,7 +8,10 @@ import {
   fetchTagNames,
   reorderSchedules,
 } from "../api/schedules";
-import { useQuickAddTarget } from "../components/quickadd/QuickAddContext";
+import {
+  NO_CATEGORIES,
+  useQuickAddTarget,
+} from "../components/quickadd/QuickAddContext";
 import ScheduleEditModal from "../components/schedule/ScheduleEditModal";
 import {
   planDrop,
@@ -112,8 +115,14 @@ export default function ListPage() {
 
   // 리스트는 날짜를 요구하지 않는다
   useQuickAddTarget(
-    { defaultDate: null, knownTags, variant: "list" },
-    handleCreate,
+    {
+      defaultDate: null,
+      knownTags,
+      variant: "list",
+      categories: NO_CATEGORIES,
+      twoMinuteRule: true,
+    },
+    { schedule: handleCreate },
   );
 
   const handleToggle = async (item: ScheduleListItem, onDate?: string) => {

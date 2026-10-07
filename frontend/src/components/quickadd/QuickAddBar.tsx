@@ -2,12 +2,21 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import type { ScheduleForm } from "../../domain/scheduleForm";
 import { formToCreateRequest } from "../../domain/scheduleForm";
+import type { HabitCreateRequest } from "../../types/habit";
 import type { ScheduleCreateRequest } from "../../types/schedule";
 import IconButton from "../layouts/IconButton";
 import { PencilIcon, SparkIcon, StopIcon } from "../layouts/Icons";
+import HabitForm from "../layouts/Habits/HabitForm";
+import HabitDraftCard, {
+  draftToCreateRequest,
+} from "./HabitDraftCard";
 import ScheduleInputForm from "../schedule/ScheduleInputForm";
 import ParsedDraftCard from "./ParsedDraftCard";
-import { useQuickAdd, type Draft } from "./QuickAddContext";
+import {
+  useQuickAdd,
+  type Draft,
+  type HabitDraftState,
+} from "./QuickAddContext";
 
 interface Props {
   /** 저장에 성공했을 때. 띄워둔 패널을 닫는 데 쓴다 */
@@ -24,6 +33,8 @@ export default function QuickAddBar({ onDone, autoFocus }: Props) {
     defaultDate,
     knownTags,
     variant,
+    categories,
+    twoMinuteRule,
     text,
     setText,
     state,
@@ -33,9 +44,16 @@ export default function QuickAddBar({ onDone, autoFocus }: Props) {
     parse,
     stop,
     create,
+    createHabit,
   } = useQuickAdd();
 
   const [step, setStep] = useState(0);
+
+  /*
+   * 습관일지에서는 일정이 아니라 습관을 만들어야 한다.
+   * 카테고리가 없으면 넣을 자리가 없으니 일정 쪽으로 남긴다
+   */
+  const habitMode = variant === "habit" && categories.length > 0;
   const parsing = state.mode === "parsing";
 
   useEffect(() => {
@@ -49,7 +67,9 @@ export default function QuickAddBar({ onDone, autoFocus }: Props) {
   }, [parsing]);
 
   // 카드를 다 치우면 입력줄로 돌아간다. 상태를 고치는 자리에서 하면 두 번 돈다
-  const empty = state.mode === "drafts" && state.drafts.length === 0;
+  const empty =
+    (state.mode === "drafts" || state.mode === "habitDrafts") &&
+    state.drafts.length === 0;
   useEffect(() => {
     if (!empty) return;
     setText("");
@@ -94,8 +114,45 @@ export default function QuickAddBar({ onDone, autoFocus }: Props) {
     return created;
   };
 
+  const createHabitManually = async (body: HabitCreateRequest) => {
+    if (await createHabit(body)) onDone?.();
+  };
+
   const patch = (key: number, changes: Partial<ScheduleForm>) =>
     mapDraft(key, (d) => ({ ...d, form: { ...d.form, ...changes } }));
+
+  /** 습관 카드 하나만 바꾼다 */
+  const mapHabit = (key: number, change: (d: HabitDraftState) => HabitDraftState) =>
+    setState((prev) =>
+      prev.mode === "habitDrafts"
+        ? {
+            ...prev,
+            drafts: prev.drafts.map((d) => (d.key === key ? change(d) : d)),
+          }
+        : prev,
+    );
+
+  const dropHabit = (key: number) =>
+    setState((prev) =>
+      prev.mode === "habitDrafts"
+        ? { ...prev, drafts: prev.drafts.filter((d) => d.key !== key) }
+        : prev,
+    );
+
+  const saveHabit = async (key: number) => {
+    if (state.mode !== "habitDrafts") return;
+    const target = state.drafts.find((d) => d.key === key);
+    if (!target || target.saving) return;
+
+    const body = draftToCreateRequest(target.form);
+    // 카테고리를 못 고른 카드다. 카드가 단추를 막아 두지만 여기서도 받아 둔다
+    if (body === null) return;
+
+    mapHabit(key, (d) => ({ ...d, saving: true }));
+
+    if (await createHabit(body)) dropHabit(key);
+    else mapHabit(key, (d) => ({ ...d, saving: false }));
+  };
 
   return (
     <section className="flex flex-col gap-3">
@@ -106,12 +163,16 @@ export default function QuickAddBar({ onDone, autoFocus }: Props) {
         onKeyDown={(e) => {
           if (e.key === "Enter") void parse();
         }}
-        placeholder="예: 매주 월수금 아침 7시 헬스장에서 운동"
+        placeholder={
+          habitMode
+            ? "예: 퇴근 후 거실에서 팔굽혀펴기"
+            : "예: 매주 월수금 아침 7시 헬스장에서 운동"
+        }
         maxLength={500}
         // disabled 로 두면 포커스를 잃고 접근성 트리에서도 빠진다
         readOnly={parsing}
         autoFocus={autoFocus}
-        aria-label="자연어로 일정 입력"
+        aria-label={habitMode ? "자연어로 습관 입력" : "자연어로 일정 입력"}
       />
 
       {/* 두 단추가 한 줄을 반씩 나눠 갖는다 */}
@@ -216,7 +277,47 @@ export default function QuickAddBar({ onDone, autoFocus }: Props) {
         </>
       )}
 
-      {manual && (
+      {state.mode === "habitDrafts" && (
+        <>
+          {state.drafts.length > 1 && (
+            <p className="text-sm text-ink-soft">
+              습관 {state.drafts.length}개를 읽었습니다. 하나씩 확인해 주세요.
+            </p>
+          )}
+
+          {state.drafts.map((draft) => (
+            <HabitDraftCard
+              key={draft.key}
+              draft={draft.form}
+              questions={draft.questions}
+              categories={categories}
+              suggestedAction={draft.suggestedAction}
+              twoMinuteRule={twoMinuteRule}
+              saving={draft.saving}
+              onChange={(changes) =>
+                mapHabit(draft.key, (d) => ({
+                  ...d,
+                  form: { ...d.form, ...changes },
+                }))
+              }
+              onSave={() => void saveHabit(draft.key)}
+              onDiscard={() => dropHabit(draft.key)}
+            />
+          ))}
+        </>
+      )}
+
+      {manual && habitMode && (
+        <HabitForm
+          category={categories[0]}
+          categories={categories}
+          twoMinuteRule={twoMinuteRule}
+          onCancel={() => setManual(false)}
+          onSubmit={(body) => void createHabitManually(body)}
+        />
+      )}
+
+      {manual && !habitMode && (
         <ScheduleInputForm
           onSubmit={createManually}
           knownTags={knownTags}

@@ -9,7 +9,10 @@ import {
 } from "../api/schedules";
 import CalendarToolbar from "../components/layouts/Calendar/CalendarToolbar";
 import ScheduleCalendar from "../components/layouts/Calendar/ScheduleCalendar";
-import { useQuickAddTarget } from "../components/quickadd/QuickAddContext";
+import {
+  NO_CATEGORIES,
+  useQuickAddTarget,
+} from "../components/quickadd/QuickAddContext";
 import InstanceActionModal from "../components/layouts/Calendar/InstanceActionModal";
 import { applyFilters, countByTag } from "../domain/filter";
 import { useCalendarViewState } from "../hooks/useCalendarViewState";
@@ -171,8 +174,14 @@ export default function CalendarPage() {
 
   // 날짜를 골라 뒀으면 빠른 추가의 시작값이 된다
   useQuickAddTarget(
-    { defaultDate: selectedDate, knownTags, variant: "calendar" },
-    handleCreate,
+    {
+      defaultDate: selectedDate,
+      knownTags,
+      variant: "calendar",
+      categories: NO_CATEGORIES,
+      twoMinuteRule: true,
+    },
+    { schedule: handleCreate },
   );
 
   return (

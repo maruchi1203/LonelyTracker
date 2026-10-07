@@ -8,6 +8,13 @@ import type {
 interface Props {
   /** 이 습관이 들어갈 카테고리. 이름을 글머리에 적고 id 를 실어 보낸다 */
   category: HabitCategory;
+  /**
+   * 고를 수 있는 카테고리. 주면 고르는 칸이 생긴다.
+   *
+   * 카테고리 칸 안의 폼은 어떤 칸에 섬는지가 자리로 분리해 이게 필요없고,
+   * 우하단 폼은 자리가 없어 봐요 고를 수단이 있어야 한다
+   */
+  categories?: HabitCategory[];
   /** 고치는 중이면 그 습관. 없으면 새로 만드는 것이다 */
   habit?: Habit;
   /**
@@ -26,12 +33,14 @@ const LABEL = "text-xs font-semibold text-ink-soft";
 /** 카테고리 안에서 바로 적고 고친다. 칸이 적어 모달까지 갈 일이 아니다 */
 export default function HabitForm({
   category,
+  categories,
   habit,
   twoMinuteRule,
   onCancel,
   onSubmit,
 }: Props) {
   const [title, setTitle] = useState(habit?.title ?? "");
+  const [picked, setPicked] = useState(category.id);
   const [action, setAction] = useState(habit?.twoMinuteAction ?? "");
   const [atTime, setAtTime] = useState(habit?.atTime ?? "");
   const [place, setPlace] = useState(habit?.place ?? "");
@@ -43,7 +52,7 @@ export default function HabitForm({
         if (!title.trim()) return;
         onSubmit({
           title: title.trim(),
-          categoryId: category.id,
+          categoryId: picked,
           /*
            * 칸을 내려 둔 채로 저장하면 안 보이는 값이 실려 간다.
            * 다만 고치는 중이라면 이미 적어 둔 값을 지워서는 안 된다 — PUT 이 통째로 덮어쓴다
@@ -57,8 +66,27 @@ export default function HabitForm({
       }}
       className="flex flex-col gap-2 rounded-md border border-line bg-accent-soft/40 p-3"
     >
+      {categories !== undefined && categories.length > 0 && (
+        <label className="flex flex-col gap-1">
+          <span className={LABEL}>카테고리</span>
+          <select
+            value={picked}
+            onChange={(e) => setPicked(Number(e.target.value))}
+            className={FIELD}
+          >
+            {categories.map((one) => (
+              <option key={one.id} value={one.id}>
+                {one.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
       <label className="flex flex-col gap-1">
-        <span className={LABEL}>{category.name} 습관 *</span>
+        <span className={LABEL}>
+          {categories === undefined ? `${category.name} 습관 *` : "습관 *"}
+        </span>
         <input
           autoFocus
           value={title}

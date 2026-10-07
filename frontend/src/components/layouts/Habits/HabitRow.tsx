@@ -1,6 +1,5 @@
 import { streakOf } from "../../../domain/habit";
 import type { Habit } from "../../../types/habit";
-import WarpBorder from "../WarpBorder";
 
 const CELL = "h-7 min-w-7 flex-1 rounded-md border text-xs transition-colors";
 const CELL_DONE = "border-accent bg-accent text-canvas";
@@ -40,7 +39,7 @@ export default function HabitRow({
 
   return (
     <li className={`list-none ${habit.archived ? "opacity-50" : ""}`}>
-      <WarpBorder className="flex flex-col gap-2 rounded-xl bg-surface p-3">
+      <div className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-3">
         <div className="flex items-start gap-2">
           <div className="flex min-w-0 flex-1 flex-col">
             <span className="truncate text-sm text-ink">{habit.title}</span>
@@ -106,7 +105,7 @@ export default function HabitRow({
             삭제
           </button>
         </div>
-      </WarpBorder>
+      </div>
     </li>
   );
 }

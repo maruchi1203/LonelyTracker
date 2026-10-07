@@ -12,7 +12,10 @@ import { useQuickAdd } from "./QuickAddContext";
  * 탭을 옮겨도 읽어 둔 초안이 그대로 남는다
  */
 export default function QuickAddLauncher() {
-  const { open, setOpen, state } = useQuickAdd();
+  const { open, setOpen, state, variant } = useQuickAdd();
+
+  /** 탭마다 만드는 것이 다르다. 화면을 읽어 주는 도구에게도 그걸 알려야 한다 */
+  const what = variant === "habit" ? "습관" : "일정";
   const panel = useRef<HTMLDivElement>(null);
 
   // 닫아 둔 사이에도 읽고 있다는 것을 단추가 알려준다
@@ -43,7 +46,7 @@ export default function QuickAddLauncher() {
         type="button"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
-        aria-label="일정 추가 열기"
+        aria-label={`${what} 추가 열기`}
         className={`fixed right-6 bottom-6 z-40 flex size-14 items-center justify-center rounded-full bg-accent text-canvas shadow-lg transition-colors hover:bg-ink focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-line ${
           busy ? "animate-pulse" : ""
         }`}
@@ -64,7 +67,7 @@ export default function QuickAddLauncher() {
     >
       <WarpBorder
         role="dialog"
-        aria-label="일정 추가"
+        aria-label={`${what} 추가`}
         className="flex max-h-[80vh] flex-col gap-2 rounded-2xl bg-surface px-6 py-4"
       >
         <div className="flex justify-end">
