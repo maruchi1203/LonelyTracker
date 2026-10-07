@@ -117,6 +117,29 @@ export async function deleteHabitCategory(id: number): Promise<void> {
   return handle<void>(res)
 }
 
+/** 한 카테고리 안의 차례를 다시 세운다. 그 카테고리의 습관 전부를 보내야 한다 */
+export async function reorderHabits(
+  categoryId: number,
+  ids: number[],
+): Promise<void> {
+  const res = await fetch(`${BASE}/order`, {
+    method: 'PATCH',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ categoryId, ids }),
+  })
+  return handle<void>(res)
+}
+
+/** 카테고리 차례를 다시 세운다. 가진 카테고리 전부를 보내야 한다 */
+export async function reorderHabitCategories(ids: number[]): Promise<void> {
+  const res = await fetch(`${CATEGORIES}/order`, {
+    method: 'PATCH',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ ids }),
+  })
+  return handle<void>(res)
+}
+
 /** 자연어 한 줄을 습관 초안으로 바꾼다. 저장은 하지 않는다 */
 export async function parseHabit(
   text: string,

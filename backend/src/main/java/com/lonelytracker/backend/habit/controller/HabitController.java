@@ -4,6 +4,7 @@ import com.lonelytracker.backend.habit.dto.HabitCreateRequest;
 import com.lonelytracker.backend.habit.dto.HabitLogRequest;
 import com.lonelytracker.backend.habit.dto.HabitParseRequest;
 import com.lonelytracker.backend.habit.dto.HabitParseResponse;
+import com.lonelytracker.backend.habit.dto.HabitReorderRequest;
 import com.lonelytracker.backend.habit.dto.HabitResponse;
 import com.lonelytracker.backend.habit.dto.HabitUpdateRequest;
 import com.lonelytracker.backend.habit.service.HabitParseService;
@@ -82,6 +83,16 @@ public class HabitController {
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate onDate,
             @Valid @RequestBody HabitLogRequest request) {
         habitService.log(id, onDate, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 한 카테고리 안의 습관 차례를 다시 정함
+     * 받은 차례대로 0부터 번호를 매김
+     */
+    @PatchMapping("/order")
+    public ResponseEntity<Void> reorder(@Valid @RequestBody HabitReorderRequest request) {
+        habitService.reorder(request.categoryId(), request.ids());
         return ResponseEntity.noContent().build();
     }
 

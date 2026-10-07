@@ -1,5 +1,6 @@
 package com.lonelytracker.backend.habit.service;
 
+import com.lonelytracker.backend.common.ReorderUtil;
 import com.lonelytracker.backend.common.exception.NotFoundException;
 import com.lonelytracker.backend.habit.dto.HabitCreateRequest;
 import com.lonelytracker.backend.habit.dto.HabitLogRequest;
@@ -156,6 +157,25 @@ public class HabitService {
     }
 
     /** 남의 카테고리에 습관을 넣지 못하게 소유자까지 본다. 카테고리 쪽과 같은 규칙이다 */
+    /**
+     * 한 카테고리 안의 습관 차례를 다시 세운다.
+     * <p>
+     * 카테고리를 넘나드는 이동은 받지 않는다. 화면의 위·아래 단추는 무리 안에서만 움직이고,
+     * 카테고리를 옮기는 일은 습관 수정이 맡는다. 두 길이 겹치면 같은 규칙이 두 군데 생긴다.
+     *
+     * @throws IllegalArgumentException 그 카테고리의 습관 전부가 담기지 않았을 때
+     */
+    @Transactional
+    public void reorder(Long categoryId, List<Long> ids) {
+        Long userId = currentUserProvider.get().getId();
+
+        // 남의 카테고리 밑을 들여다볼 수 없어야 한다
+        categoryOrThrow(categoryId);
+
+        habitRepository.saveAll(ReorderUtil.arrange(
+                habitRepository.findInCategory(userId, categoryId), ids, "습관"));
+    }
+
     private HabitCategoryEntity categoryOrThrow(Long categoryId) {
         return categoryRepository.findOwned(categoryId, currentUserProvider.get().getId())
                 .orElseThrow(() -> new NotFoundException("카테고리를 찾을 수 없습니다"));

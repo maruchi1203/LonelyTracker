@@ -1,6 +1,7 @@
 package com.lonelytracker.backend.habit.entity;
 
 import com.lonelytracker.backend.common.FieldLengths;
+import com.lonelytracker.backend.common.Orderable;
 import com.lonelytracker.backend.user.entity.UserEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -42,7 +43,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-public class HabitCategoryEntity {
+public class HabitCategoryEntity implements Orderable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -8,10 +8,12 @@ import {
   fetchHabits,
   logHabit,
   renameHabitCategory,
+  reorderHabits,
   updateHabit,
 } from "../api/habits";
 import { fetchSettings } from "../api/users";
 import { groupByCategory, recentDays } from "../domain/habit";
+import { applyVisible } from "../domain/reorder";
 import type { Habit, HabitCategory, HabitCreateRequest } from "../types/habit";
 import { toLocalDate } from "../utils/datetime";
 import { useQuickAddTarget } from "../components/quickadd/QuickAddContext";
@@ -164,6 +166,20 @@ export default function HabitsPage() {
     run(() => renameHabitCategory(id, { name }), "이름을 고치지 못했습니다");
 
   /*
+   * 서버는 그 카테고리의 습관 전부를 받는다. 숨긴 것(그만둔 습관)까지 실어야 거절당하지
+   * 않고, 숨긴 것은 제 자리에 둬야 다시 켤 때 있던 데가 그대로다
+   */
+  const handleMoveHabit = (categoryId: number, shownIds: number[]) => {
+    const all = habits
+      .filter((h) => h.categoryId === categoryId)
+      .map((h) => h.id);
+    return run(
+      () => reorderHabits(categoryId, applyVisible(all, shownIds)),
+      "차례를 바꾸지 못했습니다",
+    );
+  };
+
+  /*
    * 우하단 폼이 이 탭에서는 일정이 아니라 습관을 만들게 한다.
    * 카테고리와 2분 법칙 여부는 이 화면만 알고 있어 걸어 주어야 한다
    */
@@ -305,6 +321,11 @@ export default function HabitsPage() {
                         days={days}
                         today={today}
                         twoMinuteRule={twoMinuteRule}
+                        // 보이는 것들끼리만 차례를 바꾼다. 숨긴 것은 handleMoveHabit 이 챈다
+                        siblingIds={group.habits.map((h) => h.id)}
+                        onMove={(ids) =>
+                          void handleMoveHabit(group.category.id, ids)
+                        }
                         onToggle={(onDate) => void handleToggle(habit, onDate)}
                         onEdit={() => setEditing(habit.id)}
                         onArchive={() => void handleArchive(habit)}

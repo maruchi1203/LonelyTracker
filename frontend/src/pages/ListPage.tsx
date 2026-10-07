@@ -191,7 +191,7 @@ export default function ListPage() {
   };
 
   /** 하위 행은 부모의 액자 안으로 들어간다. 그래서 평평하게 펴지 않는다 */
-  const renderNode = (node: TreeNode, depth = 0) => {
+  const renderNode = (node: TreeNode, depth = 0, siblingIds: number[] = []) => {
     const { item } = node;
 
     return (
@@ -205,6 +205,9 @@ export default function ListPage() {
         onToggle={(onDate) => void handleToggle(item, onDate)}
         onEdit={() => setEditingId(item.id)}
         onDelete={() => void handleDelete(item)}
+        siblingIds={siblingIds}
+        // 서버는 그 무리의 전부를 받는다. 형제가 곧 무리다
+        onMove={(ids) => void handleDrop({ parentId: item.parentId ?? null, ids, level: depth })}
         draggable={canDrag}
         dragging={draggingId === item.id}
         drop={
@@ -229,7 +232,9 @@ export default function ListPage() {
           void handleDrop(dropAt.plan);
         }}
       >
-        {node.children.map((child) => renderNode(child, depth + 1))}
+        {node.children.map((child) =>
+          renderNode(child, depth + 1, node.children.map((x) => x.item.id)),
+        )}
       </ListRow>
     );
   };
@@ -277,7 +282,9 @@ export default function ListPage() {
           </p>
         ) : (
           <ul data-list-root className="flex flex-col gap-y-2">
-            {tree.map((node) => renderNode(node))}
+            {tree.map((node) =>
+              renderNode(node, 0, tree.map((x) => x.item.id)),
+            )}
           </ul>
         )}
       </WarpBorder>

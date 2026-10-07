@@ -183,6 +183,53 @@ class HabitApiTest extends IntegrationTest {
         mvc.perform(delete(BASE + "/999999")).andExpect(status().isNotFound());
     }
 
+    @Test
+    @DisplayName("한 카테고리 안의 차례를 다시 세운다")
+    void reordersWithinACategory() throws Exception {
+        long body = categoryId("운동");
+        long first = create(habitBody("달리기", body));
+        long second = create(habitBody("수영", body));
+
+        mvc.perform(patch(BASE + "/order").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryId\":" + body
+                                + ",\"ids\":[" + second + "," + first + "]}"))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get(BASE))
+                .andExpect(jsonPath("$[0].title").value("수영"))
+                .andExpect(jsonPath("$[1].title").value("달리기"));
+    }
+
+    /*
+     * 카테고리를 넘나드는 이동은 습관 수정이 맡는다. 두 길이 겹치면 같은 규칙이
+     * 두 군데 생기고, 어느 쪽이 3단 검사를 하는지가 흐려진다
+     */
+    @Test
+    @DisplayName("다른 카테고리의 습관이 섞이면 거절한다")
+    void refusesAHabitFromAnotherCategory() throws Exception {
+        long body = categoryId("운동");
+        long mind = categoryId("마음챙김");
+        long running = create(habitBody("달리기", body));
+        long sitting = create(habitBody("명상", mind));
+
+        mvc.perform(patch(BASE + "/order").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryId\":" + body
+                                + ",\"ids\":[" + running + "," + sitting + "]}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("없는 카테고리의 차례는 404다")
+    void reorderInAMissingCategoryIsNotFound() throws Exception {
+        mvc.perform(patch(BASE + "/order").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryId\":999999,\"ids\":[1]}"))
+                .andExpect(status().isNotFound());
+    }
+
+    private static String habitBody(String title, long categoryId) {
+        return "{\"title\":\"" + title + "\",\"categoryId\":" + categoryId + "}";
+    }
+
     /** V3 가 심어 둔 카테고리. id 는 DB 가 정하므로 이름으로 찾는다 */
     private long categoryId(String name) {
         return categoryRepository.findAll().stream()

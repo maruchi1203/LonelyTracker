@@ -17,6 +17,15 @@ public interface HabitRepository extends JpaRepository<HabitEntity, Long> {
     @Query("select h from HabitEntity h where h.user.id = :userId")
     List<HabitEntity> findAllOf(@Param("userId") Long userId);
 
+    /**
+     * 한 카테고리에 선 습관 전부. 차례를 다시 매길 때 쓴다.
+     * 그만둔 습관도 함께 온다. 화면이 보는 무리와 같아야 재정렬이 늘 거절되지 않는다.
+     */
+    @Query("select h from HabitEntity h"
+            + " where h.user.id = :userId and h.category.id = :categoryId")
+    List<HabitEntity> findInCategory(@Param("userId") Long userId,
+            @Param("categoryId") Long categoryId);
+
     /** 남의 습관을 건드리지 못하게 소유자까지 함께 본다 */
     @Query("select h from HabitEntity h where h.id = :id and h.user.id = :userId")
     Optional<HabitEntity> findOwned(@Param("id") Long id, @Param("userId") Long userId);

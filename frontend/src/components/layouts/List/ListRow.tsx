@@ -5,6 +5,7 @@ import React, {
   type ReactNode,
 } from "react";
 import { describeRecurrence, stepOccurrence } from "../../../domain/recurrence";
+import { canMove, moveBy } from "../../../domain/reorder";
 import {
   type DropIntent,
   INDENT_PX,
@@ -41,6 +42,9 @@ interface RowProps {
   onToggle: (onDate?: string) => void;
   onEdit: () => void;
   onDelete: () => void;
+  /** 같은 형제 무리가 지금 선 차례. 끝에서 메뉴를 잠그는 데 쓴다 */
+  siblingIds: number[];
+  onMove: (ids: number[]) => void;
   draggable: boolean;
   dragging: boolean;
   drop: { intent: DropIntent; level: number } | null;
@@ -102,6 +106,8 @@ export default function ListRow({
   onToggle,
   onEdit,
   onDelete,
+  siblingIds,
+  onMove,
   draggable,
   dragging,
   drop,
@@ -316,6 +322,28 @@ export default function ListRow({
               role="menu"
               className="absolute top-10 right-3 z-20 flex w-40 flex-col gap-0.5 rounded-xl border border-line bg-surface p-1.5 shadow-lg"
             >
+              {/*
+                드래그는 마우스에만 닿는다. 같은 일을 메뉴에도 두어 키보드와
+                터치로도 차례를 바꿀 수 있게 한다.
+                끌어 놓기를 막아 둔 때(기한순)는 여기도 내놓지 않는다
+              */}
+              {draggable &&
+                ([-1, 1] as const).map((step) => (
+                  <button
+                    key={step}
+                    type="button"
+                    role="menuitem"
+                    disabled={!canMove(siblingIds, item.id, step)}
+                    className={`${MENU_ITEM} text-ink hover:bg-surface-soft disabled:cursor-not-allowed disabled:text-ink-faint disabled:hover:bg-transparent`}
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onMove(moveBy(siblingIds, item.id, step));
+                    }}
+                  >
+                    {step === -1 ? "위로" : "아래로"}
+                  </button>
+                ))}
+
               <button
                 type="button"
                 role="menuitem"

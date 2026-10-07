@@ -1,5 +1,6 @@
 import { streakOf } from "../../../domain/habit";
 import type { Habit } from "../../../types/habit";
+import OrderButtons from "../OrderButtons";
 
 const CELL = "h-7 min-w-7 flex-1 rounded-md border text-xs transition-colors";
 const CELL_DONE = "border-accent bg-accent text-canvas";
@@ -11,6 +12,9 @@ interface RowProps {
   today: string;
   /** 2분 법칙을 쓰기로 했는지. 끄면 신호 줄이 통째로 내려간다 */
   twoMinuteRule: boolean;
+  /** 같은 카테고리에서 지금 보이는 습관들. 끝에서 단추를 잠그는 데 쓴다 */
+  siblingIds: number[];
+  onMove: (ids: number[]) => void;
   onToggle: (onDate: string) => void;
   onEdit: () => void;
   onArchive: () => void;
@@ -22,6 +26,8 @@ export default function HabitRow({
   days,
   today,
   twoMinuteRule,
+  siblingIds,
+  onMove,
   onToggle,
   onEdit,
   onArchive,
@@ -82,7 +88,16 @@ export default function HabitRow({
           })}
         </div>
 
-        <div className="flex justify-end gap-1">
+        {/* 차례 단추는 왼쪽에 둔다. 지우기 옆에 붙이면 잘못 누른다 */}
+        <div className="flex items-center justify-between gap-1">
+          <OrderButtons
+            ids={siblingIds}
+            id={habit.id}
+            label={habit.title}
+            onMove={onMove}
+          />
+
+          <div className="flex gap-1">
           <button
             type="button"
             onClick={onEdit}
@@ -104,6 +119,7 @@ export default function HabitRow({
           >
             삭제
           </button>
+          </div>
         </div>
       </div>
     </li>

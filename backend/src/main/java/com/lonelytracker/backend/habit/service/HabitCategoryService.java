@@ -1,5 +1,6 @@
 package com.lonelytracker.backend.habit.service;
 
+import com.lonelytracker.backend.common.ReorderUtil;
 import com.lonelytracker.backend.common.exception.ConflictException;
 import com.lonelytracker.backend.common.exception.NotFoundException;
 import com.lonelytracker.backend.habit.dto.HabitCategoryRequest;
@@ -82,6 +83,22 @@ public class HabitCategoryService {
         }
 
         categoryRepository.delete(category);
+    }
+
+    /**
+     * 카테고리 차례를 다시 세운다.
+     * 받은 차례대로 0부터 부여한다. 사이 값을 쓰지 않아 값이 촘촘해질 일이 없다.
+     * <p>
+     * ids 는 그 사람의 카테고리 전부다. 하나라도 빠지면 그 자리가 비어 어디에 설지 정할 수 없다.
+     *
+     * @throws IllegalArgumentException 같은 id 가 둘이거나, 가진 것 전부가 담기지 않았을 때
+     */
+    @Transactional
+    public void reorder(List<Long> ids) {
+        Long userId = currentUserProvider.get().getId();
+        List<HabitCategoryEntity> mine = categoryRepository.findAllOf(userId);
+
+        categoryRepository.saveAll(ReorderUtil.arrange(mine, ids, "카테고리"));
     }
 
     /** 같은 이름이 둘이면 어느 쪽에 넣었는지 사람이 가릴 수 없다 */

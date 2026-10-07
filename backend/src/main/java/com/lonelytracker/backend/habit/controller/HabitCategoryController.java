@@ -1,5 +1,6 @@
 package com.lonelytracker.backend.habit.controller;
 
+import com.lonelytracker.backend.habit.dto.HabitCategoryReorderRequest;
 import com.lonelytracker.backend.habit.dto.HabitCategoryRequest;
 import com.lonelytracker.backend.habit.dto.HabitCategoryResponse;
 import com.lonelytracker.backend.habit.service.HabitCategoryService;
@@ -8,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -47,6 +49,17 @@ public class HabitCategoryController {
     public HabitCategoryResponse rename(@PathVariable Long id,
             @Valid @RequestBody HabitCategoryRequest request) {
         return habitCategoryService.rename(id, request);
+    }
+
+    /**
+     * 카테고리 차례를 다시 정함
+     * 받은 차례대로 0부터 번호를 매김
+     */
+    @PatchMapping("/order")
+    public ResponseEntity<Void> reorder(
+            @Valid @RequestBody HabitCategoryReorderRequest request) {
+        habitCategoryService.reorder(request.ids());
+        return ResponseEntity.noContent().build();
     }
 
     /** 카테고리와 그 안의 습관을 통째로 지움. 지난 기록도 함께 사라짐 */

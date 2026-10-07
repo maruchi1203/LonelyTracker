@@ -20,6 +20,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -69,14 +70,31 @@ class HabitCategoryApiTest extends IntegrationTest {
      * DB 를 테스트 클래스 전부가 함께 쓴다. 여기서 카테고리를 지워 놓고 가면 뒤의 것들이
      * 이름으로 카테고리를 못 찾는다. 만든 것은 치우고, 지운 것은 제자리에 다시 심는다.
      */
+    /** 심어 둔 여섯의 id. display_order 차례로 온다 */
+    private List<Long> seededIds() {
+        return categoryRepository.findAllOf(currentUserProvider.get().getId()).stream()
+                .map(HabitCategoryEntity::getId)
+                .toList();
+    }
+
+    private static String orderBody(List<Long> ids) {
+        return "{\"ids\":[" + ids.stream().map(String::valueOf)
+                .collect(java.util.stream.Collectors.joining(",")) + "]}";
+    }
+
     private void restoreSeeded() {
         categoryRepository.deleteAll(categoryRepository.findAll().stream()
                 .filter(c -> !SEEDED.contains(c.getName()))
                 .toList());
 
-        List<String> left = categoryRepository.findAll().stream()
+        List<HabitCategoryEntity> survivors = categoryRepository.findAll();
+        List<String> left = survivors.stream()
                 .map(HabitCategoryEntity::getName)
                 .toList();
+
+        // 살아남은 것의 차례도 되돌린다. 재정렬 테스트가 뒤집어 놓은 채 끝날 수 있다
+        survivors.forEach(c -> c.changeDisplayOrder(SEEDED.indexOf(c.getName())));
+        categoryRepository.saveAll(survivors);
 
         UserEntity user = currentUserProvider.get();
         categoryRepository.saveAll(SEEDED.stream()
@@ -186,6 +204,46 @@ class HabitCategoryApiTest extends IntegrationTest {
                 .andExpect(status().isConflict());
 
         mvc.perform(get(BASE)).andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    @DisplayName("보낸 차례대로 다시 선다")
+    void reordersToTheGivenOrder() throws Exception {
+        List<Long> ids = seededIds();
+        List<Long> flipped = ids.reversed();
+
+        mvc.perform(patch(BASE + "/order").contentType(MediaType.APPLICATION_JSON)
+                        .content(orderBody(flipped)))
+                .andExpect(status().isNoContent());
+
+        // 조회가 display_order 로 정렬하므로 보낸 차례가 그대로 보여야 한다
+        mvc.perform(get(BASE))
+                .andExpect(jsonPath("$[0].name").value("인간관계"))
+                .andExpect(jsonPath("$[5].name").value("운동"));
+    }
+
+    /*
+     * 일부만 받으면 나머지가 어디에 설지 정할 수 없다. 남은 것을 뒤에 몰아 두면
+     * 사용자가 보던 자리와 달라지므로, 아예 거절하고 화면이 전부를 보내게 한다
+     */
+    @Test
+    @DisplayName("가진 것 전부를 보내지 않으면 거절한다")
+    void refusesAPartialGroup() throws Exception {
+        List<Long> some = seededIds().subList(0, 3);
+
+        mvc.perform(patch(BASE + "/order").contentType(MediaType.APPLICATION_JSON)
+                        .content(orderBody(some)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("같은 id 를 두 번 보내면 거절한다")
+    void refusesADuplicate() throws Exception {
+        Long first = seededIds().getFirst();
+
+        mvc.perform(patch(BASE + "/order").contentType(MediaType.APPLICATION_JSON)
+                        .content(orderBody(List.of(first, first))))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

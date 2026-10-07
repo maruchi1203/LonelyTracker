@@ -4,7 +4,9 @@ import {
   deleteHabitCategory,
   fetchHabitCategories,
   fetchHabits,
+  reorderHabitCategories,
 } from "../../api/habits";
+import OrderButtons from "../layouts/OrderButtons";
 import type { Habit, HabitCategory } from "../../types/habit";
 import { toLocalDate } from "../../utils/datetime";
 
@@ -91,6 +93,11 @@ export default function HabitCategorySection() {
     );
   };
 
+  const categoryIds = categories.map((c) => c.id);
+
+  const move = (ids: number[]) =>
+    run(() => reorderHabitCategories(ids), "차례를 바꾸지 못했습니다");
+
   return (
     <section className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-5 shadow-xs">
       <h3 className="font-semibold text-ink">습관 카테고리</h3>
@@ -100,6 +107,7 @@ export default function HabitCategorySection() {
         사라지고 되돌릴 수 없습니다. 이름은 습관일지에서 제목을 눌러 고칩니다.
       </p>
 
+      {/* 세팅은 걸러 보여 주는 것이 없어 보이는 차례가 곧 무리 전부다 */}
       <ul className="flex list-none flex-col gap-1.5 p-0">
         {categories.map((category) => {
           const count = habits.filter(
@@ -117,6 +125,14 @@ export default function HabitCategorySection() {
               <span className="shrink-0 text-xs text-ink-faint">
                 습관 {count}개
               </span>
+              {/* 여기 차례가 습관일지의 카테고리 차례가 된다 */}
+              <OrderButtons
+                ids={categoryIds}
+                id={category.id}
+                label={category.name}
+                busy={busy}
+                onMove={(ids) => void move(ids)}
+              />
               <button
                 type="button"
                 onClick={() => void remove(category)}
