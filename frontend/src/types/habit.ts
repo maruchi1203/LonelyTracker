@@ -44,3 +44,35 @@ export interface HabitCreateRequest {
 }
 
 export type HabitUpdateRequest = HabitCreateRequest;
+
+/**
+ * 습관 초안이 되묻는 칸. 서버는 ID 만 보내고 문구는 화면이 갖는다.
+ *
+ * 일정 쪽 ParseQuestion 과 나눠 둔다. 백엔드 enum 은 하나지만 화면마다 오는 것이
+ * 정해져 있어, 한 타입에 담으면 쓰이지 않는 짝이 지도마다 생긴다
+ */
+export type HabitQuestion =
+  | "CATEGORY"
+  | "CUE_TIME"
+  | "PLACE"
+  | "TWO_MINUTE"
+  | "TOO_VAGUE";
+
+/** 읽어낸 습관 초안 한 장. 저장되지 않았다 */
+export interface HabitDraft {
+  title: string;
+  /** 서버가 이름을 맞춰 준 카테고리. 못 맞췄으면 없고 questions 에 CATEGORY 가 있다 */
+  categoryId?: number;
+  atTime?: string;
+  place?: string;
+  twoMinuteAction?: string;
+  /** 2분 행동이 문장에 없어 AI 가 지어낸 것인지. 카드가 "제안"이라고 밝힌다 */
+  suggestedAction: boolean;
+  questions?: HabitQuestion[];
+}
+
+/** 부르는 데 성공했으면 200 이다. 읽을 것이 없으면 초안 대신 notice 가 온다 */
+export interface HabitParseResponse {
+  habits: HabitDraft[];
+  notice?: string;
+}

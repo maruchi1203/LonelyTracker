@@ -2,6 +2,7 @@ import type {
   Habit,
   HabitCategory,
   HabitCategoryRequest,
+  HabitParseResponse,
   HabitCreateRequest,
   HabitUpdateRequest,
 } from '../types/habit'
@@ -114,4 +115,18 @@ export async function renameHabitCategory(
 export async function deleteHabitCategory(id: number): Promise<void> {
   const res = await fetch(`${CATEGORIES}/${id}`, { method: 'DELETE' })
   return handle<void>(res)
+}
+
+/** 자연어 한 줄을 습관 초안으로 바꾼다. 저장은 하지 않는다 */
+export async function parseHabit(
+  text: string,
+  signal?: AbortSignal,
+): Promise<HabitParseResponse> {
+  const res = await fetch(`${BASE}/parse`, {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ text }),
+    signal,
+  })
+  return handle<HabitParseResponse>(res)
 }
