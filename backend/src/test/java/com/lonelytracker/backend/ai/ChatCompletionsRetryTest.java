@@ -181,8 +181,8 @@ class ChatCompletionsRetryTest {
                 new AppProperties.AiSetting("http://ai.test", "test-model", null,
                         Duration.ofSeconds(5), Duration.ofSeconds(30), maxRetries),
                 new AppProperties.Security("test-key"));
-        return new AiScheduleParser(properties, mapper,
-                builder.baseUrl("http://ai.test").build());
+        return new AiScheduleParser(new AiCaller(properties, mapper,
+                builder.baseUrl("http://ai.test").build()));
     }
 
     private AiParseCommand command() {

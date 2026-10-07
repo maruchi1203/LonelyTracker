@@ -24,7 +24,8 @@ class ChatCompletionsProtocol implements AiProtocol {
     }
 
     @Override
-    public Map<String, Object> body(String model, String systemPrompt, String userText) {
+    public Map<String, Object> body(String model, String systemPrompt, String userText,
+            AiSchema schema) {
         return Map.of(
                 "model", model,
                 "messages", List.of(
@@ -33,9 +34,9 @@ class ChatCompletionsProtocol implements AiProtocol {
                 "response_format", Map.of(
                         "type", "json_schema",
                         "json_schema", Map.of(
-                                "name", "parsed_schedules",
+                                "name", schema.name(),
                                 "strict", true,
-                                "schema", ParsedScheduleSchema.getRoot())));
+                                "schema", schema.strictRoot())));
     }
 
     @Override

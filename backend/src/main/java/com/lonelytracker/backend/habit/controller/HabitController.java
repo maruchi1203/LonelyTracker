@@ -2,8 +2,11 @@ package com.lonelytracker.backend.habit.controller;
 
 import com.lonelytracker.backend.habit.dto.HabitCreateRequest;
 import com.lonelytracker.backend.habit.dto.HabitLogRequest;
+import com.lonelytracker.backend.habit.dto.HabitParseRequest;
+import com.lonelytracker.backend.habit.dto.HabitParseResponse;
 import com.lonelytracker.backend.habit.dto.HabitResponse;
 import com.lonelytracker.backend.habit.dto.HabitUpdateRequest;
+import com.lonelytracker.backend.habit.service.HabitParseService;
 import com.lonelytracker.backend.habit.service.HabitService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +37,7 @@ import java.util.List;
 public class HabitController {
 
     private final HabitService habitService;
+    private final HabitParseService habitParseService;
 
     /**
      * 습관 목록과 그 구간의 기록
@@ -46,6 +50,15 @@ public class HabitController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return habitService.findAll(from, to);
+    }
+
+    /**
+     * 자연어 한 줄을 습관 초안으로 바꿈. 저장은 하지 않음
+     * 읽을 것이 없으면 빈 목록과 안내 문구가 옴
+     */
+    @PostMapping("/parse")
+    public HabitParseResponse parse(@Valid @RequestBody HabitParseRequest request) {
+        return habitParseService.parse(request.text());
     }
 
     @PostMapping

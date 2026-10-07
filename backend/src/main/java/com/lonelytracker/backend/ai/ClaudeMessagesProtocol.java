@@ -33,7 +33,8 @@ class ClaudeMessagesProtocol implements AiProtocol {
     }
 
     @Override
-    public Map<String, Object> body(String model, String systemPrompt, String userText) {
+    public Map<String, Object> body(String model, String systemPrompt, String userText,
+            AiSchema schema) {
         return Map.of(
                 "model", model,
                 "max_tokens", MAX_TOKENS,
@@ -41,7 +42,7 @@ class ClaudeMessagesProtocol implements AiProtocol {
                 "messages", List.of(Map.of("role", "user", "content", userText)),
                 "output_config", Map.of("format", Map.of(
                         "type", "json_schema",
-                        "schema", ParsedScheduleSchema.getRootWithOptionalFields())));
+                        "schema", schema.optionalFieldsRoot())));
     }
 
     @Override

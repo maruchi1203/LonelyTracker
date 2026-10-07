@@ -44,10 +44,10 @@ class ClaudeMessagesTest {
   @Test
   @DisplayName("anthropic 주소면 네이티브 규약을 고른다")
   void picksNativeProtocolForAnthropic() {
-    assertThat(AiScheduleParser.protocolFor(BASE)).isInstanceOf(ClaudeMessagesProtocol.class);
-    assertThat(AiScheduleParser.protocolFor("https://api.openai.com/v1"))
+    assertThat(AiCaller.protocolFor(BASE)).isInstanceOf(ClaudeMessagesProtocol.class);
+    assertThat(AiCaller.protocolFor("https://api.openai.com/v1"))
         .isInstanceOf(ChatCompletionsProtocol.class);
-    assertThat(AiScheduleParser.protocolFor(null)).isInstanceOf(ChatCompletionsProtocol.class);
+    assertThat(AiCaller.protocolFor(null)).isInstanceOf(ChatCompletionsProtocol.class);
   }
 
   @Test
@@ -143,7 +143,7 @@ class ClaudeMessagesTest {
         new AppProperties.AiSetting(BASE, "claude-opus-5", null,
             Duration.ofSeconds(5), Duration.ofSeconds(30), 0),
         new AppProperties.Security("test-key"));
-    return new AiScheduleParser(properties, mapper, builder.baseUrl(BASE).build());
+    return new AiScheduleParser(new AiCaller(properties, mapper, builder.baseUrl(BASE).build()));
   }
 
   private AiParseCommand command() {

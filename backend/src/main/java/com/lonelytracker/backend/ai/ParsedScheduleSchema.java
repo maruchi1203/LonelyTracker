@@ -14,9 +14,21 @@ import java.util.Map;
  * OpenAI 호환은 타입에 null 을 더한 유니온을 받고, Claude 네이티브는 유니온을 받지 않아
  * 그 칸을 required 에서 빼는 방식만 쓴다. 그래서 뿌리를 두 갈래로 낸다.
  */
-final class ParsedScheduleSchema {
+final class ParsedScheduleSchema implements AiSchema {
 
-    private ParsedScheduleSchema() {
+    @Override
+    public String name() {
+        return "parsed_schedules";
+    }
+
+    @Override
+    public Map<String, Object> strictRoot() {
+        return getRoot();
+    }
+
+    @Override
+    public Map<String, Object> optionalFieldsRoot() {
+        return getRootWithOptionalFields();
     }
 
     /** 문장 하나에서 받을 수 있는 일정의 최대 개수. 응답 길이가 곧 토큰 비용이다 */
