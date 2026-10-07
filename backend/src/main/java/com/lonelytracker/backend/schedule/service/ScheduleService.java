@@ -170,19 +170,20 @@ public class ScheduleService {
     }
 
     /**
-     * 딸린 자손의 완료를 모두 푼다.
-     * 반복이 다음 회차로 넘어가면 그 밑의 일도 다시 해야 한다.
-     * 언제 끝냈는지는 보지 않는다. 회차가 바뀌면 지난 회차의 완료는 뜻을 잃는다.
+     * 딸린 자손을 함께 끝낸다.
+     * 반복이 마지막 회차를 넘기면 그 밑의 일도 더 할 때가 없다.
+     * 이미 끝낸 자손은 시각을 덮지 않아 언제 끝냈는지가 남는다.
      */
     @Transactional
-    void releaseDescendants(Long id) {
+    void completeDescendants(Long id, LocalDateTime mark) {
         List<Long> descendants = descendantIdsOf(id);
         if (descendants.isEmpty()) {
             return;
         }
 
-        scheduleRepository.findAllById(descendants)
-                .forEach(d -> d.changeCompletion(false, null));
+        scheduleRepository.findAllById(descendants).stream()
+                .filter(d -> d.getCompletedAt() == null)
+                .forEach(d -> d.changeCompletion(true, mark));
     }
 
     /** 그 일정 밑에 딸린 것 전부. 계층이 3단이라 두 번 내려가면 바닥이다 */
