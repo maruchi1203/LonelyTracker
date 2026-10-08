@@ -18,11 +18,17 @@ export function buildMonthDays(month: Date): Date[] {
   })
 }
 
+/** 조회 구간. 둘 다 "YYYY-MM-DDTHH:mm:ss" */
+export interface MonthWindow {
+  from: string
+  to: string
+}
+
 /**
  * 조회할 기간. 그리드가 실제로 그리는 첫 칸부터 마지막 칸까지다.
  * 같은 함수가 칸과 기간을 함께 만들어야 둘이 어긋나지 않는다.
  */
-export function monthGridWindow(month: Date): { from: string; to: string } {
+export function monthGridWindow(month: Date): MonthWindow {
   const days = buildMonthDays(month)
   const first = days[0]
   const last = days[days.length - 1]

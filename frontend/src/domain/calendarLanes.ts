@@ -72,9 +72,10 @@ export function assignLanes(
 
     const segments: Segment[] = []
     for (const { instance, kind, keys } of spans) {
-      const covered = weekKeys
-        .map((key, i) => (keys.has(key) ? i : -1))
-        .filter((i) => i >= 0)
+      const covered: number[] = []
+      weekKeys.forEach((key, i) => {
+        if (keys.has(key)) covered.push(i)
+      })
 
       if (covered.length > 0) {
         segments.push({

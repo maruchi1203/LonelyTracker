@@ -137,8 +137,11 @@ export function habitSummary(
     doneToday: active.filter((h) => h.doneDates.includes(today)).length,
     total: active.length,
     topStreaks: active
-      .map((habit) => ({ habit, streak: streakOf(habit, today) }))
-      .filter((s) => s.streak > 0)
+      .flatMap((habit) => {
+        const streak = streakOf(habit, today)
+
+        return streak > 0 ? [{ habit, streak }] : []
+      })
       .sort((a, b) => b.streak - a.streak)
       .slice(0, 3),
     emptyCategories: groupByCategory(active, categories)

@@ -94,9 +94,9 @@ export function planDrop(
   }
 
   // items 는 서버가 준 차례라 저장된 순서 그대로다
-  const ids = items
-    .filter((i) => (i.parentId ?? null) === parentId && i.id !== draggedId)
-    .map((i) => i.id);
+  const ids = items.flatMap((i) =>
+    (i.parentId ?? null) === parentId && i.id !== draggedId ? [i.id] : [],
+  );
 
   const at = spot.afterId === null ? 0 : ids.indexOf(spot.afterId) + 1;
   ids.splice(at, 0, draggedId);
@@ -171,7 +171,7 @@ export function planDropAtEnd(
   const top = items.filter((i) => (i.parentId ?? null) === null);
   if (top[top.length - 1]?.id === draggedId) return null;
 
-  const ids = top.filter((i) => i.id !== draggedId).map((i) => i.id);
+  const ids = top.flatMap((i) => (i.id !== draggedId ? [i.id] : []));
   ids.push(draggedId);
 
   return { parentId: null, ids, level: 0 };

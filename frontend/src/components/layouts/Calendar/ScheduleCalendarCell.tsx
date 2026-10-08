@@ -204,17 +204,17 @@ function skin(slot: LaneSlot): string {
   const { instance, kind, isStart, isEnd } = slot;
   const due = kind === "due";
 
-  const shape = [
+  const edges = [
     isStart ? "rounded-l-sm" : BLEED_LEFT,
     isEnd ? "rounded-r-sm" : BLEED_RIGHT,
   ].join(" ");
 
   if (instance.status === "DONE") {
-    return `${shape} bg-surface-soft text-ink-faint line-through`;
+    return `${edges} bg-surface-soft text-ink-faint line-through`;
   }
   return due
-    ? `${shape} bg-warn-soft text-warn ${isEnd ? "border-r-2 border-r-warn" : ""}`
-    : `${shape} bg-accent-soft text-accent ${
+    ? `${edges} bg-warn-soft text-warn ${isEnd ? "border-r-2 border-r-warn" : ""}`
+    : `${edges} bg-accent-soft text-accent ${
         isStart ? `border-l-2 ${priorityEdge(instance.priority)}` : ""
       }`;
 }
