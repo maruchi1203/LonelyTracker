@@ -9,6 +9,7 @@ import {
 /** sessionStorage 를 흉내 낸다. 실제 저장소를 쓰면 테스트끼리 샌다 */
 function fakeStore(seed: Record<string, string> = {}) {
   const box = { ...seed };
+
   return {
     box,
     getItem: (k: string) => box[k] ?? null,

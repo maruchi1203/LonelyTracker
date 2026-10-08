@@ -88,6 +88,7 @@ function LimitBar({
 }) {
   // 한도는 달 단위라 이번 주 보기에서는 견줄 대상이 아니다
   const ratio = period === "month" ? limitRatio(usage, providers) : null;
+
   if (ratio === null) return null;
 
   const near = ratio >= 0.8;

@@ -27,6 +27,7 @@ export async function changeSettings(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(settings),
   });
+
   return handle<UserSettings>(res);
 }
 
@@ -46,12 +47,14 @@ export async function saveAiProvider(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+
   return handle<AiProvider>(res);
 }
 
 /** 이 제공자 설정으로 부르게 한다 */
 export async function activateAiProvider(id: number): Promise<AiProvider> {
   const res = await fetch(`${CREDENTIALS}/${id}/active`, { method: "PUT" });
+
   return handle<AiProvider>(res);
 }
 
@@ -62,5 +65,6 @@ export async function fetchAiUsage(): Promise<AiUsageSummary> {
 
 export async function deleteAiProvider(id: number): Promise<void> {
   const res = await fetch(`${CREDENTIALS}/${id}`, { method: "DELETE" });
+
   return handle<void>(res);
 }

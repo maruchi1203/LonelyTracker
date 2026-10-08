@@ -91,6 +91,7 @@ function spotAtPointer(e: React.DragEvent): [DropIntent, number] {
   const box = e.currentTarget.getBoundingClientRect();
   const root = e.currentTarget.closest("[data-list-root]");
   const left = root?.getBoundingClientRect().left ?? box.left;
+
   return [
     dropIntentAt((e.clientY - box.top) / box.height),
     dropLevelAt(e.clientX - left),
@@ -125,6 +126,7 @@ export default function ListRow({
 
     const close = (e: Event) => {
       if (e instanceof KeyboardEvent && e.key !== "Escape") return;
+
       // 메뉴 항목을 누른 것이면 닫기와 동작이 서로 싸운다
       if (
         e.type === "pointerdown" &&
@@ -133,11 +135,13 @@ export default function ListRow({
       ) {
         return;
       }
+
       setMenuOpen(false);
     };
 
     document.addEventListener("keydown", close);
     document.addEventListener("pointerdown", close);
+
     return () => {
       document.removeEventListener("keydown", close);
       document.removeEventListener("pointerdown", close);

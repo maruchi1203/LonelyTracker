@@ -33,13 +33,16 @@ export function streakOf(habit: Habit, today: string): number {
 
   // 오늘을 아직 안 했으면 어제부터 센다
   const cursor = new Date(`${today}T00:00:00`);
+
   if (!done.has(today)) cursor.setDate(cursor.getDate() - 1);
 
   let days = 0;
+
   while (done.has(keyOf(cursor))) {
     days++;
     cursor.setDate(cursor.getDate() - 1);
   }
+
   return days;
 }
 
@@ -53,11 +56,13 @@ export function recentDays(today: string, count: number): string[] {
     days.push(keyOf(cursor));
     cursor.setDate(cursor.getDate() + 1);
   }
+
   return days;
 }
 
 function keyOf(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
+
   return `${date.getFullYear()}-${month}-${day}`;
 }

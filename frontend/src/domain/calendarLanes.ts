@@ -57,12 +57,15 @@ export function assignLanes(
     const parts: { instance: ScheduleResponse; kind: LaneKind; keys: Set<string> }[] = []
 
     const covered = instanceDateKeys(instance)
+
     if (covered.length > 0) {
       parts.push({ instance, kind: 'span', keys: new Set(covered) })
     }
+
     if (instance.dueOn) {
       parts.push({ instance, kind: 'due', keys: new Set([instance.dueOn]) })
     }
+
     return parts
   })
 
@@ -71,6 +74,7 @@ export function assignLanes(
     const weekKeys = week.map(toLocalDate)
 
     const segments: Segment[] = []
+
     for (const { instance, kind, keys } of spans) {
       const covered: number[] = []
       weekKeys.forEach((key, i) => {
@@ -110,6 +114,7 @@ function place(
   )
 
   const taken: boolean[][] = []
+
   for (const key of weekKeys) {
     result.set(key, { lanes: [], hidden: 0 })
   }
@@ -121,6 +126,7 @@ function place(
       for (let i = segment.from; i <= segment.to; i++) {
         result.get(weekKeys[i])!.hidden++
       }
+
       continue
     }
 
@@ -128,6 +134,7 @@ function place(
       taken[lane][i] = true
 
       const { lanes } = result.get(weekKeys[i])!
+
       while (lanes.length <= lane) lanes.push(null)
       lanes[lane] = {
         instance: segment.instance,
@@ -145,12 +152,14 @@ function firstFreeLane(taken: boolean[][], segment: Segment): number {
     if (!taken[lane]) taken[lane] = []
 
     let free = true
+
     for (let i = segment.from; i <= segment.to; i++) {
       if (taken[lane][i]) {
         free = false
         break
       }
     }
+
     if (free) return lane
   }
 

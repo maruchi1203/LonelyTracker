@@ -25,6 +25,7 @@ interface Props {
 }
 
 const STEPS = ["문장을 읽는 중…", "일정으로 바꾸는 중…", "거의 다 됐어요…"];
+
 const STEP_MS = 2_500;
 
 /** 입력줄과 초안 카드. 상태는 QuickAddProvider 가 들고 있다 */
@@ -59,10 +60,12 @@ export default function QuickAddBar({ onDone, autoFocus }: Props) {
   useEffect(() => {
     if (!parsing) return;
     setStep(0);
+
     const timer = window.setInterval(
       () => setStep((s) => Math.min(s + 1, STEPS.length - 1)),
       STEP_MS,
     );
+
     return () => window.clearInterval(timer);
   }, [parsing]);
 
@@ -70,6 +73,7 @@ export default function QuickAddBar({ onDone, autoFocus }: Props) {
   const empty =
     (state.mode === "drafts" || state.mode === "habitDrafts") &&
     state.drafts.length === 0;
+
   useEffect(() => {
     if (!empty) return;
     setText("");
@@ -99,18 +103,22 @@ export default function QuickAddBar({ onDone, autoFocus }: Props) {
   const save = async (key: number) => {
     if (state.mode !== "drafts") return;
     const target = state.drafts.find((d) => d.key === key);
+
     if (!target || target.saving) return;
 
     mapDraft(key, (d) => ({ ...d, saving: true }));
 
     const created = await create(formToCreateRequest(target.form));
+
     if (created) drop(key);
     else mapDraft(key, (d) => ({ ...d, saving: false }));
   };
 
   const createManually = async (body: ScheduleCreateRequest) => {
     const created = await create(body);
+
     if (created) onDone?.();
+
     return created;
   };
 
@@ -142,9 +150,11 @@ export default function QuickAddBar({ onDone, autoFocus }: Props) {
   const saveHabit = async (key: number) => {
     if (state.mode !== "habitDrafts") return;
     const target = state.drafts.find((d) => d.key === key);
+
     if (!target || target.saving) return;
 
     const body = draftToCreateRequest(target.form);
+
     // 카테고리를 못 고른 카드다. 카드가 단추를 막아 두지만 여기서도 받아 둔다
     if (body === null) return;
 

@@ -89,6 +89,7 @@ describe("canMove", () => {
   // 단추를 잠그는 판단과 실제로 움직이는 판단이 갈리면 눌러도 아무 일이 없다
   it("막은 자리에서는 moveBy 도 차례를 바꾸지 않는다", () => {
     const ids = [12, 7, 30];
+
     for (const id of ids) {
       for (const step of [-1, 1] as const) {
         if (!canMove(ids, id, step)) {

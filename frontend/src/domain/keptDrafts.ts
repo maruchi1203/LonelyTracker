@@ -33,12 +33,15 @@ export function readKept<S extends DraftsLike>(
 ): Kept<S> | null {
   try {
     const raw = store.getItem(DRAFT_STATE_KEY);
+
     if (!raw) return null;
 
     // SAFETY: 모양은 바로 아래에서 본다. 어긋나면 null 을 돌려준다
     const kept = JSON.parse(raw) as Kept<S>;
     const mode = kept?.state?.mode;
+
     if (mode !== "drafts" && mode !== "habitDrafts") return null;
+
     if (!Array.isArray(kept.state.drafts) || kept.state.drafts.length === 0) {
       return null;
     }

@@ -27,13 +27,16 @@ export default function QuickAddLauncher() {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
+
     const onPointerDown = (e: PointerEvent) => {
       const target = e.target instanceof Node ? e.target : null;
+
       if (!target || !panel.current?.contains(target)) setOpen(false);
     };
 
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("pointerdown", onPointerDown);
+
     return () => {
       document.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("pointerdown", onPointerDown);

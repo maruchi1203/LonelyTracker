@@ -32,6 +32,7 @@ function describe(failure: Error): string {
   if (failure instanceof HttpError && failure.status === 503) {
     return `${failure.message} — 입력한 키의 문제가 아니라 서버 설정 문제입니다.`;
   }
+
   return failure.message;
 }
 
@@ -71,6 +72,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
   // 같은 주소가 이미 있으면 키를 비워도 모델만 바뀐다
   const existing = providers.find((c) => sameBaseUrl(c.baseUrl, baseUrl));
   const insecure = isInsecureUrl(baseUrl);
+
   const canSave =
     baseUrl.trim() !== "" &&
     model.trim() !== "" &&
@@ -96,6 +98,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
     setBusy(true);
     setError(null);
     setNotice(null);
+
     try {
       await action();
       setNotice(done);
@@ -184,6 +187,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
                   if (!window.confirm(`${providerLabel(c.baseUrl)} 키를 지울까요?`)) {
                     return;
                   }
+
                   void run(() => deleteAiProvider(c.id), "키를 지웠습니다.");
                 }}
                 className="rounded-md border border-transparent px-2 py-1 text-xs text-danger transition-colors hover:border-danger hover:bg-danger-soft disabled:opacity-50"
@@ -199,6 +203,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
         className="flex flex-col gap-2"
         onSubmit={(e) => {
           e.preventDefault();
+
           if (!canSave) return;
           const label = providerLabel(baseUrl.trim());
           void run(async () => {

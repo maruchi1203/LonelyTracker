@@ -67,6 +67,7 @@ export default function InstanceActionModal({
   onDelete,
 }: Props) {
   const [moving, setMoving] = useState(false);
+
   const [moveTo, setMoveTo] = useState(() =>
     toLocalInputValue(new Date(instance.startAt ?? Date.now())),
   );
@@ -75,7 +76,9 @@ export default function InstanceActionModal({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+
     document.addEventListener("keydown", onKeyDown);
+
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 

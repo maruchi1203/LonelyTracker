@@ -23,11 +23,14 @@ export type Step = -1 | 1;
  */
 export function moveBy(ids: number[], id: number, step: Step): number[] {
   const idx = ids.indexOf(id);
+
   // 없는 것을 옮기라는 요청이다. 계산하면 -1 이 맨 뒤를 가리켜 멀쩡한 id 가 빠진다
   if (idx < 0) return ids;
 
   const newIdx = idx + step;
+
   if (newIdx < 0) return ids;
+
   if (newIdx >= ids.length) return ids;
 
   // 먼저 빼야 한다. 넣고 빼면 지울 자리가 방향마다 달라진다
@@ -53,6 +56,7 @@ export function moveBy(ids: number[], id: number, step: Step): number[] {
 export function applyVisible(all: number[], visible: number[]): number[] {
   const shown = new Set(visible);
   let next = 0;
+
   return all.map((id) => (shown.has(id) ? visible[next++] : id));
 }
 
@@ -64,5 +68,6 @@ export function applyVisible(all: number[], visible: number[]): number[] {
  */
 export function canMove(ids: number[], id: number, step: Step): boolean {
   const at = ids.indexOf(id);
+
   return at >= 0 && at + step >= 0 && at + step < ids.length;
 }

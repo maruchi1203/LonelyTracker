@@ -32,6 +32,7 @@ export default function CategoryHeader({
         onSubmit={(e) => {
           e.preventDefault();
           const name = draft.trim();
+
           // 안 바뀐 이름을 보내면 서버가 "이미 있는 카테고리"로 막는다
           if (name && name !== category.name) onRename(name);
           setDraft(null);

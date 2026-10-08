@@ -54,6 +54,7 @@ export default function ScheduleCalendarCell({
   onToggleStatus,
 }: Props) {
   const total = day.lanes.filter(Boolean).length + day.hidden;
+
   const tone = isSelected
     ? "border-accent bg-accent-soft"
     : "border-line bg-surface";
@@ -172,8 +173,10 @@ const BAR = "h-4 px-1 text-[11px] leading-4 truncate";
 
 /** 펼친 칸의 띠 높이. 일곱 칸이 같아야 이어져 보인다 */
 const BAND_H = "h-7";
+
 /** 셀 패딩과 그리드 간격을 넘어가 옆 칸의 띠와 맞닿게 한다 */
 const BLEED_LEFT = "-ml-2.5 pl-2.5";
+
 const BLEED_RIGHT = "-mr-2.5 pr-2.5";
 
 /**
@@ -190,6 +193,7 @@ function labelsHere(
   const reaches =
     selectedKey !== null &&
     instanceDateKeys(slot.instance).includes(selectedKey);
+
   return reaches ? isSelected : slot.isStart;
 }
 
@@ -212,6 +216,7 @@ function skin(slot: LaneSlot): string {
   if (instance.status === "DONE") {
     return `${edges} bg-surface-soft text-ink-faint line-through`;
   }
+
   return due
     ? `${edges} bg-warn-soft text-warn ${isEnd ? "border-r-2 border-r-warn" : ""}`
     : `${edges} bg-accent-soft text-accent ${
@@ -293,6 +298,7 @@ function Bar({ slot, labelHere }: { slot: LaneSlot; labelHere: boolean }) {
 /** 띠에 올려두는 설명. 시작인지 기한인지부터 밝힌다 */
 function label(instance: LaneSlot["instance"], due: boolean): string {
   if (due) return `${instance.title} · ${instance.dueOn} 까지`;
+
   return isMoved(instance)
     ? `${instance.title} · 원래 ${instance.instanceDate} 예정`
     : instance.title;

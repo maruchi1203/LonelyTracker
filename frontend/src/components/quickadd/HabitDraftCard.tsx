@@ -31,7 +31,9 @@ interface Props {
 
 const FIELD =
   "w-full rounded-md border border-line bg-surface px-2.5 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none";
+
 const LABEL = "text-xs font-semibold text-ink-soft";
+
 /** 아직 답을 기다리는 칸. 테두리로 어디를 봐야 하는지 가리킨다 */
 const ASKED = "border-warn ring-2 ring-warn-soft";
 
@@ -59,6 +61,7 @@ export default function HabitDraftCard({
     <form
       onSubmit={(e) => {
         e.preventDefault();
+
         if (!blocked && !saving) onSave();
       }}
       className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4"

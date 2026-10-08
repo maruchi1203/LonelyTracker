@@ -5,8 +5,10 @@ interface Props {
 }
 
 const headerStyle = "text-lg font-semibold";
+
 const letterBoxStyle =
   "flex flex-col gap-2 rounded-2xl border border-dashed border-line bg-surface px-6 py-12 text-center";
+
 const summaryStyle = "text-sm text-ink-soft";
 
 /** 아직 데이터가 없는 화면의 자리표시자. 가짜 데이터를 넣지 않는다 */

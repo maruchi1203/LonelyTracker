@@ -16,6 +16,7 @@ export default function HabitSection() {
   const toggle = async (next: boolean) => {
     setBusy(true);
     setError(null);
+
     try {
       const saved = await changeSettings({ twoMinuteRule: next });
       setEnabled(saved.twoMinuteRule);

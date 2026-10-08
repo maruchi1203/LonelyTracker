@@ -36,6 +36,7 @@ interface Props {
 
 const INPUT =
   "w-full rounded-md border bg-surface px-2.5 py-2 text-ink placeholder:text-ink-faint transition-colors focus:border-accent focus:outline-none focus:ring-3 focus:ring-line";
+
 const LABEL = "text-xs font-semibold tracking-wide text-ink-soft";
 
 /** 그림 하나를 그리는 함수. 표에 담아 두고 자리에서 불러 쓴다 */
@@ -104,7 +105,9 @@ const PRIORITIES: {
 
 /** 한 줄을 고르게 나눠 갖는다. 고를 것이 몇 개든 줄이 넘치지 않는다 */
 const ROW = "flex items-stretch gap-2";
+
 const TOGGLE_ON = "border-accent bg-accent text-canvas";
+
 const TOGGLE_OFF = "border-line text-ink-soft hover:bg-accent-soft";
 
 export default function ScheduleFields({
@@ -117,6 +120,7 @@ export default function ScheduleFields({
 }: Props) {
   const id = (name: string) => `${idPrefix}-${name}`;
   const ref = (name: FormFieldId) => fieldRef?.(name);
+
   const box = (name: FormFieldId) =>
     `${INPUT} ${decorate?.(name) ?? "border-line"}`;
 
@@ -132,6 +136,7 @@ export default function ScheduleFields({
   const addTag = (raw: string) => {
     const name = raw.trim();
     setTagDraft("");
+
     if (!name || form.tags.includes(name)) return;
     onChange({ tags: [...form.tags, name] });
   };

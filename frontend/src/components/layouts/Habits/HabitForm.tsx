@@ -28,6 +28,7 @@ interface Props {
 
 const FIELD =
   "w-full rounded-md border border-line bg-surface px-2.5 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none";
+
 const LABEL = "text-xs font-semibold text-ink-soft";
 
 /** 카테고리 안에서 바로 적고 고친다. 칸이 적어 모달까지 갈 일이 아니다 */
@@ -49,6 +50,7 @@ export default function HabitForm({
     <form
       onSubmit={(e) => {
         e.preventDefault();
+
         if (!title.trim()) return;
         onSubmit({
           title: title.trim(),

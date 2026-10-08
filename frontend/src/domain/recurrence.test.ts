@@ -3,6 +3,7 @@ import { describeRecurrence, stepOccurrence } from "./recurrence";
 import type { RecurrenceResponse } from "../types/schedule";
 
 const DAILY: RecurrenceResponse = { freq: "DAILY" };
+
 const MWF: RecurrenceResponse = {
   freq: "WEEKLY",
   byWeekday: ["WEDNESDAY", "MONDAY", "FRIDAY"],

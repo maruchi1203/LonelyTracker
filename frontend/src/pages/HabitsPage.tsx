@@ -58,6 +58,7 @@ export default function HabitsPage() {
     // 쿠키를 막아 둔 브라우저는 읽기에서도 던진다. 쓰기만 감싸 두면 반쪽이다
     try {
       const saved = Number(localStorage.getItem(COLUMNS_KEY));
+
       return COLUMNS.some((c) => c.count === saved) ? saved : 2;
     } catch {
       return 2;
@@ -66,6 +67,7 @@ export default function HabitsPage() {
 
   const chooseColumns = (count: number) => {
     setColumns(count);
+
     try {
       localStorage.setItem(COLUMNS_KEY, String(count));
     } catch {
@@ -78,12 +80,14 @@ export default function HabitsPage() {
 
   const reload = useCallback(async () => {
     setLoading(true);
+
     try {
       // 카테고리를 따로 받는 까닭은, 습관이 하나도 없는 카테고리도 칸을 가져야 해서다
       const [list, cats] = await Promise.all([
         fetchHabits(recentDays(toLocalDate(new Date()), DAYS)[0]),
         fetchHabitCategories(),
       ]);
+
       setHabits(list);
       setCategories(cats);
       setError(null);
@@ -117,6 +121,7 @@ export default function HabitsPage() {
   /** 고치고 나면 늘 다시 받는다. 서버가 눌러 앉힌 값까지 화면에 맞춘다 */
   const run = async <T,>(action: () => Promise<T>, fallback: string) => {
     setError(null);
+
     try {
       await action();
       await reload();
@@ -157,6 +162,7 @@ export default function HabitsPage() {
     ) {
       return;
     }
+
     return run(() => deleteHabit(habit.id), "지우지 못했습니다");
   };
 
@@ -171,6 +177,7 @@ export default function HabitsPage() {
     const all = habits
       .filter((h) => h.categoryId === categoryId)
       .map((h) => h.id);
+
     return run(
       () => reorderHabits(categoryId, applyVisible(all, shownIds)),
       "차례를 바꾸지 못했습니다",
@@ -192,6 +199,7 @@ export default function HabitsPage() {
     {
       habit: async (body) => {
         await run(() => createHabit(body), "습관을 만들지 못했습니다");
+
         // run 이 오류를 배너로 올린다. 폼은 닫히고 목록이 다시 읽힌다
         return true;
       },

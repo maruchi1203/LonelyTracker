@@ -34,6 +34,7 @@ export function rankTags(
 
   return [...names].sort((a, b) => {
     const byCount = (usage.get(b) ?? 0) - (usage.get(a) ?? 0)
+
     if (byCount !== 0) return byCount
 
     return a.localeCompare(b)
@@ -43,6 +44,7 @@ export function rankTags(
 /** 제목·내용·태그에 검색어가 들어 있는지 */
 export function matchesQuery(instance: ScheduleResponse, query: string): boolean {
   const needle = query.trim().toLocaleLowerCase()
+
   if (!needle) return true
 
   return [instance.title, instance.description ?? '', ...(instance.tags ?? [])]

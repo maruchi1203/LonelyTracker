@@ -23,12 +23,17 @@ export async function fetchSchedules(
   signal?: AbortSignal,
 ): Promise<ScheduleResponse[]> {
   const query = new URLSearchParams()
+
   if (params?.from) query.set('from', params.from)
+
   if (params?.to) query.set('to', params.to)
+
   if (params?.status) query.set('status', params.status)
+
   if (params?.tag) query.set('tag', params.tag)
 
   const suffix = query.toString() ? `?${query}` : ''
+
   return handle<ScheduleResponse[]>(await fetch(`${BASE}${suffix}`, { signal }))
 }
 
@@ -50,6 +55,7 @@ export async function createSchedule(
     headers: JSON_HEADERS,
     body: JSON.stringify(body),
   })
+
   return handle<ScheduleResponse>(res)
 }
 
@@ -72,6 +78,7 @@ export async function updateSchedule(
     headers: JSON_HEADERS,
     body: JSON.stringify(body),
   })
+
   return handle<ScheduleResponse>(res)
 }
 
@@ -90,6 +97,7 @@ export async function reorderSchedules(
     headers: JSON_HEADERS,
     body: JSON.stringify({ parentId, ids }),
   })
+
   return handle<void>(res)
 }
 
@@ -103,6 +111,7 @@ export async function changeInstanceStatus(
     headers: JSON_HEADERS,
     body: JSON.stringify({ status }),
   })
+
   return handle<ScheduleResponse>(res)
 }
 
@@ -117,6 +126,7 @@ export async function updateInstance(
     headers: JSON_HEADERS,
     body: JSON.stringify(body),
   })
+
   return handle<ScheduleResponse>(res)
 }
 
@@ -130,6 +140,7 @@ export async function changeCompletion(
     headers: JSON_HEADERS,
     body: JSON.stringify({ completed }),
   })
+
   return handle<ScheduleResponse>(res)
 }
 
@@ -150,6 +161,7 @@ export async function parseSchedule(
     body: JSON.stringify({ text }),
     signal,
   })
+
   return handle<ParseResponse>(res)
 }
 

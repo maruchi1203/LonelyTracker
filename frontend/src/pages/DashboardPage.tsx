@@ -61,6 +61,7 @@ export default function DashboardPage() {
           fetchAiUsage(),
           fetchAiProviders(),
         ]);
+
       setData({
         instances,
         items,
@@ -82,6 +83,7 @@ export default function DashboardPage() {
   const run = async <T,>(action: () => Promise<T>, fallback: string) => {
     setBusy(true);
     setError(null);
+
     try {
       await action();
       await reload();

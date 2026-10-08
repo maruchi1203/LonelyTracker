@@ -34,7 +34,9 @@ import WarpBorder from "../components/layouts/WarpBorder";
 import { asError } from "../utils/errors";
 
 const TOGGLE = "rounded-md border px-3 py-1 text-sm transition-colors";
+
 const TOGGLE_ON = "border-accent bg-accent text-canvas";
+
 const TOGGLE_OFF = "border-line text-ink-soft hover:bg-accent-soft";
 
 const SORTS: { value: ListSort; label: string }[] = [
@@ -52,6 +54,7 @@ export default function ListPage() {
   // 화살표로 미리 넘겨 본 회차. 저장은 건드리지 않는다
   const [peeked, setPeeked] = useState<Record<number, string>>({});
   const [draggingId, setDraggingId] = useState<number | null>(null);
+
   // 놓을 수 있을 때만 채운다. 화면은 세울 자리를 스스로 셈하지 않는다
   const [dropAt, setDropAt] = useState<{
     id: number;
@@ -69,6 +72,7 @@ export default function ListPage() {
 
   const reload = useCallback(async () => {
     setLoading(true);
+
     try {
       setItems(await fetchScheduleList());
       setError(null);
@@ -99,14 +103,17 @@ export default function ListPage() {
     body: ScheduleCreateRequest,
   ): Promise<boolean> => {
     setError(null);
+
     try {
       await createSchedule(body);
 
       // 3단을 넘기면 서버가 눌러 앉힌다. 응답 하나만 믿으면 화면이 거짓말한다
       await Promise.all([reload(), loadTags()]);
+
       return true;
     } catch (thrown) {
       setError(asError(thrown, "항목을 추가하지 못했습니다").message);
+
       return false;
     }
   };
@@ -125,6 +132,7 @@ export default function ListPage() {
 
   const handleToggle = async (item: ScheduleListItem, onDate?: string) => {
     setError(null);
+
     try {
       // 반복의 완료는 일정이 아니라 회차가 갖는다
       if (item.recurring) {
@@ -138,11 +146,13 @@ export default function ListPage() {
       } else {
         await changeCompletion(item.id, !item.completedAt);
       }
+
       // 지금 할 회차를 끝냈으면 다음 회차가 올라온다. 넘겨 보던 자리는 뜻을 잃는다.
       // 지난 회차를 손본 것이면 보던 자리를 그대로 둔다
       if (onDate === undefined || onDate === item.occurrenceOn) {
         setPeeked(({ [item.id]: _gone, ...rest }) => rest);
       }
+
       await reload();
     } catch (thrown) {
       setError(asError(thrown, "완료 상태를 바꾸지 못했습니다").message);
@@ -159,6 +169,7 @@ export default function ListPage() {
   const handleDrop = async (plan: DropPlan) => {
     stopDragging();
     setError(null);
+
     try {
       await reorderSchedules(plan.parentId, plan.ids);
 
@@ -177,6 +188,7 @@ export default function ListPage() {
     }
 
     setError(null);
+
     try {
       // 리스트에는 습관이 없어 범위가 갈리지 않는다
       await deleteSchedule(item.id, "ALL");
@@ -298,10 +310,12 @@ export default function ListPage() {
           onDragLeave={() => setDropAtEnd(false)}
           onDrop={(e) => {
             e.preventDefault();
+
             if (draggingId === null) return;
 
             // 이미 끝자리면 옮길 것이 없다
             const plan = planDropAtEnd(items, draggingId);
+
             if (plan === null) stopDragging();
             else void handleDrop(plan);
           }}

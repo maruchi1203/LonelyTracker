@@ -39,6 +39,7 @@ export default function ParsedDraftCard({
   const fields = useRef<Partial<Record<FormFieldId, HTMLElement | null>>>({});
 
   const open = questions.filter((q) => !dismissed.includes(q));
+
   const asking = (field: FormFieldId) =>
     open.some((q) => PARSE_QUESTION_FIELD[q] === field);
 

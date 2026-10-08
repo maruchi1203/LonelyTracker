@@ -21,10 +21,13 @@ export async function fetchHabits(
   to?: string,
 ): Promise<Habit[]> {
   const query = new URLSearchParams()
+
   if (from) query.set('from', from)
+
   if (to) query.set('to', to)
 
   const res = await fetch(query.size > 0 ? `${BASE}?${query}` : BASE)
+
   return handle<Habit[]>(res)
 }
 
@@ -34,6 +37,7 @@ export async function createHabit(body: HabitCreateRequest): Promise<Habit> {
     headers: JSON_HEADERS,
     body: JSON.stringify(body),
   })
+
   return handle<Habit>(res)
 }
 
@@ -46,6 +50,7 @@ export async function updateHabit(
     headers: JSON_HEADERS,
     body: JSON.stringify(body),
   })
+
   return handle<Habit>(res)
 }
 
@@ -61,6 +66,7 @@ export async function logHabit(
     headers: JSON_HEADERS,
     body: JSON.stringify({ done, note }),
   })
+
   return handle<void>(res)
 }
 
@@ -72,17 +78,20 @@ export async function archiveHabit(
   const res = await fetch(`${BASE}/${id}/archived?archived=${archived}`, {
     method: 'PATCH',
   })
+
   return handle<Habit>(res)
 }
 
 export async function deleteHabit(id: number): Promise<void> {
   const res = await fetch(`${BASE}/${id}`, { method: 'DELETE' })
+
   return handle<void>(res)
 }
 
 /** 카테고리 전부. 화면에 늘어놓을 차례로 온다 */
 export async function fetchHabitCategories(): Promise<HabitCategory[]> {
   const res = await fetch(CATEGORIES)
+
   return handle<HabitCategory[]>(res)
 }
 
@@ -95,6 +104,7 @@ export async function createHabitCategory(
     headers: JSON_HEADERS,
     body: JSON.stringify(body),
   })
+
   return handle<HabitCategory>(res)
 }
 
@@ -108,12 +118,14 @@ export async function renameHabitCategory(
     headers: JSON_HEADERS,
     body: JSON.stringify(body),
   })
+
   return handle<HabitCategory>(res)
 }
 
 /** 카테고리와 그 안의 습관, 그 기록까지 함께 사라진다. 마지막 하나는 서버가 막는다(409) */
 export async function deleteHabitCategory(id: number): Promise<void> {
   const res = await fetch(`${CATEGORIES}/${id}`, { method: 'DELETE' })
+
   return handle<void>(res)
 }
 
@@ -127,6 +139,7 @@ export async function reorderHabits(
     headers: JSON_HEADERS,
     body: JSON.stringify({ categoryId, ids }),
   })
+
   return handle<void>(res)
 }
 
@@ -137,6 +150,7 @@ export async function reorderHabitCategories(ids: number[]): Promise<void> {
     headers: JSON_HEADERS,
     body: JSON.stringify({ ids }),
   })
+
   return handle<void>(res)
 }
 
@@ -151,5 +165,6 @@ export async function parseHabit(
     body: JSON.stringify({ text }),
     signal,
   })
+
   return handle<HabitParseResponse>(res)
 }

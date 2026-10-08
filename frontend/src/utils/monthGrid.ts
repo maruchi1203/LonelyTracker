@@ -14,6 +14,7 @@ export function buildMonthDays(month: Date): Date[] {
   return Array.from({ length: weeks * 7 }, (_, i) => {
     const d = new Date(start)
     d.setDate(start.getDate() + i)
+
     return d
   })
 }
@@ -54,9 +55,11 @@ export function fromMonthParam(value: string | null): Date {
   const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
   const match = value?.match(/^(\d{4})-(\d{2})$/)
+
   if (!match) return thisMonth
 
   const month = Number(match[2])
+
   if (month < 1 || month > 12) return thisMonth
 
   return new Date(Number(match[1]), month - 1, 1)

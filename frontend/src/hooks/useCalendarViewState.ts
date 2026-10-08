@@ -14,8 +14,10 @@ export function useCalendarViewState() {
 
   const selectedDate = useMemo(() => {
     const value = params.get('d')
+
     if (!value) return null
     const date = new Date(`${value}T00:00:00`)
+
     return Number.isNaN(date.getTime()) ? null : date
   }, [params])
 
@@ -25,6 +27,7 @@ export function useCalendarViewState() {
         (prev) => {
           const next = new URLSearchParams(prev)
           mutate(next)
+
           return next
         },
         { replace },

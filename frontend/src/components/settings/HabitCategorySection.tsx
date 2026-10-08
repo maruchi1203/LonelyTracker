@@ -34,10 +34,12 @@ export default function HabitCategorySection() {
        * 구간을 오늘 하루로 좁혀 지난 기록까지 끌고 오지 않는다 — 수만 세면 된다
        */
       const today = toLocalDate(new Date());
+
       const [cats, list] = await Promise.all([
         fetchHabitCategories(),
         fetchHabits(today, today),
       ]);
+
       setCategories(cats);
       setHabits(list);
       setError(null);
@@ -53,6 +55,7 @@ export default function HabitCategorySection() {
   const run = async <T,>(action: () => Promise<T>, fallback: string) => {
     setBusy(true);
     setError(null);
+
     try {
       await action();
       await reload();
@@ -65,7 +68,9 @@ export default function HabitCategorySection() {
 
   const add = () => {
     const picked = name.trim();
+
     if (!picked) return;
+
     return run(async () => {
       await createHabitCategory({ name: picked });
       setName("");
@@ -88,6 +93,7 @@ export default function HabitCategorySection() {
     ) {
       return;
     }
+
     return run(
       () => deleteHabitCategory(category.id),
       "카테고리를 지우지 못했습니다",

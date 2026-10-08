@@ -44,6 +44,7 @@ export function nextHour(baseDate?: Date | null): string {
   if (baseDate) {
     at.setFullYear(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate())
   }
+
   return toLocalInputValue(at)
 }
 
@@ -51,6 +52,7 @@ export function nextHour(baseDate?: Date | null): string {
 export function addDays(date: Date, days: number): Date {
   const moved = new Date(date)
   moved.setDate(moved.getDate() + days)
+
   return moved
 }
 

@@ -2,7 +2,9 @@
 // 필드명을 틀리면 컴파일 단계에서 잡힌다.
 
 export type ScheduleStatus = "PLANNED" | "DONE" | "SKIPPED";
+
 export type RecurrenceFreq = "DAILY" | "WEEKLY";
+
 export type DeleteScope = "FUTURE" | "ALL";
 
 /**

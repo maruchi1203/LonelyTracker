@@ -57,7 +57,9 @@ export default function ScheduleEditModal({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+
     document.addEventListener("keydown", onKeyDown);
+
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
@@ -65,10 +67,12 @@ export default function ScheduleEditModal({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!form || problem) return;
 
     setBusy(true);
     setError(null);
+
     try {
       // 폼의 모든 값을 실어 보낸다. 뺀 칸은 지워진다
       await updateSchedule(id, formToCreateRequest(form));
@@ -86,6 +90,7 @@ export default function ScheduleEditModal({
 
     setBusy(true);
     setError(null);
+
     try {
       // 리스트에는 습관이 없어 범위가 갈리지 않는다
       await deleteSchedule(id, "ALL");

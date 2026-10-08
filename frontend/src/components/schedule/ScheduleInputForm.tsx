@@ -59,6 +59,7 @@ export default function ScheduleInputForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); // 폼 기본 동작(페이지 새로고침)을 막는다
+
     if (problem) return;
 
     const created = await onSubmit(formToCreateRequest(form));

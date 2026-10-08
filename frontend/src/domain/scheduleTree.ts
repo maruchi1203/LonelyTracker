@@ -53,6 +53,7 @@ export function isOccurrenceDone(
   shownOn?: string,
 ): boolean {
   if (!item.recurring) return Boolean(item.completedAt)
+
   return shownOn !== undefined && (item.doneOn ?? []).includes(shownOn)
 }
 
@@ -79,10 +80,13 @@ export function deadlineOf(item: ScheduleListItem): Date | undefined {
   if (item.recurring) {
     return item.occurrenceOn ? endOfDay(item.occurrenceOn) : undefined;
   }
+
   if (!item.startAt) return undefined;
 
   const start = new Date(item.startAt);
+
   if (item.durationMinutes === undefined) return start;
+
   return new Date(start.getTime() + item.durationMinutes * 60_000);
 }
 
@@ -95,6 +99,7 @@ export function isDueSoon(item: ScheduleListItem, now: Date): boolean {
   if (item.completedAt) return false;
 
   const end = deadlineOf(item);
+
   return end !== undefined && end.getTime() - now.getTime() <= SOON_MS;
 }
 
@@ -113,6 +118,7 @@ export function buildTree(
   );
 
   const roots: TreeNode[] = [];
+
   for (const node of byId.values()) {
     const parent =
       node.item.parentId === undefined
@@ -125,6 +131,7 @@ export function buildTree(
   }
 
   if (sort !== "manual") sortNodes(roots, sort);
+
   return roots;
 }
 
@@ -134,8 +141,10 @@ function sortNodes(nodes: TreeNode[], sort: Exclude<ListSort, "manual">): void {
     // 우선순위가 같으면 마감이 빠른 것부터. 같으면 서버가 준 순서가 남는다
     if (sort === "priority") {
       const gap = rankOf(a.item) - rankOf(b.item);
+
       if (gap !== 0) return gap;
     }
+
     return compareByDate(a, b);
   });
   nodes.forEach((node) => sortNodes(node.children, sort));
@@ -145,9 +154,13 @@ function sortNodes(nodes: TreeNode[], sort: Exclude<ListSort, "manual">): void {
 function compareByDate(a: TreeNode, b: TreeNode): number {
   const left = sortDateOf(a.item);
   const right = sortDateOf(b.item);
+
   if (left === right) return 0;
+
   if (left === undefined) return 1;
+
   if (right === undefined) return -1;
+
   return left < right ? -1 : 1;
 }
 
@@ -160,6 +173,7 @@ export function selfAndDescendantIds(
   id: number,
 ): Set<number> {
   const childrenOf = new Map<number, number[]>();
+
   for (const item of items) {
     if (item.parentId === undefined) continue;
     childrenOf.set(item.parentId, [
@@ -179,6 +193,7 @@ export function selfAndDescendantIds(
       pending.push(child);
     }
   }
+
   return found;
 }
 

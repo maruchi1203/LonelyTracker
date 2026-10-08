@@ -3,7 +3,9 @@ import type { Habit } from "../../../types/habit";
 import OrderButtons from "../OrderButtons";
 
 const CELL = "h-7 min-w-7 flex-1 rounded-md border text-xs transition-colors";
+
 const CELL_DONE = "border-accent bg-accent text-canvas";
+
 const CELL_TODO = "border-line text-ink-faint hover:bg-accent-soft";
 
 interface RowProps {
@@ -70,6 +72,7 @@ export default function HabitRow({
         <div className="flex gap-1">
           {days.map((day) => {
             const done = habit.doneDates.includes(day);
+
             return (
               <button
                 key={day}

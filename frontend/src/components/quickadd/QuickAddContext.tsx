@@ -141,9 +141,11 @@ const Ctx = createContext<QuickAddValue | null>(null);
  */
 export function QuickAddProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+
   const [text, setText] = useState(
     () => sessionStorage.getItem(DRAFT_TEXT_KEY) ?? "",
   );
+
   const [state, setState] = useState<QuickAddState>({ mode: "idle" });
   const [manual, setManual] = useState(false);
   const [target, setTarget] = useState<Target>(NO_TARGET);
@@ -155,6 +157,7 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
    * 아래 저장 효과가 idle 을 보고 저장소를 비우므로, 그 전에 값을 떠 둬야 한다
    */
   const kept = useRef<Kept<DraftModes> | null | undefined>(undefined);
+
   if (kept.current === undefined) {
     kept.current = readKept<DraftModes>(sessionStorage);
   }
@@ -170,10 +173,13 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
     if (restored.current) return;
 
     const found = kept.current;
+
     if (!found) {
       restored.current = true;
+
       return;
     }
+
     if (!fitsHere(found.variant, target.variant)) return;
 
     restored.current = true;
@@ -228,6 +234,7 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
 
   const parse = useCallback(async () => {
     const sentence = text.trim();
+
     if (!sentence) return;
 
     const controller = new AbortController();
@@ -240,10 +247,13 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
       // 탭마다 읽는 것이 다르다. 습관 탭에서 일정 프롬프트를 쓰면 카테고리가 안 온다
       if (target.variant === "habit") {
         const read = await parseHabit(sentence, controller.signal);
+
         if (read.notice) {
           setState({ mode: "notice", message: read.notice });
+
           return;
         }
+
         setState({
           mode: "habitDrafts",
           drafts: read.habits.map((one, at) => ({
@@ -261,14 +271,18 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
           })),
         });
         sessionStorage.removeItem(DRAFT_TEXT_KEY);
+
         return;
       }
 
       const parsed = await parseSchedule(sentence, controller.signal);
+
       if (parsed.notice) {
         setState({ mode: "notice", message: parsed.notice });
+
         return;
       }
+
       setState({
         mode: "drafts",
         drafts: parsed.schedules.map((one, at) => ({
@@ -289,16 +303,21 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
             needsKey: false,
           });
         }
+
         return;
       }
+
       // 503 은 키 없음 말고도 서버 암호화 문제일 수 있어 상태를 한 번 더 확인한다
       let needsKey = false;
+
       if (e instanceof HttpError && e.status === 503) {
         needsKey = await fetchAiProviders()
           .then((l) => !l.serverConfigured && !l.providers.some((c) => c.active))
           .catch(() => false);
+
         if (needsKey) sessionStorage.setItem(DRAFT_TEXT_KEY, sentence);
       }
+
       setState({
         mode: "error",
         message: e instanceof Error ? e.message : "문장을 읽지 못했습니다",
@@ -322,8 +341,10 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
    */
   const create = useCallback(async (body: ScheduleCreateRequest) => {
     if (savers.current.schedule) return savers.current.schedule(body);
+
     try {
       await createSchedule(body);
+
       return true;
     } catch {
       return false;
@@ -337,6 +358,7 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
    */
   const createHabit = useCallback(async (body: HabitCreateRequest) => {
     if (!savers.current.habit) return false;
+
     return savers.current.habit(body);
   }, []);
 
@@ -378,9 +400,11 @@ export function QuickAddProvider({ children }: { children: ReactNode }) {
 
 export function useQuickAdd(): QuickAddValue {
   const value = useContext(Ctx);
+
   if (value === null) {
     throw new Error("QuickAddProvider 안에서만 쓸 수 있습니다");
   }
+
   return value;
 }
 
@@ -402,6 +426,7 @@ export function useQuickAddTarget(target: Target, savers: Savers) {
 
   const { defaultDate, knownTags, variant, categories, twoMinuteRule } =
     target;
+
   useEffect(() => {
     claim(
       { defaultDate, knownTags, variant, categories, twoMinuteRule },
@@ -410,6 +435,7 @@ export function useQuickAddTarget(target: Target, savers: Savers) {
         habit: (body) => latest.current.habit?.(body) ?? skip(),
       },
     );
+
     return release;
   }, [
     claim,

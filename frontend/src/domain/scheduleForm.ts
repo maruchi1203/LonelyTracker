@@ -202,12 +202,14 @@ function kindOf(
   dueOn: string | undefined,
 ): FormKind {
   if (repeating) return "repeat";
+
   return endAt || dueOn ? "period" : "simple";
 }
 
 /** 회차 사이의 가장 짧은 간격(시간). 반복 일정의 소요시간 상한이다 */
 export function gapHours(freq: FormFreq, byWeekday: Weekday[]): number {
   if (freq === "DAILY") return 24;
+
   if (byWeekday.length <= 1) return 24 * 7;
 
   const order: Weekday[] = [
@@ -219,18 +221,22 @@ export function gapHours(freq: FormFreq, byWeekday: Weekday[]): number {
     "SATURDAY",
     "SUNDAY",
   ];
+
   const days = byWeekday.map((d) => order.indexOf(d) + 1).sort((a, b) => a - b);
 
   let min = 7 - days[days.length - 1] + days[0];
+
   for (let i = 1; i < days.length; i++) {
     min = Math.min(min, days[i] - days[i - 1]);
   }
+
   return min * 24;
 }
 
 /** 폼의 두 칸을 분으로. 둘 다 비면 소요시간 없음(undefined) */
 export function durationMinutesOf(form: ScheduleForm): number | undefined {
   if (!form.durationHours && !form.durationMins) return undefined;
+
   return Number(form.durationHours || 0) * 60 + Number(form.durationMins || 0);
 }
 
@@ -243,6 +249,7 @@ function minutesBetween(startAt?: string, endAt?: string): number | undefined {
 function splitDuration(total: number | undefined) {
   if (total === undefined || total <= 0)
     return { durationHours: "", durationMins: "" };
+
   return {
     durationHours: String(Math.floor(total / 60)),
     durationMins: String(total % 60),
@@ -267,21 +274,26 @@ export function formValidationError(
 
   if (form.kind === "repeat") {
     if (form.freq === "MONTHLY") return "매월 반복은 아직 준비 중입니다.";
+
     if (form.freq === "WEEKLY" && form.byWeekday.length === 0) {
       return "반복할 요일을 하나 이상 골라 주세요.";
     }
+
     if (form.repeatEndsOn && form.repeatEndsOn < form.startDate) {
       return "반복 종료일이 시작일보다 앞설 수 없습니다.";
     }
 
     const minutes = durationMinutesOf(form);
+
     if (minutes !== undefined) {
       if (minutes <= 0) return "소요시간을 0보다 크게 적어 주세요.";
       const max = gapHours(form.freq, form.byWeekday) * 60;
+
       if (minutes > max) {
         return `소요시간은 다음 회차가 시작하기 전에 끝나야 합니다. 최대 ${max / 60}시간.`;
       }
     }
+
     return null;
   }
 
@@ -291,6 +303,7 @@ export function formValidationError(
   if (form.endDate && form.endDate < form.startDate) {
     return "종료일자가 시작일자보다 앞설 수 없습니다.";
   }
+
   if (
     form.startTime &&
     form.endTime &&
@@ -346,14 +359,17 @@ function endAtOf(form: ScheduleForm): string | undefined {
 
   if (form.kind === "repeat") {
     const minutes = durationMinutesOf(form);
+
     if (minutes === undefined) return undefined;
     const end = new Date(`${form.startDate}T${form.startTime || "00:00"}:00`);
     end.setMinutes(end.getMinutes() + minutes);
+
     return toLocalDateTime(end);
   }
 
   // 간단은 끝을 안 받는다
   if (form.kind !== "period") return undefined;
+
   if (!form.endDate && !form.endTime) return undefined;
 
   // 종료시각을 안 적었으면 그날 끝까지로 본다

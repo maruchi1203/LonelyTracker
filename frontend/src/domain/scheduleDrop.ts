@@ -24,8 +24,11 @@ export const INDENT_PX = 32;
  */
 export function dropIntentAt(ratio: number): DropIntent {
   const edge = (1 - INSIDE_BAND) / 2;
+
   if (ratio < edge) return "before";
+
   if (ratio > 1 - edge) return "after";
+
   return "inside";
 }
 
@@ -37,6 +40,7 @@ export function dropIntentAt(ratio: number): DropIntent {
  */
 export function dropLevelAt(offsetX: number): number {
   const level = Math.floor(offsetX / INDENT_PX);
+
   return Math.min(Math.max(level, 0), DEEPEST);
 }
 
@@ -71,10 +75,12 @@ export function planDrop(
 ): DropPlan | null {
   const dragged = items.find((i) => i.id === draggedId);
   const target = items.find((i) => i.id === targetId);
+
   if (!dragged || !target || draggedId === targetId) return null;
 
   // 자기 자손 밑으로 들어가면 그 가지가 통째로 트리에서 떨어져 나간다
   const moving = selfAndDescendantIds(items, draggedId);
+
   if (moving.has(targetId)) return null;
 
   // 반복은 남의 밑에 서지 않아 오른쪽으로 밀어도 최상위에 머문다
@@ -84,12 +90,15 @@ export function planDrop(
     intent === "inside"
       ? lastChildSpot(items, target.id, draggedId)
       : gapSpot(items, moving, target.id, intent, wanted);
+
   if (spot === null) return null;
 
   const { parentId } = spot;
+
   if (parentId !== null) {
     // 반복은 완료 시각이 회차마다라 부모의 완료가 닿을 곳이 없다
     if (dragged.recurring) return null;
+
     if (depthOf(items, parentId) >= DEEPEST) return null;
   }
 
@@ -113,6 +122,7 @@ function lastChildSpot(
   const children = items.filter(
     (i) => (i.parentId ?? null) === targetId && i.id !== draggedId,
   );
+
   return {
     parentId: targetId,
     afterId: children.at(-1)?.id ?? null,
@@ -134,9 +144,11 @@ function gapSpot(
   // 끌고 있는 가지는 없는 셈 친다. 자기가 자기 위 행이 되면 자기 밑으로 들어간다
   const rows = flatten(buildTree(items)).filter((r) => !moving.has(r.item.id));
   const at = rows.findIndex((r) => r.item.id === targetId);
+
   if (at < 0) return null;
 
   const above = intent === "before" ? rows[at - 1] : rows[at];
+
   if (above === undefined) return { parentId: null, afterId: null, level: 0 };
 
   // 오른쪽으로 아무리 밀어도 바로 위 행보다 한 단 깊은 곳까지다
@@ -148,11 +160,14 @@ function gapSpot(
 
   // 그 단까지 거슬러 올라간 조상 바로 뒤에 선다
   let anchor = above.item;
+
   for (let depth = above.depth; depth > wanted; depth--) {
     const parent = items.find((i) => i.id === anchor.parentId);
+
     if (parent === undefined) return null;
     anchor = parent;
   }
+
   return { parentId: anchor.parentId ?? null, afterId: anchor.id, level: wanted };
 }
 
@@ -169,6 +184,7 @@ export function planDropAtEnd(
   if (!items.some((i) => i.id === draggedId)) return null;
 
   const top = items.filter((i) => (i.parentId ?? null) === null);
+
   if (top[top.length - 1]?.id === draggedId) return null;
 
   const ids = top.flatMap((i) => (i.id !== draggedId ? [i.id] : []));
@@ -187,5 +203,6 @@ function depthOf(items: ScheduleListItem[], id: number): number {
     depth++;
     cursor = items.find((i) => i.id === cursor)?.parentId;
   }
+
   return depth;
 }
