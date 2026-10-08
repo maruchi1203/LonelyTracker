@@ -20,6 +20,7 @@ import type {
   ScheduleResponse,
 } from "../types/schedule";
 import { toLocalDate } from "../utils/datetime";
+import { asError } from "../utils/errors";
 
 /** 연속일을 셀 만큼 거슬러 받는 날 수 */
 const HABIT_HISTORY_DAYS = 60;
@@ -39,9 +40,6 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   const today = toLocalDate(new Date());
-
-  const fail = (e: unknown, fallback: string) =>
-    setError(e instanceof Error ? e.message : fallback);
 
   const reload = useCallback(async () => {
     const now = toLocalDate(new Date());
@@ -72,8 +70,8 @@ export default function DashboardPage() {
         providers: providers.providers,
       });
       setError(null);
-    } catch (e) {
-      fail(e, "대시보드를 불러오지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "대시보드를 불러오지 못했습니다").message);
     }
   }, []);
 
@@ -81,14 +79,14 @@ export default function DashboardPage() {
     void reload();
   }, [reload]);
 
-  const run = async (action: () => Promise<unknown>, fallback: string) => {
+  const run = async <T,>(action: () => Promise<T>, fallback: string) => {
     setBusy(true);
     setError(null);
     try {
       await action();
       await reload();
-    } catch (e) {
-      fail(e, fallback);
+    } catch (thrown) {
+      setError(asError(thrown, fallback).message);
     } finally {
       setBusy(false);
     }

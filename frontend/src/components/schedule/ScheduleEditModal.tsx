@@ -8,6 +8,7 @@ import {
   type ScheduleForm,
 } from "../../domain/scheduleForm";
 import ScheduleFields from "./ScheduleFields";
+import { asError } from "../../utils/errors";
 
 interface Props {
   id: number;
@@ -34,18 +35,20 @@ export default function ScheduleEditModal({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const fail = (e: unknown, fallback: string) =>
-    setError(e instanceof Error ? e.message : fallback);
-
   useEffect(() => {
     const aborter = new AbortController();
 
-    void fetchSchedule(id, aborter.signal)
-      .then((detail) => setForm(formFromDetail(detail)))
-      .catch((e: unknown) => {
+    // Promise.catch 의 인자는 any 다. try·catch 로 받으면 unknown 이 온다
+    void (async () => {
+      try {
+        setForm(formFromDetail(await fetchSchedule(id, aborter.signal)));
+      } catch (thrown) {
         // 중간에 닫으면 취소된 요청이라 알릴 것이 없다
-        if (!aborter.signal.aborted) fail(e, "일정을 불러오지 못했습니다");
-      });
+        if (!aborter.signal.aborted) {
+          setError(asError(thrown, "일정을 불러오지 못했습니다").message);
+        }
+      }
+    })();
 
     return () => aborter.abort();
   }, [id]);
@@ -71,8 +74,8 @@ export default function ScheduleEditModal({
       await updateSchedule(id, formToCreateRequest(form));
       onSaved();
       onClose();
-    } catch (err) {
-      fail(err, "저장하지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "저장하지 못했습니다").message);
     } finally {
       setBusy(false);
     }
@@ -88,8 +91,8 @@ export default function ScheduleEditModal({
       await deleteSchedule(id, "ALL");
       onSaved();
       onClose();
-    } catch (err) {
-      fail(err, "지우지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "지우지 못했습니다").message);
     } finally {
       setBusy(false);
     }

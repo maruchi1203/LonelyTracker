@@ -17,6 +17,7 @@ import InstanceActionModal from "../components/layouts/Calendar/InstanceActionMo
 import { applyFilters, countByTag } from "../domain/filter";
 import { useCalendarViewState } from "../hooks/useCalendarViewState";
 import { useMonthInstances } from "../hooks/useMonthInstances";
+import { asError } from "../utils/errors";
 import type {
   DeleteScope,
   ScheduleCreateRequest,
@@ -43,9 +44,6 @@ export default function CalendarPage() {
 
   /** 칸에서 고른 회차. 무엇을 할지는 가운데 창이 묻는다 */
   const [picked, setPicked] = useState<ScheduleResponse | null>(null);
-
-  const fail = (e: unknown, fallback: string) =>
-    setError(e instanceof Error ? e.message : fallback);
 
   const loadTags = useCallback(async () => {
     try {
@@ -78,8 +76,8 @@ export default function CalendarPage() {
 
       await Promise.all([reload(), loadTags()]);
       return true;
-    } catch (e) {
-      fail(e, "일정을 추가하지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "일정을 추가하지 못했습니다").message);
       return false;
     }
   };
@@ -98,8 +96,8 @@ export default function CalendarPage() {
             )
           : await changeCompletion(instance.id, !done),
       );
-    } catch (e) {
-      fail(e, "상태를 변경하지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "상태를 변경하지 못했습니다").message);
     }
   };
 
@@ -113,8 +111,8 @@ export default function CalendarPage() {
       );
       // 창 밖으로 옮겼다면 목록에서 사라져야 하므로 다시 받는다
       await reload();
-    } catch (e) {
-      fail(e, "일정을 옮기지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "일정을 옮기지 못했습니다").message);
     }
   };
 
@@ -139,8 +137,8 @@ export default function CalendarPage() {
             )
           : await changeCompletion(instance.id, status === "DONE"),
       );
-    } catch (e) {
-      fail(e, "상태를 변경하지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "상태를 변경하지 못했습니다").message);
     }
   };
 
@@ -153,8 +151,8 @@ export default function CalendarPage() {
     try {
       await deleteSchedule(instance.id, scope);
       await Promise.all([reload(), loadTags()]);
-    } catch (e) {
-      fail(e, "일정을 삭제하지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "일정을 삭제하지 못했습니다").message);
     }
   };
 

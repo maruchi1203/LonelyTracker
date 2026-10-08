@@ -16,6 +16,7 @@ import { groupByCategory, recentDays } from "../domain/habit";
 import { applyVisible } from "../domain/reorder";
 import type { Habit, HabitCategory, HabitCreateRequest } from "../types/habit";
 import { toLocalDate } from "../utils/datetime";
+import { asError } from "../utils/errors";
 import { useQuickAddTarget } from "../components/quickadd/QuickAddContext";
 import CategoryHeader from "../components/layouts/Habits/CategoryHeader";
 import HabitRow from "../components/layouts/Habits/HabitRow";
@@ -75,9 +76,6 @@ export default function HabitsPage() {
   const today = toLocalDate(new Date());
   const days = useMemo(() => recentDays(today, DAYS), [today]);
 
-  const fail = (e: unknown, fallback: string) =>
-    setError(e instanceof Error ? e.message : fallback);
-
   const reload = useCallback(async () => {
     setLoading(true);
     try {
@@ -89,8 +87,8 @@ export default function HabitsPage() {
       setHabits(list);
       setCategories(cats);
       setError(null);
-    } catch (e) {
-      fail(e, "습관을 불러오지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "습관을 불러오지 못했습니다").message);
     } finally {
       setLoading(false);
     }
@@ -117,13 +115,13 @@ export default function HabitsPage() {
   );
 
   /** 고치고 나면 늘 다시 받는다. 서버가 눌러 앉힌 값까지 화면에 맞춘다 */
-  const run = async (action: () => Promise<unknown>, fallback: string) => {
+  const run = async <T,>(action: () => Promise<T>, fallback: string) => {
     setError(null);
     try {
       await action();
       await reload();
-    } catch (e) {
-      fail(e, fallback);
+    } catch (thrown) {
+      setError(asError(thrown, fallback).message);
     }
   };
 

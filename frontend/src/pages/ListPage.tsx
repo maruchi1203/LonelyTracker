@@ -31,6 +31,7 @@ import type {
 } from "../types/schedule";
 import ListRow from "../components/layouts/List/ListRow";
 import WarpBorder from "../components/layouts/WarpBorder";
+import { asError } from "../utils/errors";
 
 const TOGGLE = "rounded-md border px-3 py-1 text-sm transition-colors";
 const TOGGLE_ON = "border-accent bg-accent text-canvas";
@@ -66,16 +67,13 @@ export default function ListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fail = (e: unknown, fallback: string) =>
-    setError(e instanceof Error ? e.message : fallback);
-
   const reload = useCallback(async () => {
     setLoading(true);
     try {
       setItems(await fetchScheduleList());
       setError(null);
-    } catch (e) {
-      fail(e, "목록을 불러오지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "목록을 불러오지 못했습니다").message);
     } finally {
       setLoading(false);
     }
@@ -107,8 +105,8 @@ export default function ListPage() {
       // 3단을 넘기면 서버가 눌러 앉힌다. 응답 하나만 믿으면 화면이 거짓말한다
       await Promise.all([reload(), loadTags()]);
       return true;
-    } catch (e) {
-      fail(e, "항목을 추가하지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "항목을 추가하지 못했습니다").message);
       return false;
     }
   };
@@ -146,8 +144,8 @@ export default function ListPage() {
         setPeeked(({ [item.id]: _gone, ...rest }) => rest);
       }
       await reload();
-    } catch (e) {
-      fail(e, "완료 상태를 바꾸지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "완료 상태를 바꾸지 못했습니다").message);
     }
   };
 
@@ -166,8 +164,8 @@ export default function ListPage() {
 
       // 자손이 넘치면 서버가 끌어올린다. 응답 하나만 믿으면 화면이 거짓말한다
       await reload();
-    } catch (e) {
-      fail(e, "순서를 바꾸지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "순서를 바꾸지 못했습니다").message);
     }
   };
 
@@ -185,8 +183,8 @@ export default function ListPage() {
 
       // 딸린 자식은 서버가 최상위로 올린다. 목록을 다시 읽어야 자리가 맞는다
       await reload();
-    } catch (e) {
-      fail(e, "지우지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "지우지 못했습니다").message);
     }
   };
 

@@ -7,6 +7,7 @@ import {
   reorderHabitCategories,
 } from "../../api/habits";
 import OrderButtons from "../layouts/OrderButtons";
+import { asError } from "../../utils/errors";
 import type { Habit, HabitCategory } from "../../types/habit";
 import { toLocalDate } from "../../utils/datetime";
 
@@ -49,14 +50,14 @@ export default function HabitCategorySection() {
     void reload();
   }, [reload]);
 
-  const run = async (action: () => Promise<unknown>, fallback: string) => {
+  const run = async <T,>(action: () => Promise<T>, fallback: string) => {
     setBusy(true);
     setError(null);
     try {
       await action();
       await reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : fallback);
+    } catch (thrown) {
+      setError(asError(thrown, fallback).message);
     } finally {
       setBusy(false);
     }
