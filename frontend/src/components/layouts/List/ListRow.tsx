@@ -126,7 +126,11 @@ export default function ListRow({
     const close = (e: Event) => {
       if (e instanceof KeyboardEvent && e.key !== "Escape") return;
       // 메뉴 항목을 누른 것이면 닫기와 동작이 서로 싸운다
-      if (e.type === "pointerdown" && row.current?.contains(e.target as Node)) {
+      if (
+        e.type === "pointerdown" &&
+        e.target instanceof Node &&
+        row.current?.contains(e.target)
+      ) {
         return;
       }
       setMenuOpen(false);

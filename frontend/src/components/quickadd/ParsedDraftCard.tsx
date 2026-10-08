@@ -60,6 +60,7 @@ export default function ParsedDraftCard({
 
   /** 칸을 고치면 그 칸을 묻던 질문은 사라진다 */
   const change = (patch: Partial<ScheduleForm>) => {
+    // SAFETY: patch 는 Partial<ScheduleForm> 이라 키가 폼의 칸뿐이다
     const touched = Object.keys(patch) as FormFieldId[];
     setDismissed((prev) => [
       ...prev,

@@ -19,19 +19,17 @@ export const HABIT_QUESTION_FIELD: Record<HabitQuestion, string> = {
 };
 
 /** 초안 카드에 칸이 있는 질문 */
-const ANSWERABLE: HabitQuestion[] = [
+const ANSWERABLE: ReadonlySet<string> = new Set<HabitQuestion>([
   "CATEGORY",
   "CUE_TIME",
   "PLACE",
   "TWO_MINUTE",
   "TOO_VAGUE",
-];
+]);
 
 /** 백엔드가 enum 을 늘려도 화면이 깨지지 않게 답할 수 있는 것만 남긴다 */
 export function knownHabitQuestions(
   questions: string[] | undefined,
 ): HabitQuestion[] {
-  return (questions ?? []).filter((q): q is HabitQuestion =>
-    ANSWERABLE.includes(q as HabitQuestion),
-  );
+  return (questions ?? []).filter((q): q is HabitQuestion => ANSWERABLE.has(q));
 }

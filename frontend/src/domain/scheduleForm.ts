@@ -326,7 +326,7 @@ export function formToCreateRequest(form: ScheduleForm): ScheduleCreateRequest {
     recurrence:
       form.kind === "repeat"
         ? {
-            // MONTHLY 는 검증에서 걸러진다
+            // SAFETY: MONTHLY 는 검증에서 걸러진다
             freq: form.freq as RecurrenceFreq,
             byWeekday: form.freq === "WEEKLY" ? form.byWeekday : undefined,
             endsOn: form.repeatEndsOn || undefined,

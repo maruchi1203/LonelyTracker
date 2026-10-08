@@ -28,7 +28,8 @@ export default function QuickAddLauncher() {
       if (e.key === "Escape") setOpen(false);
     };
     const onPointerDown = (e: PointerEvent) => {
-      if (!panel.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target instanceof Node ? e.target : null;
+      if (!target || !panel.current?.contains(target)) setOpen(false);
     };
 
     document.addEventListener("keydown", onKeyDown);
