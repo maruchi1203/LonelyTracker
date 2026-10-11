@@ -230,4 +230,5 @@ LonelyTracker에서는 이런 경우를 위해 리스트에 모든 계획과 메
 |                             |                                                                                          |
 | --------------------------- | ---------------------------------------------------------------------------------------- |
 | 직접 띄워 보려면            | [INSTALL.md](INSTALL.md)                                                                 |
+| 데이터 모델 (ERD)           | [ARCHITECTURE.md](ARCHITECTURE.md)                                                       |
 | 만들며 내린 결정과 시행착오 | https://dented-polyanthus-255.notion.site/LonelyTracker-2fc432d8688b80c29209dd2f1d10638a |
