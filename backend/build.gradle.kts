@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.lonelytracker"
-version = "0.0.1-SNAPSHOT"
+version = "1.0.0"
 description = "AI schedule manager backend"
 
 java {
