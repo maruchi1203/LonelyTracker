@@ -3,7 +3,7 @@
 lonelytracker:
   user:
     # 인증이 붙기 전까지 현재 사용자로 취급할 계정.
-    # V4 마이그레이션이 만들어 둔 이름과 같아야 한다.
+    # V1 마이그레이션이 만들어 둔 이름과 같아야 한다.
     default-username: default
 
   # LLM 연동. API 키는 여기 없고 사용자별로 갖는다.
