@@ -77,7 +77,7 @@ cd LonelyTracker
 cp backend/.env.example backend/.env    # DB_PASSWORD 와 DB_URL 을 채웁니다
 cd backend
 ./gradlew bootJar
-java -jar build/libs/backend-0.0.1-SNAPSHOT.jar
+java -jar build/libs/lonelytracker-1.0.0.jar
 ```
 
 `http://localhost:8080` 을 엽니다. **첫 화면이 비어 있는 것이 정상입니다.** 일정도 습관도 없는
@@ -103,7 +103,7 @@ AI 기능은 키를 넣기 전까지 잠겨 있습니다 → [2.3 AI API 연결]
 
 ```bash
 cd backend && ./gradlew bootJar
-java -jar build/libs/backend-0.0.1-SNAPSHOT.jar
+java -jar build/libs/lonelytracker-1.0.0.jar
 ```
 
 `bootJar` 가 `npm install` 과 `npm run build` 를 알아서 부르고 결과를 jar 안에 담습니다.

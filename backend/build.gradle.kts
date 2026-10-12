@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.lonelytracker"
-version = "0.0.1-SNAPSHOT"
+version = "1.0.0"
 description = "AI schedule manager backend"
 
 java {
@@ -81,6 +81,14 @@ tasks.bootJar {
 	from(frontendDist) {
 		into("BOOT-INF/classes/static")
 	}
+
+	// 받는 사람에게는 무엇의 backend 인지 보이지 않는다
+	archiveBaseName = "lonelytracker"
+}
+
+// 의존성이 빠진 jar 라 혼자서는 실행되지 않는다. 릴리스에 섞이면 받는 사람이 헷갈린다
+tasks.jar {
+	enabled = false
 }
 
 tasks.withType<Test> {
