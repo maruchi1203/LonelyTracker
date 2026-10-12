@@ -1,6 +1,8 @@
 package com.lonelytracker.backend.user;
 
 import com.lonelytracker.backend.common.AppProperties;
+import com.lonelytracker.backend.habit.entity.HabitCategoryEntity;
+import com.lonelytracker.backend.habit.repository.HabitCategoryRepository;
 import com.lonelytracker.backend.support.IntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -11,6 +13,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -35,6 +38,9 @@ class UserApiTest extends IntegrationTest {
 
     @Autowired
     AppProperties appProperties;
+
+    @Autowired
+    HabitCategoryRepository categoryRepository;
 
     @Test
     @DisplayName("현재 사용자는 마이그레이션이 만든 기본 사용자다")
@@ -80,6 +86,22 @@ class UserApiTest extends IntegrationTest {
                 .content("{\"username\":\"someone@example.com\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username").value("someone@example.com"));
+    }
+
+    @Test
+    @DisplayName("새 사용자는 기본 카테고리 여섯 개를 갖고 시작한다")
+    void createSeedsDefaultCategories() throws Exception {
+        // 카테고리가 없으면 habit.category_id 가 NOT NULL 이라 습관을 하나도 만들 수 없다
+        String body = mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"username\":\"fresh\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        long id = mapper.readTree(body).path("id").asLong();
+
+        assertThat(categoryRepository.findAllOf(id))
+                .extracting(HabitCategoryEntity::getName)
+                .containsExactly("운동", "마음챙김", "부업", "예술", "학습", "인간관계");
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.lonelytracker.backend.common.exception.UserNotFoundException;
 import com.lonelytracker.backend.user.dto.UserResponse;
 import com.lonelytracker.backend.user.dto.UserSettingsResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.lonelytracker.backend.user.entity.UserEntity;
@@ -19,6 +20,9 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserProvider currentUserProvider;
+
+    /** 구현체가 없어도 돌아야 해 List 가 아니다. List 는 0개면 주입이 실패한다 */
+    private final ObjectProvider<NewUserSetup> newUserSetups;
 
     public UserResponse findById(Long id) {
         return UserResponse.from(userRepository.findById(id)
@@ -56,6 +60,8 @@ public class UserService {
                 .username(name)
                 .displayName(displayName == null || displayName.isBlank() ? name : displayName.strip())
                 .build());
+
+        newUserSetups.forEach(setup -> setup.prepare(user));
 
         return UserResponse.from(user);
     }
