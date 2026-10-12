@@ -67,6 +67,7 @@ export default function InstanceActionModal({
   onDelete,
 }: Props) {
   const [moving, setMoving] = useState(false);
+
   const [moveTo, setMoveTo] = useState(() =>
     toLocalInputValue(new Date(instance.startAt ?? Date.now())),
   );
@@ -75,7 +76,9 @@ export default function InstanceActionModal({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+
     document.addEventListener("keydown", onKeyDown);
+
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
@@ -132,20 +135,22 @@ export default function InstanceActionModal({
 
           {/* 상태는 셋 중 하나를 고르는 것이다. 누를 때마다 도는 단추로 두면 건너뜀에서 빠져나올 길이 없다 */}
           <div className="flex items-stretch gap-2">
-            {STATUSES.filter(
-              ({ recurringOnly }) => !recurringOnly || instance.recurring,
-            ).map(({ value, label, hint, Icon }) => (
-              <IconButton
-                key={value}
-                wide
-                label={label}
-                title={hint}
-                pressed={instance.status === value}
-                onClick={() => run(() => onSetStatus(instance, value))}
-              >
-                <Icon />
-              </IconButton>
-            ))}
+            {STATUSES.flatMap(({ value, label, hint, Icon, recurringOnly }) =>
+              recurringOnly && !instance.recurring
+                ? []
+                : [
+                    <IconButton
+                      key={value}
+                      wide
+                      label={label}
+                      title={hint}
+                      pressed={instance.status === value}
+                      onClick={() => run(() => onSetStatus(instance, value))}
+                    >
+                      <Icon />
+                    </IconButton>,
+                  ],
+            )}
           </div>
 
           {moving ? (

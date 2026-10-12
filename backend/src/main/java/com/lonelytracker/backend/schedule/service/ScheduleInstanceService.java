@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.List;
@@ -49,12 +50,30 @@ public class ScheduleInstanceService {
         ScheduleProgressEntity progress = getOrCreate(scheduleId, onDate);
         progress.changeStatus(status);
 
-        // 이 회차가 끝나면 다음 회차가 올라온다. 그 밑의 일도 함께 다시 선다
         if (status == ScheduleStatus.DONE) {
-            scheduleService.releaseDescendants(scheduleId);
+            endDescendantsIfLast(scheduleId, onDate);
         }
 
         return toResponse(progressRepository.saveAndFlush(progress));
+    }
+
+    /**
+     * 마지막 회차를 끝냈으면 그 밑의 일도 함께 끝낸다.
+     *
+     * <p>아직 회차가 남았으면 아무것도 하지 않는다. 하위 일정의 완료는 일정 자체에 박혀
+     * 있어서(회차별 상태를 갖는 것은 반복 부모뿐이다), 되돌리면 지난 회차에 그 일을 했다는
+     * 기록이 사라진다. 그래서 보존하는 쪽을 고른다.
+     *
+     * <p>불변식 한 줄로 — 하위 일정은 반복이 끝날 때 함께 끝난다.
+     */
+    private void endDescendantsIfLast(Long scheduleId, LocalDate onDate) {
+        if (ScheduleUtil.hasOccurrenceAfter(
+                recurRepository.findById(scheduleId).orElse(null), onDate)) {
+            return;
+        }
+
+        // 지난 회차에 끝낸 것과 지금 딸려 끝난 것을 가를 시각이다
+        scheduleService.completeDescendants(scheduleId, LocalDateTime.now());
     }
 
     /**

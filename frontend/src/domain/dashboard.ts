@@ -1,4 +1,4 @@
-import type { Habit } from "../types/habit";
+import type { Habit, HabitCategory } from "../types/habit";
 import type {
   AiProvider,
   ProviderUsage,
@@ -18,6 +18,7 @@ export interface DayRange {
 function shift(day: string, days: number): string {
   const d = new Date(`${day}T00:00:00`);
   d.setDate(d.getDate() + days);
+
   return toLocalDate(d);
 }
 
@@ -26,6 +27,7 @@ export function weekOf(today: string): DayRange {
   const d = new Date(`${today}T00:00:00`);
   const sinceMonday = (d.getDay() + 6) % 7;
   const from = shift(today, -sinceMonday);
+
   return { from, to: shift(from, 6) };
 }
 
@@ -38,8 +40,11 @@ function isOpen(item: ScheduleListItem): boolean {
 function byDue(items: ScheduleListItem[]): ScheduleListItem[] {
   return [...items].sort((a, b) => {
     if (a.dueOn === b.dueOn) return 0;
+
     if (a.dueOn === undefined) return 1;
+
     if (b.dueOn === undefined) return -1;
+
     return a.dueOn.localeCompare(b.dueOn);
   });
 }
@@ -51,10 +56,13 @@ function byDue(items: ScheduleListItem[]): ScheduleListItem[] {
 function daysOf(s: ScheduleResponse): DayRange | undefined {
   if (!s.startAt) return undefined;
   const from = s.startAt.slice(0, 10);
+
   if (!s.endAt) return { from, to: from };
 
   let to = s.endAt.slice(0, 10);
+
   if (to > from && s.endAt.slice(11) === "00:00:00") to = shift(to, -1);
+
   return { from, to };
 }
 
@@ -75,10 +83,12 @@ export function todayAgenda(
   const scheduled = instances
     .filter((s) => {
       const days = daysOf(s);
+
       return days !== undefined && days.from <= today && today <= days.to;
     })
     .sort((a, b) => {
       if (a.allDay !== b.allDay) return a.allDay ? -1 : 1;
+
       return (a.startAt ?? "").localeCompare(b.startAt ?? "");
     });
 
@@ -122,24 +132,31 @@ export interface HabitSummary {
   total: number;
   /** 연속일이 긴 순으로 셋까지 */
   topStreaks: { habit: Habit; streak: number }[];
-  /** 아직 습관이 없는 갈래 이름 */
+  /** 만들어 두고 아직 습관을 넣지 않은 카테고리 이름 */
   emptyCategories: string[];
 }
 
-export function habitSummary(habits: Habit[], today: string): HabitSummary {
+export function habitSummary(
+  habits: Habit[],
+  today: string,
+  categories: HabitCategory[],
+): HabitSummary {
   const active = habits.filter((h) => !h.archived);
 
   return {
     doneToday: active.filter((h) => h.doneDates.includes(today)).length,
     total: active.length,
     topStreaks: active
-      .map((habit) => ({ habit, streak: streakOf(habit, today) }))
-      .filter((s) => s.streak > 0)
+      .flatMap((habit) => {
+        const streak = streakOf(habit, today)
+
+        return streak > 0 ? [{ habit, streak }] : []
+      })
       .sort((a, b) => b.streak - a.streak)
       .slice(0, 3),
-    emptyCategories: groupByCategory(active)
+    emptyCategories: groupByCategory(active, categories)
       .filter((g) => g.habits.length === 0)
-      .map((g) => g.label),
+      .map((g) => g.category.name),
   };
 }
 
@@ -151,6 +168,7 @@ export function limitRatio(
   const limit = providers.find((p) =>
     sameBaseUrl(p.baseUrl, usage.baseUrl),
   )?.monthlyTokenLimit;
+
   if (!limit) return null;
 
   return Math.min((usage.inputTokens + usage.outputTokens) / limit, 1);

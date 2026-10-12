@@ -8,6 +8,7 @@ import {
   type ScheduleForm,
 } from "../../domain/scheduleForm";
 import ScheduleFields from "./ScheduleFields";
+import { asError } from "../../utils/errors";
 
 interface Props {
   id: number;
@@ -34,18 +35,20 @@ export default function ScheduleEditModal({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const fail = (e: unknown, fallback: string) =>
-    setError(e instanceof Error ? e.message : fallback);
-
   useEffect(() => {
     const aborter = new AbortController();
 
-    void fetchSchedule(id, aborter.signal)
-      .then((detail) => setForm(formFromDetail(detail)))
-      .catch((e: unknown) => {
+    // Promise.catch 의 인자는 any 다. try·catch 로 받으면 unknown 이 온다
+    void (async () => {
+      try {
+        setForm(formFromDetail(await fetchSchedule(id, aborter.signal)));
+      } catch (thrown) {
         // 중간에 닫으면 취소된 요청이라 알릴 것이 없다
-        if (!aborter.signal.aborted) fail(e, "일정을 불러오지 못했습니다");
-      });
+        if (!aborter.signal.aborted) {
+          setError(asError(thrown, "일정을 불러오지 못했습니다").message);
+        }
+      }
+    })();
 
     return () => aborter.abort();
   }, [id]);
@@ -54,7 +57,9 @@ export default function ScheduleEditModal({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+
     document.addEventListener("keydown", onKeyDown);
+
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
@@ -62,17 +67,19 @@ export default function ScheduleEditModal({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!form || problem) return;
 
     setBusy(true);
     setError(null);
+
     try {
       // 폼의 모든 값을 실어 보낸다. 뺀 칸은 지워진다
       await updateSchedule(id, formToCreateRequest(form));
       onSaved();
       onClose();
-    } catch (err) {
-      fail(err, "저장하지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "저장하지 못했습니다").message);
     } finally {
       setBusy(false);
     }
@@ -83,13 +90,14 @@ export default function ScheduleEditModal({
 
     setBusy(true);
     setError(null);
+
     try {
       // 리스트에는 습관이 없어 범위가 갈리지 않는다
       await deleteSchedule(id, "ALL");
       onSaved();
       onClose();
-    } catch (err) {
-      fail(err, "지우지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "지우지 못했습니다").message);
     } finally {
       setBusy(false);
     }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { habitSummary, limitRatio, todayAgenda, weekOf, weekStats } from "./dashboard";
-import type { Habit } from "../types/habit";
+import type { Habit, HabitCategory } from "../types/habit";
 import type {
   AiProvider,
   ProviderUsage,
@@ -39,7 +39,7 @@ function habit(overrides: Partial<Habit> = {}): Habit {
   return {
     id: 1,
     title: "명상",
-    category: "MIND",
+    categoryId: 2,
     displayOrder: 0,
     archived: false,
     doneDates: [],
@@ -188,15 +188,26 @@ describe("weekStats", () => {
 });
 
 describe("habitSummary", () => {
-  it("오늘 한 것과 연속일 상위, 빈 갈래를 모은다", () => {
+  /** 카테고리 다섯. 빈 카테고리는 "만들어 두고 안 쓰는 것"을 뜻한다 */
+  const CATEGORIES: HabitCategory[] = [
+    { id: 1, name: "운동", displayOrder: 0 },
+    { id: 2, name: "마음챙김", displayOrder: 1 },
+    { id: 3, name: "예술", displayOrder: 2 },
+    { id: 4, name: "학습", displayOrder: 3 },
+    { id: 5, name: "인간관계", displayOrder: 4 },
+  ];
+
+  it("오늘 한 것과 연속일 상위, 빈 카테고리를 모은다", () => {
     const summary = habitSummary(
       [
-        habit({ id: 1, category: "BODY", doneDates: ["2026-09-13", "2026-09-14", TODAY] }),
-        habit({ id: 2, category: "MIND", doneDates: ["2026-09-14"] }),
-        habit({ id: 3, category: "ART", doneDates: [] }),
-        habit({ id: 4, category: "LEARNING", archived: true, doneDates: [TODAY] }),
+        habit({ id: 1, categoryId: 1, doneDates: ["2026-09-13", "2026-09-14", TODAY] }),
+        habit({ id: 2, categoryId: 2, doneDates: ["2026-09-14"] }),
+        habit({ id: 3, categoryId: 3, doneDates: [] }),
+        // 그만둔 것은 카테고리를 채운 것으로 보지 않는다
+        habit({ id: 4, categoryId: 4, archived: true, doneDates: [TODAY] }),
       ],
       TODAY,
+      CATEGORIES,
     );
 
     expect(summary.doneToday).toBe(1);
@@ -205,7 +216,7 @@ describe("habitSummary", () => {
       [1, 3],
       [2, 1],
     ]);
-    expect(summary.emptyCategories).toEqual(["부업", "학습", "인간관계"]);
+    expect(summary.emptyCategories).toEqual(["학습", "인간관계"]);
   });
 });
 

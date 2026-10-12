@@ -21,8 +21,11 @@ interface Props {
 
 // 주간, 월간, 연간 (캘린더 형태와 목표를 이 3개로 나눌 예정)
 export const CYCLE_UNITS = ["Week", "Month", "Year"] as const;
+
 export type CycleUnit = (typeof CYCLE_UNITS)[number];
+
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
+
 const DAYS_PER_WEEK = 7;
 
 // 월간 달력 (주간, 연간 추가 예정)
@@ -48,9 +51,11 @@ export default function ScheduleCalendar({
   const [spanning, sameDay] = useMemo(() => {
     const wide: ScheduleResponse[] = [];
     const short: ScheduleResponse[] = [];
+
     for (const one of instances) {
       (instanceDateKeys(one).length > 1 ? wide : short).push(one);
     }
+
     return [wide, short];
   }, [instances]);
 
@@ -62,6 +67,7 @@ export default function ScheduleCalendar({
     () => assignLanes(days, spanning.map(withoutDue)),
     [days, spanning],
   );
+
   const perDay = useMemo(
     () => entriesByDate([...sameDay, ...spanning]),
     [sameDay, spanning],
@@ -74,6 +80,7 @@ export default function ScheduleCalendar({
   const openWeek = useMemo(() => {
     const anchor = toLocalDate(selectedDate ?? new Date());
     const at = days.findIndex((d) => toLocalDate(d) === anchor);
+
     return at === -1 ? 0 : Math.floor(at / DAYS_PER_WEEK);
   }, [days, selectedDate]);
 
@@ -86,6 +93,7 @@ export default function ScheduleCalendar({
    */
   const columns = useMemo(() => {
     const picked = selectedDate?.getDay() ?? -1;
+
     return Array.from({ length: DAYS_PER_WEEK }, (_, at) =>
       at === picked ? "2fr" : "1fr",
     ).join(" ");
@@ -154,6 +162,7 @@ export default function ScheduleCalendar({
 
           {days.map((date, at) => {
             const key = toLocalDate(date);
+
             return (
               <ScheduleCalendarCell
                 key={key}

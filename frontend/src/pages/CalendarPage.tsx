@@ -9,11 +9,15 @@ import {
 } from "../api/schedules";
 import CalendarToolbar from "../components/layouts/Calendar/CalendarToolbar";
 import ScheduleCalendar from "../components/layouts/Calendar/ScheduleCalendar";
-import { useQuickAddTarget } from "../components/quickadd/QuickAddContext";
+import {
+  NO_CATEGORIES,
+  useQuickAddTarget,
+} from "../components/quickadd/QuickAddContext";
 import InstanceActionModal from "../components/layouts/Calendar/InstanceActionModal";
 import { applyFilters, countByTag } from "../domain/filter";
 import { useCalendarViewState } from "../hooks/useCalendarViewState";
 import { useMonthInstances } from "../hooks/useMonthInstances";
+import { asError } from "../utils/errors";
 import type {
   DeleteScope,
   ScheduleCreateRequest,
@@ -33,6 +37,7 @@ export default function CalendarPage() {
     setQuery,
     clearFilters,
   } = useCalendarViewState();
+
   const { instances, loading, error, reload, patchOne, setError } =
     useMonthInstances(month);
 
@@ -40,9 +45,6 @@ export default function CalendarPage() {
 
   /** 칸에서 고른 회차. 무엇을 할지는 가운데 창이 묻는다 */
   const [picked, setPicked] = useState<ScheduleResponse | null>(null);
-
-  const fail = (e: unknown, fallback: string) =>
-    setError(e instanceof Error ? e.message : fallback);
 
   const loadTags = useCallback(async () => {
     try {
@@ -59,12 +61,14 @@ export default function CalendarPage() {
   /** 성공 여부를 돌려준다. 실패했는데 폼이 닫히거나 입력이 지워지면 곤란하다. */
   const handleCreate = async (body: ScheduleCreateRequest): Promise<boolean> => {
     setError(null);
+
     try {
       await createSchedule(body);
 
       // 저장한 일정이 보고 있는 달 밖이면 그 달로 옮긴다. 저장했는데 아무것도 안 보이면 안 된다
       if (body.startAt) {
         const created = new Date(body.startAt);
+
         if (
           created.getFullYear() !== month.getFullYear() ||
           created.getMonth() !== month.getMonth()
@@ -74,9 +78,11 @@ export default function CalendarPage() {
       }
 
       await Promise.all([reload(), loadTags()]);
+
       return true;
-    } catch (e) {
-      fail(e, "일정을 추가하지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "일정을 추가하지 못했습니다").message);
+
       return false;
     }
   };
@@ -84,6 +90,7 @@ export default function CalendarPage() {
   const handleToggleStatus = async (instance: ScheduleResponse) => {
     setError(null);
     const done = instance.status === "DONE";
+
     try {
       // 1회성의 완료는 일정 자체가, 습관의 완료는 회차가 갖는다
       patchOne(
@@ -95,13 +102,14 @@ export default function CalendarPage() {
             )
           : await changeCompletion(instance.id, !done),
       );
-    } catch (e) {
-      fail(e, "상태를 변경하지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "상태를 변경하지 못했습니다").message);
     }
   };
 
   const handleMove = async (instance: ScheduleResponse, startAt: string) => {
     setError(null);
+
     try {
       if (!instance.instanceDate) return;
       // 종료를 안 보내면 일정의 소요시간을 그대로 쓴다
@@ -110,8 +118,8 @@ export default function CalendarPage() {
       );
       // 창 밖으로 옮겼다면 목록에서 사라져야 하므로 다시 받는다
       await reload();
-    } catch (e) {
-      fail(e, "일정을 옮기지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "일정을 옮기지 못했습니다").message);
     }
   };
 
@@ -126,6 +134,7 @@ export default function CalendarPage() {
     status: ScheduleStatus,
   ) => {
     setError(null);
+
     try {
       patchOne(
         instance.recurring && instance.instanceDate
@@ -136,8 +145,8 @@ export default function CalendarPage() {
             )
           : await changeCompletion(instance.id, status === "DONE"),
       );
-    } catch (e) {
-      fail(e, "상태를 변경하지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "상태를 변경하지 못했습니다").message);
     }
   };
 
@@ -147,11 +156,12 @@ export default function CalendarPage() {
     scope: DeleteScope,
   ) => {
     setError(null);
+
     try {
       await deleteSchedule(instance.id, scope);
       await Promise.all([reload(), loadTags()]);
-    } catch (e) {
-      fail(e, "일정을 삭제하지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "일정을 삭제하지 못했습니다").message);
     }
   };
 
@@ -171,8 +181,14 @@ export default function CalendarPage() {
 
   // 날짜를 골라 뒀으면 빠른 추가의 시작값이 된다
   useQuickAddTarget(
-    { defaultDate: selectedDate, knownTags, variant: "calendar" },
-    handleCreate,
+    {
+      defaultDate: selectedDate,
+      knownTags,
+      variant: "calendar",
+      categories: NO_CATEGORIES,
+      twoMinuteRule: true,
+    },
+    { schedule: handleCreate },
   );
 
   return (

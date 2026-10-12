@@ -1,12 +1,15 @@
 package com.lonelytracker.backend.habit.service;
 
+import com.lonelytracker.backend.common.ReorderUtil;
 import com.lonelytracker.backend.common.exception.NotFoundException;
 import com.lonelytracker.backend.habit.dto.HabitCreateRequest;
 import com.lonelytracker.backend.habit.dto.HabitLogRequest;
 import com.lonelytracker.backend.habit.dto.HabitResponse;
 import com.lonelytracker.backend.habit.dto.HabitUpdateRequest;
+import com.lonelytracker.backend.habit.entity.HabitCategoryEntity;
 import com.lonelytracker.backend.habit.entity.HabitEntity;
 import com.lonelytracker.backend.habit.entity.HabitLogEntity;
+import com.lonelytracker.backend.habit.repository.HabitCategoryRepository;
 import com.lonelytracker.backend.habit.repository.HabitLogRepository;
 import com.lonelytracker.backend.habit.repository.HabitRepository;
 import com.lonelytracker.backend.user.service.UserProvider;
@@ -14,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
@@ -33,7 +37,7 @@ public class HabitService {
     private static final int WINDOW_DAYS = 14;
 
     /**
-     * 갈래별로 묶기 전의 순서.
+     * 카테고리별로 묶기 전의 순서.
      * 사용자가 세운 자리를 지키고, 아직 정한 적이 없으면 만든 순서로 남는다.
      */
     private static final Comparator<HabitEntity> HABIT_ORDER =
@@ -41,8 +45,11 @@ public class HabitService {
                     .thenComparing(HabitEntity::getId);
 
     private final HabitRepository habitRepository;
+    private final HabitCategoryRepository categoryRepository;
     private final HabitLogRepository logRepository;
     private final UserProvider currentUserProvider;
+    /** "오늘"을 밖에서 받는다. 직접 now() 를 부르면 테스트가 날짜를 고정할 수 없다 */
+    private final Clock clock;
 
     /**
      * 습관 목록과 최근 기록.
@@ -53,7 +60,7 @@ public class HabitService {
     public List<HabitResponse> findAll(LocalDate from, LocalDate to) {
         Long userId = currentUserProvider.get().getId();
 
-        LocalDate windowTo = (to != null) ? to : LocalDate.now();
+        LocalDate windowTo = (to != null) ? to : LocalDate.now(clock);
         LocalDate windowFrom = (from != null) ? from : windowTo.minusDays(WINDOW_DAYS - 1L);
 
         List<HabitEntity> habits = habitRepository.findAllOf(userId);
@@ -82,8 +89,10 @@ public class HabitService {
         HabitEntity habit = habitRepository.save(HabitEntity.builder()
                 .user(currentUserProvider.get())
                 .title(request.title().strip())
-                .category(request.category())
+                .category(categoryOrThrow(request.categoryId()))
                 .twoMinuteAction(request.twoMinuteAction())
+                .atTime(request.atTime())
+                .place(request.place())
                 .build());
 
         return HabitResponse.from(habit, List.of());
@@ -92,7 +101,9 @@ public class HabitService {
     @Transactional
     public HabitResponse update(Long id, HabitUpdateRequest request) {
         HabitEntity habit = getOwnedOrThrow(id);
-        habit.update(request.title(), request.category(), request.twoMinuteAction());
+        habit.update(request.title(), categoryOrThrow(request.categoryId()),
+                request.twoMinuteAction(),
+                request.atTime(), request.place());
         return HabitResponse.from(habitRepository.saveAndFlush(habit), List.of());
     }
 
@@ -143,6 +154,31 @@ public class HabitService {
                 .onDate(onDate)
                 .note(request.note())
                 .build());
+    }
+
+    /** 남의 카테고리에 습관을 넣지 못하게 소유자까지 본다. 카테고리 쪽과 같은 규칙이다 */
+    /**
+     * 한 카테고리 안의 습관 차례를 다시 세운다.
+     * <p>
+     * 카테고리를 넘나드는 이동은 받지 않는다. 화면의 위·아래 단추는 무리 안에서만 움직이고,
+     * 카테고리를 옮기는 일은 습관 수정이 맡는다. 두 길이 겹치면 같은 규칙이 두 군데 생긴다.
+     *
+     * @throws IllegalArgumentException 그 카테고리의 습관 전부가 담기지 않았을 때
+     */
+    @Transactional
+    public void reorder(Long categoryId, List<Long> ids) {
+        Long userId = currentUserProvider.get().getId();
+
+        // 남의 카테고리 밑을 들여다볼 수 없어야 한다
+        categoryOrThrow(categoryId);
+
+        habitRepository.saveAll(ReorderUtil.arrange(
+                habitRepository.findInCategory(userId, categoryId), ids, "습관"));
+    }
+
+    private HabitCategoryEntity categoryOrThrow(Long categoryId) {
+        return categoryRepository.findOwned(categoryId, currentUserProvider.get().getId())
+                .orElseThrow(() -> new NotFoundException("카테고리를 찾을 수 없습니다"));
     }
 
     /** 남의 습관은 없는 것으로 취급한다. 400을 내면 그 습관의 존재가 새어 나간다 */

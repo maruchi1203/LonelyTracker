@@ -2,7 +2,9 @@ import { NavLink } from "react-router";
 
 const ITEM =
   "flex items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-line";
+
 const ITEM_ON = "bg-accent font-medium text-canvas";
+
 const ITEM_OFF = "text-ink-soft hover:bg-surface hover:text-ink";
 
 interface SideMenuItem {

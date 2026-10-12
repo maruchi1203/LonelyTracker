@@ -34,8 +34,9 @@ class ScheduleParseServiceTest {
         when(parser.parse(any())).thenReturn(new ParseResult(List.of(draft), new AiUsage(1, 2)));
         doThrow(new IllegalStateException("db down")).when(usageRecorder).record(any(), any(), any());
 
-        ScheduleParseService service =
-                new ScheduleParseService(parser, scheduleService, targetResolver, usageRecorder);
+        ScheduleParseService service = new ScheduleParseService(
+                parser, scheduleService, targetResolver, usageRecorder,
+                java.time.Clock.systemDefaultZone());
 
         assertThat(service.parse("운동").schedules().stream().map(ParsedSchedule::title)).containsExactly("운동");
     }

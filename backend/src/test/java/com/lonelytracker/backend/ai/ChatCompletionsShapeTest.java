@@ -17,8 +17,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ChatCompletionsShapeTest {
 
   private final ObjectMapper mapper = new ObjectMapper();
-  private final AiScheduleParser parser =
-      new AiScheduleParser(properties(), mapper, RestClient.create());
+  private final AiCaller caller = new AiCaller(properties(), mapper, RestClient.create());
 
   @Test
   @DisplayName("content 안의 JSON 을 꺼낸다")
@@ -135,7 +134,7 @@ class ChatCompletionsShapeTest {
   }
 
   private JsonNode extract(String envelope) {
-    return parser.extractOutput(new ChatCompletionsProtocol(), envelope);
+    return caller.extractOutput(new ChatCompletionsProtocol(), envelope);
   }
 
   private AppProperties properties() {

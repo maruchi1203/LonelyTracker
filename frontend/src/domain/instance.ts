@@ -24,6 +24,7 @@ export function sameInstance(
  */
 export function isMoved(instance: ScheduleResponse): boolean {
   if (!instance.startAt || !instance.instanceDate) return false
+
   return instance.instanceDate !== toLocalDate(new Date(instance.startAt))
 }
 
@@ -37,6 +38,7 @@ export function isEarlyDone(
   today: string = toLocalDate(new Date()),
 ): boolean {
   if (!instance.instanceDate) return false
+
   return instance.status === 'DONE' && instance.instanceDate > today
 }
 
@@ -56,6 +58,7 @@ export function groupByDate(
   for (const instance of instances) {
     for (const key of instanceDateKeys(instance)) {
       const bucket = map.get(key)
+
       if (bucket) bucket.push(instance)
       else map.set(key, [instance])
     }
@@ -86,21 +89,25 @@ export function entriesByDate(
 
   const push = (map: Map<string, DayEntry[]>, key: string, entry: DayEntry) => {
     const bucket = map.get(key)
+
     if (bucket) bucket.push(entry)
     else map.set(key, [entry])
   }
 
   for (const instance of instances) {
     const covered = instanceDateKeys(instance)
+
     if (covered.length === 1) {
       push(spans, covered[0], { instance, kind: 'span' })
     }
+
     if (instance.dueOn) {
       push(dues, instance.dueOn, { instance, kind: 'due' })
     }
   }
 
   const result = new Map<string, DayEntry[]>()
+
   for (const key of new Set([...spans.keys(), ...dues.keys()])) {
     const ofDay = spans.get(key) ?? []
     const sorted = sortByTimeOfDay(ofDay.map((e) => e.instance))
@@ -132,6 +139,7 @@ export function sortByTimeOfDay(
 function minuteOfDay(instance: ScheduleResponse): number {
   if (instance.allDay || !instance.startAt) return -1
   const at = new Date(instance.startAt)
+
   return at.getHours() * 60 + at.getMinutes()
 }
 
@@ -176,7 +184,9 @@ export function formatInstanceRange(instance: ScheduleResponse): string {
   }
 
   if (!end) return `${day(start)} ${formatTime(start)}`
+
   if (sameDay) return `${day(start)} ${formatTime(start)} ~ ${formatTime(end)}`
+
   return `${day(start)} ${formatTime(start)} ~ ${day(end)} ${formatTime(end)}`
 }
 

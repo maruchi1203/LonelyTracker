@@ -17,7 +17,9 @@ interface Props {
 // shrink-0 이 없으면 한 줄에 몰렸을 때 칩이 찌그러진다
 const CHIP_BASE =
   "shrink-0 rounded-full border px-3.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-line";
+
 const CHIP_ON = "border-accent bg-accent text-canvas";
+
 const CHIP_OFF =
   "border-line bg-surface text-ink-soft hover:border-line hover:bg-accent-soft hover:text-accent";
 

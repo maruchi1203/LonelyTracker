@@ -40,6 +40,7 @@ export function describeRecurrence(rule: RecurrenceResponse): string {
   if (rule.freq === "DAILY") return "매일";
 
   const days = ORDER.filter((d) => rule.byWeekday?.includes(d));
+
   if (days.length === 0) return "매주";
 
   return `매주 ${days.map((d) => WEEKDAY_LABEL[d]).join("·")}`;
@@ -59,6 +60,7 @@ export function stepOccurrence(
   step: 1 | -1,
 ): string | null {
   const days = daysOf(rule);
+
   if (days.length === 0) return null;
 
   const cursor = new Date(`${from}T00:00:00`);
@@ -66,16 +68,20 @@ export function stepOccurrence(
   // 한 주를 다 돌아도 못 찾으면 규칙이 그 요일을 하나도 안 갖는다
   for (let i = 0; i < 7; i++) {
     cursor.setDate(cursor.getDate() + step);
+
     if (days.includes(isoWeekday(cursor))) {
       const next = toKey(cursor);
+
       return outOfRange(rule, next) ? null : next;
     }
   }
+
   return null;
 }
 
 function daysOf(rule: RecurrenceResponse): number[] {
   if (rule.freq === "DAILY") return [1, 2, 3, 4, 5, 6, 7];
+
   return (rule.byWeekday ?? []).map((d) => WEEKDAY_NUMBER[d]);
 }
 
@@ -87,6 +93,7 @@ function isoWeekday(date: Date): number {
 function toKey(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
+
   return `${date.getFullYear()}-${month}-${day}`;
 }
 

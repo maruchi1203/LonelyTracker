@@ -6,6 +6,7 @@ import {
   saveAiProvider,
 } from "../../api/users";
 import { HttpError } from "../../api/http";
+import { asError } from "../../utils/errors";
 import {
   AI_PRESETS,
   CUSTOM_PRESET_ID,
@@ -27,11 +28,12 @@ const INPUT =
  * 503 은 서버 암호화 키 미설정이나 복호화 실패를 뜻한다.
  * 사용자가 키를 다시 넣어도 해결되지 않으므로 구분해서 알린다.
  */
-function describe(e: unknown, fallback: string): string {
-  if (e instanceof HttpError && e.status === 503) {
-    return `${e.message} — 입력한 키의 문제가 아니라 서버 설정 문제입니다.`;
+function describe(failure: Error): string {
+  if (failure instanceof HttpError && failure.status === 503) {
+    return `${failure.message} — 입력한 키의 문제가 아니라 서버 설정 문제입니다.`;
   }
-  return e instanceof Error ? e.message : fallback;
+
+  return failure.message;
 }
 
 export default function AiProviderSection({ autoFocus }: Props) {
@@ -50,8 +52,8 @@ export default function AiProviderSection({ autoFocus }: Props) {
   const load = useCallback(async () => {
     try {
       setList(await fetchAiProviders());
-    } catch (e) {
-      setError(describe(e, "제공자 설정을 불러오지 못했습니다"));
+    } catch (thrown) {
+      setError(describe(asError(thrown, "제공자 설정을 불러오지 못했습니다")));
     }
   }, []);
 
@@ -70,6 +72,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
   // 같은 주소가 이미 있으면 키를 비워도 모델만 바뀐다
   const existing = providers.find((c) => sameBaseUrl(c.baseUrl, baseUrl));
   const insecure = isInsecureUrl(baseUrl);
+
   const canSave =
     baseUrl.trim() !== "" &&
     model.trim() !== "" &&
@@ -91,16 +94,17 @@ export default function AiProviderSection({ autoFocus }: Props) {
     setAllowHttp(false);
   };
 
-  const run = async (action: () => Promise<unknown>, done: string) => {
+  const run = async <T,>(action: () => Promise<T>, done: string) => {
     setBusy(true);
     setError(null);
     setNotice(null);
+
     try {
       await action();
       setNotice(done);
       await load();
-    } catch (e) {
-      setError(describe(e, "요청을 처리하지 못했습니다"));
+    } catch (thrown) {
+      setError(describe(asError(thrown, "요청을 처리하지 못했습니다")));
     } finally {
       setBusy(false);
     }
@@ -183,6 +187,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
                   if (!window.confirm(`${providerLabel(c.baseUrl)} 키를 지울까요?`)) {
                     return;
                   }
+
                   void run(() => deleteAiProvider(c.id), "키를 지웠습니다.");
                 }}
                 className="rounded-md border border-transparent px-2 py-1 text-xs text-danger transition-colors hover:border-danger hover:bg-danger-soft disabled:opacity-50"
@@ -198,6 +203,7 @@ export default function AiProviderSection({ autoFocus }: Props) {
         className="flex flex-col gap-2"
         onSubmit={(e) => {
           e.preventDefault();
+
           if (!canSave) return;
           const label = providerLabel(baseUrl.trim());
           void run(async () => {

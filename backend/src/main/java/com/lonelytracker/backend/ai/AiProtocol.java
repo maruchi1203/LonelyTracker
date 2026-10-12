@@ -20,8 +20,10 @@ interface AiProtocol {
      * 보낼 본문
      *
      * @param systemPrompt 규칙과 예시. 규약마다 싣는 자리가 다르다
+     * @param schema       받을 모양. 어떤 뜹리를 쓸지는 이 규약이 고른다
      */
-    Map<String, Object> body(String model, String systemPrompt, String userText);
+    Map<String, Object> body(String model, String systemPrompt, String userText,
+            AiSchema schema);
 
     /**
      * 봉투에서 결과 JSON 문자열을 꺼낸다

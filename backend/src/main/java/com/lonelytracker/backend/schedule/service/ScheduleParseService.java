@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -31,6 +32,8 @@ public class ScheduleParseService {
     private final ScheduleService scheduleService;
     private final AiTargetResolver targetResolver;
     private final AiUsageRecorder usageRecorder;
+    /** "오늘"을 밖에서 받는다. 직접 now() 를 부르면 테스트가 날짜를 고정할 수 없다 */
+    private final Clock clock;
 
     /**
      * 문장 하나를 초안 목록으로 바꾼다.
@@ -51,7 +54,7 @@ public class ScheduleParseService {
 
         // 트랜잭션 밖에서 호출
         ParseResult result = scheduleParser.parse(
-                new AiParseCommand(text, LocalDateTime.now(), knownTags,
+                new AiParseCommand(text, LocalDateTime.now(clock), knownTags,
                         target.baseUrl(), target.model(), target.apiKey()));
 
         // 결과를 받았으면 토큰은 쓴 것이다. 쓸 만한 초안이 없어도 적는다

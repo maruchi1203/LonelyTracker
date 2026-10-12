@@ -1,13 +1,11 @@
 package com.lonelytracker.backend.habit.entity;
 
 import com.lonelytracker.backend.common.FieldLengths;
-import com.lonelytracker.backend.habit.domain.HabitCategory;
+import com.lonelytracker.backend.common.Orderable;
 import com.lonelytracker.backend.user.entity.UserEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -40,7 +38,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
-public class HabitEntity {
+public class HabitEntity implements Orderable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,16 +52,28 @@ public class HabitEntity {
     @Column(nullable = false, length = FieldLengths.TITLE)
     private String title;
 
-    /** 기르는 갈래. 화면이 갈래마다 묶어 보여준다 */
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private HabitCategory category;
+    /**
+     * 기르는 카테고리. 화면이 카테고리마다 묶어 보여준다.
+     * 카테고리가 지워지면 이 습관도 함께 간다 — 카테고리 없는 습관은 둘 자리가 없다
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private HabitCategoryEntity category;
 
     /** 시작에 필요한 2분 이내의 행동. 습관마다 하나다 */
     @Column(name = "two_minute_action", length = FieldLengths.TWO_MINUTE_ACTION)
     private String twoMinuteAction;
 
-    /** 같은 갈래 안에서의 자리 */
+    /** 언제 할지. 시각일 수도, "퇴근 후" 같은 상황일 수도 있다 */
+    @Column(name = "at_time", length = FieldLengths.HABIT_AT_TIME)
+    private String atTime;
+
+    /** 어디서 할지 */
+    @Column(length = FieldLengths.PLACE)
+    private String place;
+
+    /** 같은 카테고리 안에서의 자리 */
     @Column(name = "display_order", nullable = false)
     @Builder.Default
     private int displayOrder = 0;
@@ -80,10 +90,13 @@ public class HabitEntity {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public void update(String title, HabitCategory category, String twoMinuteAction) {
+    public void update(String title, HabitCategoryEntity category, String twoMinuteAction,
+            String atTime, String place) {
         this.title = title;
         this.category = category;
         this.twoMinuteAction = twoMinuteAction;
+        this.atTime = atTime;
+        this.place = place;
     }
 
     public void changeDisplayOrder(int displayOrder) {

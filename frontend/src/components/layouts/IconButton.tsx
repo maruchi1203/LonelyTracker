@@ -16,7 +16,7 @@ const SHELL =
   "flex items-center transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-line disabled:cursor-not-allowed disabled:opacity-40";
 
 /** 늘인 것은 한 줄을 나눠 가지므로 flex 줄 안에 두어야 한다. 동그란 것은 줄어들지 않는다 */
-const SHAPE = {
+const SIZING = {
   wide: "min-w-0 flex-1 justify-start gap-2 rounded-full px-4 py-2.5 text-sm font-semibold",
   round: "size-10 shrink-0 justify-center rounded-full",
 };
@@ -44,7 +44,7 @@ export default function IconButton({
       title={wide ? undefined : label}
       aria-label={label}
       aria-pressed={pressed}
-      className={`${SHELL} ${wide ? SHAPE.wide : SHAPE.round} ${look} ${className}`}
+      className={`${SHELL} ${wide ? SIZING.wide : SIZING.round} ${look} ${className}`}
       {...rest}
     >
       {children}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchHabits } from "../api/habits";
+import { fetchHabitCategories, fetchHabits } from "../api/habits";
 import {
   changeCompletion,
   changeInstanceStatus,
@@ -12,7 +12,7 @@ import { TempPanel } from "../components/layouts/Dashboard/DashboardPanel";
 import HabitPanel from "../components/layouts/Dashboard/HabitPanel";
 import AiUsagePanel from "../components/layouts/Dashboard/UsagePanel";
 import { weekOf } from "../domain/dashboard";
-import type { Habit as HabitItem } from "../types/habit";
+import type { Habit as HabitItem, HabitCategory } from "../types/habit";
 import type {
   AiProvider,
   AiUsageSummary,
@@ -20,6 +20,7 @@ import type {
   ScheduleResponse,
 } from "../types/schedule";
 import { toLocalDate } from "../utils/datetime";
+import { asError } from "../utils/errors";
 
 /** 연속일을 셀 만큼 거슬러 받는 날 수 */
 const HABIT_HISTORY_DAYS = 60;
@@ -28,6 +29,7 @@ interface Data {
   instances: ScheduleResponse[];
   items: ScheduleListItem[];
   habits: HabitItem[];
+  categories: HabitCategory[];
   usage: AiUsageSummary;
   providers: AiProvider[];
 }
@@ -39,9 +41,6 @@ export default function DashboardPage() {
 
   const today = toLocalDate(new Date());
 
-  const fail = (e: unknown, fallback: string) =>
-    setError(e instanceof Error ? e.message : fallback);
-
   const reload = useCallback(async () => {
     const now = toLocalDate(new Date());
     // 오늘에 걸친 기간 일정도 잡히도록 주 전체를 받는다
@@ -50,26 +49,30 @@ export default function DashboardPage() {
     since.setDate(since.getDate() - HABIT_HISTORY_DAYS);
 
     try {
-      const [instances, items, habits, usage, providers] = await Promise.all([
-        fetchSchedules({
-          from: `${week.from}T00:00:00`,
-          to: `${week.to}T23:59:59`,
-        }),
-        fetchScheduleList(),
-        fetchHabits(toLocalDate(since), now),
-        fetchAiUsage(),
-        fetchAiProviders(),
-      ]);
+      const [instances, items, habits, categories, usage, providers] =
+        await Promise.all([
+          fetchSchedules({
+            from: `${week.from}T00:00:00`,
+            to: `${week.to}T23:59:59`,
+          }),
+          fetchScheduleList(),
+          fetchHabits(toLocalDate(since), now),
+          fetchHabitCategories(),
+          fetchAiUsage(),
+          fetchAiProviders(),
+        ]);
+
       setData({
         instances,
         items,
         habits,
+        categories,
         usage,
         providers: providers.providers,
       });
       setError(null);
-    } catch (e) {
-      fail(e, "대시보드를 불러오지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "대시보드를 불러오지 못했습니다").message);
     }
   }, []);
 
@@ -77,14 +80,15 @@ export default function DashboardPage() {
     void reload();
   }, [reload]);
 
-  const run = async (action: () => Promise<unknown>, fallback: string) => {
+  const run = async <T,>(action: () => Promise<T>, fallback: string) => {
     setBusy(true);
     setError(null);
+
     try {
       await action();
       await reload();
-    } catch (e) {
-      fail(e, fallback);
+    } catch (thrown) {
+      setError(asError(thrown, fallback).message);
     } finally {
       setBusy(false);
     }
@@ -137,7 +141,11 @@ export default function DashboardPage() {
             onToggleInstance={handleToggleInstance}
             onCompleteItem={handleCompleteItem}
           />
-          <HabitPanel habits={data.habits} today={today} />
+          <HabitPanel
+            habits={data.habits}
+            today={today}
+            categories={data.categories}
+          />
         </div>
       )}
     </div>

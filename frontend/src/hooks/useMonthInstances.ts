@@ -33,11 +33,14 @@ export function useMonthInstances(month: Date): MonthInstances {
     const seq = ++requestSeq.current
     setLoading(true)
     setError(null)
+
     try {
       const list = await fetchSchedules({ from, to }, signal)
+
       if (seq === requestSeq.current) setInstances(list)
     } catch (e) {
       if (signal?.aborted) return
+
       if (seq === requestSeq.current) {
         setError(e instanceof Error ? e.message : '목록을 불러오지 못했습니다')
       }
@@ -49,6 +52,7 @@ export function useMonthInstances(month: Date): MonthInstances {
   useEffect(() => {
     const controller = new AbortController()
     void run(controller.signal)
+
     return () => controller.abort()
   }, [run])
 

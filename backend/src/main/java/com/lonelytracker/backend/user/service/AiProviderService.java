@@ -17,6 +17,7 @@ import com.lonelytracker.backend.user.repository.AiUsageRepository;
 import com.lonelytracker.backend.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -37,6 +38,8 @@ public class AiProviderService implements AiTargetResolver {
     private final UserProvider currentUserProvider;
     private final AiUsageRepository usageRepository;
     private final AppProperties properties;
+    /** "오늘"을 밖에서 받는다. 직접 now() 를 부르면 테스트가 날짜를 고정할 수 없다 */
+    private final Clock clock;
 
     public AiProviderListResponse list() {
         UserEntity user = currentUserProvider.get();
@@ -141,7 +144,7 @@ public class AiProviderService implements AiTargetResolver {
             return;
         }
 
-        LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+        LocalDateTime monthStart = LocalDate.now(clock).withDayOfMonth(1).atStartOfDay();
         long used = usageRepository.sumTokens(userId, provider.getBaseUrl(), monthStart);
         if (used >= limit) {
             throw new AiLimitExceededException(

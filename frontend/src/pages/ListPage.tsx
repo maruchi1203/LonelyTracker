@@ -8,7 +8,10 @@ import {
   fetchTagNames,
   reorderSchedules,
 } from "../api/schedules";
-import { useQuickAddTarget } from "../components/quickadd/QuickAddContext";
+import {
+  NO_CATEGORIES,
+  useQuickAddTarget,
+} from "../components/quickadd/QuickAddContext";
 import ScheduleEditModal from "../components/schedule/ScheduleEditModal";
 import {
   planDrop,
@@ -28,9 +31,12 @@ import type {
 } from "../types/schedule";
 import ListRow from "../components/layouts/List/ListRow";
 import WarpBorder from "../components/layouts/WarpBorder";
+import { asError } from "../utils/errors";
 
 const TOGGLE = "rounded-md border px-3 py-1 text-sm transition-colors";
+
 const TOGGLE_ON = "border-accent bg-accent text-canvas";
+
 const TOGGLE_OFF = "border-line text-ink-soft hover:bg-accent-soft";
 
 const SORTS: { value: ListSort; label: string }[] = [
@@ -48,6 +54,7 @@ export default function ListPage() {
   // 화살표로 미리 넘겨 본 회차. 저장은 건드리지 않는다
   const [peeked, setPeeked] = useState<Record<number, string>>({});
   const [draggingId, setDraggingId] = useState<number | null>(null);
+
   // 놓을 수 있을 때만 채운다. 화면은 세울 자리를 스스로 셈하지 않는다
   const [dropAt, setDropAt] = useState<{
     id: number;
@@ -63,16 +70,14 @@ export default function ListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fail = (e: unknown, fallback: string) =>
-    setError(e instanceof Error ? e.message : fallback);
-
   const reload = useCallback(async () => {
     setLoading(true);
+
     try {
       setItems(await fetchScheduleList());
       setError(null);
-    } catch (e) {
-      fail(e, "목록을 불러오지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "목록을 불러오지 못했습니다").message);
     } finally {
       setLoading(false);
     }
@@ -98,26 +103,36 @@ export default function ListPage() {
     body: ScheduleCreateRequest,
   ): Promise<boolean> => {
     setError(null);
+
     try {
       await createSchedule(body);
 
       // 3단을 넘기면 서버가 눌러 앉힌다. 응답 하나만 믿으면 화면이 거짓말한다
       await Promise.all([reload(), loadTags()]);
+
       return true;
-    } catch (e) {
-      fail(e, "항목을 추가하지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "항목을 추가하지 못했습니다").message);
+
       return false;
     }
   };
 
   // 리스트는 날짜를 요구하지 않는다
   useQuickAddTarget(
-    { defaultDate: null, knownTags, variant: "list" },
-    handleCreate,
+    {
+      defaultDate: null,
+      knownTags,
+      variant: "list",
+      categories: NO_CATEGORIES,
+      twoMinuteRule: true,
+    },
+    { schedule: handleCreate },
   );
 
   const handleToggle = async (item: ScheduleListItem, onDate?: string) => {
     setError(null);
+
     try {
       // 반복의 완료는 일정이 아니라 회차가 갖는다
       if (item.recurring) {
@@ -131,14 +146,16 @@ export default function ListPage() {
       } else {
         await changeCompletion(item.id, !item.completedAt);
       }
+
       // 지금 할 회차를 끝냈으면 다음 회차가 올라온다. 넘겨 보던 자리는 뜻을 잃는다.
       // 지난 회차를 손본 것이면 보던 자리를 그대로 둔다
       if (onDate === undefined || onDate === item.occurrenceOn) {
         setPeeked(({ [item.id]: _gone, ...rest }) => rest);
       }
+
       await reload();
-    } catch (e) {
-      fail(e, "완료 상태를 바꾸지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "완료 상태를 바꾸지 못했습니다").message);
     }
   };
 
@@ -152,13 +169,14 @@ export default function ListPage() {
   const handleDrop = async (plan: DropPlan) => {
     stopDragging();
     setError(null);
+
     try {
       await reorderSchedules(plan.parentId, plan.ids);
 
       // 자손이 넘치면 서버가 끌어올린다. 응답 하나만 믿으면 화면이 거짓말한다
       await reload();
-    } catch (e) {
-      fail(e, "순서를 바꾸지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "순서를 바꾸지 못했습니다").message);
     }
   };
 
@@ -170,19 +188,20 @@ export default function ListPage() {
     }
 
     setError(null);
+
     try {
       // 리스트에는 습관이 없어 범위가 갈리지 않는다
       await deleteSchedule(item.id, "ALL");
 
       // 딸린 자식은 서버가 최상위로 올린다. 목록을 다시 읽어야 자리가 맞는다
       await reload();
-    } catch (e) {
-      fail(e, "지우지 못했습니다");
+    } catch (thrown) {
+      setError(asError(thrown, "지우지 못했습니다").message);
     }
   };
 
   /** 하위 행은 부모의 액자 안으로 들어간다. 그래서 평평하게 펴지 않는다 */
-  const renderNode = (node: TreeNode, depth = 0) => {
+  const renderNode = (node: TreeNode, depth = 0, siblingIds: number[] = []) => {
     const { item } = node;
 
     return (
@@ -196,6 +215,9 @@ export default function ListPage() {
         onToggle={(onDate) => void handleToggle(item, onDate)}
         onEdit={() => setEditingId(item.id)}
         onDelete={() => void handleDelete(item)}
+        siblingIds={siblingIds}
+        // 서버는 그 무리의 전부를 받는다. 형제가 곧 무리다
+        onMove={(ids) => void handleDrop({ parentId: item.parentId ?? null, ids, level: depth })}
         draggable={canDrag}
         dragging={draggingId === item.id}
         drop={
@@ -220,7 +242,9 @@ export default function ListPage() {
           void handleDrop(dropAt.plan);
         }}
       >
-        {node.children.map((child) => renderNode(child, depth + 1))}
+        {node.children.map((child) =>
+          renderNode(child, depth + 1, node.children.map((x) => x.item.id)),
+        )}
       </ListRow>
     );
   };
@@ -268,7 +292,9 @@ export default function ListPage() {
           </p>
         ) : (
           <ul data-list-root className="flex flex-col gap-y-2">
-            {tree.map((node) => renderNode(node))}
+            {tree.map((node) =>
+              renderNode(node, 0, tree.map((x) => x.item.id)),
+            )}
           </ul>
         )}
       </WarpBorder>
@@ -284,10 +310,12 @@ export default function ListPage() {
           onDragLeave={() => setDropAtEnd(false)}
           onDrop={(e) => {
             e.preventDefault();
+
             if (draggingId === null) return;
 
             // 이미 끝자리면 옮길 것이 없다
             const plan = planDropAtEnd(items, draggingId);
+
             if (plan === null) stopDragging();
             else void handleDrop(plan);
           }}

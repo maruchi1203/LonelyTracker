@@ -249,6 +249,34 @@ public final class ScheduleUtil {
                 recur.getFreq(), recur.getByWeekday(), onDate, onDate).isEmpty();
     }
 
+    /**
+     * onDate 뒤에도 회차가 남았는지.
+     *
+     * <p>이 답이 하위 일정의 운명을 가른다 — 아직 남았으면 지난 회차에 끝낸 하위 일정을
+     * 그대로 두고, 이것이 마지막이었으면 그 일도 함께 끝낸다.
+     *
+     * <p>종료일이 없으면 끝까지 펼쳐 볼 수 없지만 볼 필요도 없다. 무기한이면 늘 남았다.
+     *
+     * @param recur null이면 1회성 일정이라 남은 회차가 없다
+     */
+    public static boolean hasOccurrenceAfter(ScheduleRecurEntity recur, LocalDate onDate) {
+        if (recur == null) {
+            return false;
+        }
+        if (recur.getEndsOn() == null) {
+            return true;
+        }
+
+        LocalDate from = onDate.plusDays(1);
+        // 펼칠 구간 자체가 없다. generate 는 시작이 끝보다 뒤면 던진다
+        if (from.isAfter(recur.getEndsOn())) {
+            return false;
+        }
+
+        return !ScheduleInstanceDates.generate(recur.getFreq(), recur.getByWeekday(),
+                from, recur.getEndsOn()).isEmpty();
+    }
+
     /** 종료일이 없으면 앞으로 몇 달만 펼쳐 본다. 무기한 규칙을 끝까지 펼칠 수는 없다. */
     private static List<LocalDate> expandForCheck(ScheduleRecurrenceFreq freq,
             Set<DayOfWeek> byWeekday, LocalDate start, LocalDate endsOn) {

@@ -166,6 +166,7 @@ describe('그 날짜에 걸쳐 있는지', () => {
 
   it('달력이 칸에 놓는 기준과 같다', () => {
     const keys = [...groupByDate([trip]).keys()].sort()
+
     const covered = ['2026-08-31', '2026-09-01', '2026-09-02'].filter((_, i) =>
       coversDate(trip, new Date(2026, 7, 31 + i)),
     )
@@ -206,6 +207,7 @@ describe('기간 문구', () => {
       allDay: true,
       startAt: '2026-08-31T00:00:00',
     })
+
     const span = instance(2, '2026-08-31', {
       allDay: true,
       startAt: '2026-08-31T00:00:00',
@@ -303,6 +305,7 @@ describe('펼친 칸에 세울 줄', () => {
   it('하루짜리는 줄로 서고 걸친 것은 빠진다', () => {
     // 걸친 것은 띠가 맡는다. 줄로도 세우면 같은 일정이 두 번 보인다
     const 하루 = instance(1, '2026-10-01')
+
     const 사흘 = instance(2, '2026-10-01', {
       startAt: '2026-10-01T09:00:00',
       endAt: '2026-10-03T18:00:00',

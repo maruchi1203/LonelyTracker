@@ -414,9 +414,13 @@ class ScheduleListApiTest extends IntegrationTest {
                 .andExpect(jsonPath("$[0].recurrence").doesNotExist());
     }
 
+    /*
+     * 하위 일정의 완료는 일정 자체에 박혀 있다 — 회차별 상태를 갖는 것은 반복 부모뿐이다.
+     * 그래서 되돌리면 지난 회차에 그 일을 했다는 기록이 사라진다. 보존하는 쪽을 고른다
+     */
     @Test
-    @DisplayName("회차가 넘어가면 딸린 자손의 완료가 풀린다")
-    void nextOccurrenceReleasesDescendants() throws Exception {
+    @DisplayName("회차가 남았으면 딸린 자손의 완료를 그대로 둔다")
+    void keepsDescendantsWhileOccurrencesRemain() throws Exception {
         long recurring = create("{\"title\":\"매일 운동\",\"startAt\":\"2026-10-01T07:00:00\""
                 + ",\"recurrence\":{\"freq\":\"DAILY\"}}");
         long child = create("{\"title\":\"운동복 챙기기\",\"parentId\":" + recurring + "}");
@@ -424,15 +428,45 @@ class ScheduleListApiTest extends IntegrationTest {
 
         complete(child, true).andExpect(status().isOk());
 
-        mvc.perform(patch(BASE + "/" + recurring + "/instances/2026-10-01/status")
+        finishOccurrence(recurring, "2026-10-01");
+
+        /*
+         * 종료일이 없어 무기한이다. 내일도 회차가 있으니 아무것도 건드리지 않는다.
+         * 손자까지 차 있는 것은 child 를 끝낼 때 완료가 아래로 번진 결과다
+         */
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$[?(@.id == " + child + ")].completedAt").isNotEmpty())
+                .andExpect(jsonPath("$[?(@.id == " + grandChild + ")].completedAt")
+                        .isNotEmpty());
+    }
+
+    @Test
+    @DisplayName("마지막 회차를 끝내면 딸린 자손도 함께 끝난다")
+    void lastOccurrenceEndsDescendants() throws Exception {
+        long recurring = create("{\"title\":\"이사 준비\",\"startAt\":\"2026-10-01T07:00:00\""
+                + ",\"recurrence\":{\"freq\":\"DAILY\",\"endsOn\":\"2026-10-02\"}}");
+        long child = create("{\"title\":\"박스 사기\",\"parentId\":" + recurring + "}");
+        long grandChild = create("{\"title\":\"테이프 사기\",\"parentId\":" + child + "}");
+
+        // 첫날은 마지막이 아니다. 둘째 날 회차가 남았다
+        finishOccurrence(recurring, "2026-10-01");
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$[?(@.id == " + child + ")].completedAt").isEmpty());
+
+        finishOccurrence(recurring, "2026-10-02");
+
+        // 더 할 때가 없다. 하위 일정은 반복이 끝날 때 함께 끝난다
+        mvc.perform(get(BASE + "/list"))
+                .andExpect(jsonPath("$[?(@.id == " + child + ")].completedAt").isNotEmpty())
+                .andExpect(jsonPath("$[?(@.id == " + grandChild + ")].completedAt")
+                        .isNotEmpty());
+    }
+
+    private void finishOccurrence(long id, String onDate) throws Exception {
+        mvc.perform(patch(BASE + "/" + id + "/instances/" + onDate + "/status")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"status\":\"DONE\"}"))
                 .andExpect(status().isOk());
-
-        // 언제 끝냈는지는 보지 않는다. 회차가 바뀌면 전부 다시 선다
-        mvc.perform(get(BASE + "/list"))
-                .andExpect(jsonPath("$[?(@.id == " + child + ")].completedAt").isEmpty())
-                .andExpect(jsonPath("$[?(@.id == " + grandChild + ")].completedAt").isEmpty());
     }
 
     @Test

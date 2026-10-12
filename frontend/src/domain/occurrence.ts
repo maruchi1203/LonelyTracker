@@ -17,6 +17,7 @@ export function nearestOccurrences(
     if (!instance.recurring || instance.instanceDate === undefined) continue;
 
     const standing = chosen.get(instance.id);
+
     if (standing === undefined || beats(instance, standing, today)) {
       chosen.set(instance.id, instance);
     }
@@ -46,5 +47,6 @@ function beats(
   const theirsAhead = theirs >= today;
 
   if (mineAhead !== theirsAhead) return mineAhead;
+
   return mineAhead ? mine < theirs : mine > theirs;
 }

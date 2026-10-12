@@ -48,8 +48,10 @@ export const AI_PRESETS: AiPreset[] = [
  */
 export function canonicalBaseUrl(url: string): string {
   const trimmed = url.trim();
+
   try {
     const parsed = new URL(trimmed);
+
     return (parsed.origin + parsed.pathname).replace(/\/+$/, "");
   } catch {
     return trimmed.replace(/\/+$/, "");

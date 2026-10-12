@@ -50,6 +50,15 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, e.getMessage(), request);
     }
 
+    /**
+     * 요청은 멀쩡한데 지금 상태가 거부함 → 409.
+     * 400 과 가르는 자리다. 고쳐 보낼 값이 없고, 상태가 달라지면 같은 요청이 그대로 통한다
+     */
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorResponse> handleConflict(ConflictException e, WebRequest request) {
+        return build(HttpStatus.CONFLICT, e.getMessage(), request);
+    }
+
     /** 해당 id 없음 → 404 */
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(NotFoundException e, WebRequest request) {

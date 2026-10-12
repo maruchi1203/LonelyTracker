@@ -1,12 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { groupByCategory, recentDays, streakOf } from "./habit";
-import type { Habit } from "../types/habit";
+import type { Habit, HabitCategory } from "../types/habit";
+
+/** 카테고리 셋. 차례는 서버가 display_order 로 맞춰 준다 */
+const CATEGORIES: HabitCategory[] = [
+  { id: 1, name: "운동", displayOrder: 0 },
+  { id: 2, name: "마음챙김", displayOrder: 1 },
+  { id: 3, name: "부업", displayOrder: 2 },
+];
 
 function habit(overrides: Partial<Habit> = {}): Habit {
   return {
     id: 1,
     title: "명상",
-    category: "MIND",
+    categoryId: 2,
     displayOrder: 0,
     archived: false,
     doneDates: [],
@@ -65,13 +72,29 @@ describe("streakOf", () => {
 });
 
 describe("groupByCategory", () => {
-  it("여섯 갈래가 늘 자리를 지킨다", () => {
-    // 비어 있는 갈래가 보여야 채우기를 권할 수 있다
-    const groups = groupByCategory([habit({ category: "BODY" })]);
+  it("빈 카테고리도 자리를 지킨다", () => {
+    // 빈 카테고리가 보여야 그 자리에 습관을 넣는 단추가 걸린다
+    const groups = groupByCategory([habit({ categoryId: 1 })], CATEGORIES);
 
-    expect(groups).toHaveLength(6);
-    expect(groups[0].category).toBe("BODY");
+    expect(groups).toHaveLength(3);
+    expect(groups[0].category.name).toBe("운동");
     expect(groups[0].habits).toHaveLength(1);
     expect(groups[1].habits).toHaveLength(0);
+  });
+
+  it("차례는 받은 목록을 그대로 따른다", () => {
+    const groups = groupByCategory([], [CATEGORIES[2], CATEGORIES[0]]);
+
+    expect(groups.map((g) => g.category.name)).toEqual(["부업", "운동"]);
+  });
+
+  it("없는 카테고리를 가리키는 습관은 어디에도 실리지 않는다", () => {
+    /*
+     * 외래 키가 NOT NULL 이고 카테고리를 지우면 습관도 함께 가므로 실제로는 생기지 않는다.
+     * 기타 묶음을 따로 두지 않기로 한 것을 적어 둔다
+     */
+    const groups = groupByCategory([habit({ categoryId: 999 })], CATEGORIES);
+
+    expect(groups.every((g) => g.habits.length === 0)).toBe(true);
   });
 });

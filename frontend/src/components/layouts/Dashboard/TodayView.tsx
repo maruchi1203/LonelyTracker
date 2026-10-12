@@ -60,6 +60,7 @@ export default function TodayView({
 
       {scheduled.map((s) => {
         const done = s.status === "DONE";
+
         return (
           <li
             key={`${s.id}-${s.instanceDate ?? ""}`}

@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -63,6 +64,8 @@ public class ScheduleService {
     private final ScheduleRecurRepository recurRepository;
     private final ScheduleProgressRepository progressRepository;
     private final UserProvider currentUserProvider;
+    /** "오늘"을 밖에서 받는다. 직접 now() 를 부르면 테스트가 날짜를 고정할 수 없다 */
+    private final Clock clock;
 
     /**
      * 일자, 상태, 태그 기반 일정 검색
@@ -78,7 +81,7 @@ public class ScheduleService {
         Long userId = currentUserProvider.get().getId();
 
         // 검색 시 이번주 월요일~일요일까지 일정 검색
-        LocalDate monday = LocalDate.now().with(DayOfWeek.MONDAY);
+        LocalDate monday = LocalDate.now(clock).with(DayOfWeek.MONDAY);
         LocalDateTime windowFrom = (from != null)
                 ? from
                 : monday.atStartOfDay();
@@ -130,7 +133,12 @@ public class ScheduleService {
                     "반복 일정은 회차마다 상태를 바꿔 주세요");
         }
 
-        // 되돌릴 때 딸려 완료된 자손만 고르려면 바꾸기 전 시각이 필요하다
+        /*
+         * 되돌릴 때 딸려 완료된 자손만 고르려면 바꾸기 전 시각이 필요하다.
+         *
+         * 여기만 시계를 받지 않는다. 멈춘 시계로는 "같이 끝난 것"과 "먼저 끝낸 것"의
+         * 시각이 같아져, 이 값으로 둘을 가르는 일이 아예 성립하지 않는다
+         */
         LocalDateTime mark = completed ? LocalDateTime.now() : schedule.getCompletedAt();
 
         schedule.changeCompletion(completed, mark);
@@ -162,19 +170,20 @@ public class ScheduleService {
     }
 
     /**
-     * 딸린 자손의 완료를 모두 푼다.
-     * 반복이 다음 회차로 넘어가면 그 밑의 일도 다시 해야 한다.
-     * 언제 끝냈는지는 보지 않는다. 회차가 바뀌면 지난 회차의 완료는 뜻을 잃는다.
+     * 딸린 자손을 함께 끝낸다.
+     * 반복이 마지막 회차를 넘기면 그 밑의 일도 더 할 때가 없다.
+     * 이미 끝낸 자손은 시각을 덮지 않아 언제 끝냈는지가 남는다.
      */
     @Transactional
-    void releaseDescendants(Long id) {
+    void completeDescendants(Long id, LocalDateTime mark) {
         List<Long> descendants = descendantIdsOf(id);
         if (descendants.isEmpty()) {
             return;
         }
 
-        scheduleRepository.findAllById(descendants)
-                .forEach(d -> d.changeCompletion(false, null));
+        scheduleRepository.findAllById(descendants).stream()
+                .filter(d -> d.getCompletedAt() == null)
+                .forEach(d -> d.changeCompletion(true, mark));
     }
 
     /** 그 일정 밑에 딸린 것 전부. 계층이 3단이라 두 번 내려가면 바닥이다 */
@@ -201,7 +210,7 @@ public class ScheduleService {
                 .stream()
                 .collect(Collectors.toMap(ScheduleRecurEntity::getScheduleId, r -> r));
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         Map<Long, Set<LocalDate>> doneDates = doneDatesFrom(recurs.keySet(),
                 today.minusMonths(LIST_DONE_LOOKBACK_MONTHS));
 
@@ -215,7 +224,6 @@ public class ScheduleService {
                 })
                 .toList();
     }
-
 
     /**
      * 끝낸 회차를 얼마나 거슬러 실을지.
@@ -350,7 +358,7 @@ public class ScheduleService {
         Map<Long, ScheduleRecurEntity> recurs = new HashMap<>();
         recurRepository.findByScheduleIds(ids).forEach(r -> recurs.put(r.getScheduleId(), r));
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         Map<Long, List<ScheduleProgressEntity>> byScheduleId = progressRepository
                 .findByScheduleIdInAndOnDateGreaterThanEqual(ids, today.minusWeeks(STATS_WEEKS))
                 .stream()
@@ -476,10 +484,10 @@ public class ScheduleService {
         ScheduleRecurEntity recur = recurRepository.findById(id).orElse(null);
 
         if (scope == ScheduleDeleteScope.FUTURE && recur != null) {
-            recur.stopOn(LocalDate.now());
+            LocalDate today = LocalDate.now(clock);
+            recur.stopOn(today);
             // 앞으로 옮겨둔 회차가 되살아나지 않게 지운다
-            progressRepository.deleteFutureOf(id, LocalDate.now(),
-                    LocalDate.now().atTime(java.time.LocalTime.MAX));
+            progressRepository.deleteFutureOf(id, today, today.atTime(LocalTime.MAX));
             recurRepository.saveAndFlush(recur);
             return;
         }
@@ -512,11 +520,11 @@ public class ScheduleService {
      *
      * @param recurring 이 요청이 끝난 뒤 반복이 되는지
      */
-    private static LocalDateTime startOf(LocalDateTime startAt, boolean recurring) {
+    private LocalDateTime startOf(LocalDateTime startAt, boolean recurring) {
         if (startAt != null || !recurring) {
             return startAt;
         }
-        return LocalDate.now().atStartOfDay();
+        return LocalDate.now(clock).atStartOfDay();
     }
 
     /** 우리가 채워 넣은 날짜인지. 시각을 안 정한 것이라 하루 종일로 둔다 */

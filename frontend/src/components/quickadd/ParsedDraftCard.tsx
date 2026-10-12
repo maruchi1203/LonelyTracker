@@ -39,6 +39,7 @@ export default function ParsedDraftCard({
   const fields = useRef<Partial<Record<FormFieldId, HTMLElement | null>>>({});
 
   const open = questions.filter((q) => !dismissed.includes(q));
+
   const asking = (field: FormFieldId) =>
     open.some((q) => PARSE_QUESTION_FIELD[q] === field);
 
@@ -60,6 +61,7 @@ export default function ParsedDraftCard({
 
   /** 칸을 고치면 그 칸을 묻던 질문은 사라진다 */
   const change = (patch: Partial<ScheduleForm>) => {
+    // SAFETY: patch 는 Partial<ScheduleForm> 이라 키가 폼의 칸뿐이다
     const touched = Object.keys(patch) as FormFieldId[];
     setDismissed((prev) => [
       ...prev,

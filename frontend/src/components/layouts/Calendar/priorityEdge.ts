@@ -8,6 +8,8 @@ import type { SchedulePriority } from "../../../types/schedule";
  */
 export function priorityEdge(priority: SchedulePriority | undefined): string {
   if (priority === "MUST") return "border-l-danger";
+
   if (priority === "SHOULD") return "border-l-accent";
+
   return "border-l-ink-faint";
 }

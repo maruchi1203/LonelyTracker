@@ -219,6 +219,7 @@ describe('하루 안에 끝나는 일', () => {
       startAt: '2026-10-01T15:00:00',
       completedAt: '2026-10-01T10:00:00',
     }
+
     expect(isDueSoon(item(1, done), now)).toBe(false)
   })
 

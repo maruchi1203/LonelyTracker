@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,6 +31,8 @@ public class AiUsageService implements AiUsageRecorder {
 
     private final AiUsageRepository usageRepository;
     private final UserProvider currentUserProvider;
+    /** "오늘"을 밖에서 받는다. 직접 now() 를 부르면 테스트가 날짜를 고정할 수 없다 */
+    private final Clock clock;
 
     /** 호출 한 번을 적고, 석 달이 지난 기록을 지운다 */
     @Override
@@ -44,12 +47,13 @@ public class AiUsageService implements AiUsageRecorder {
                 .inputTokens(usage.inputTokens())
                 .outputTokens(usage.outputTokens())
                 .build());
-        usageRepository.deleteByUserIdAndCreatedAtBefore(user.getId(), LocalDateTime.now().minus(RETENTION));
+        usageRepository.deleteByUserIdAndCreatedAtBefore(user.getId(),
+                LocalDateTime.now(clock).minus(RETENTION));
     }
 
     public AiUsageSummaryResponse summary() {
         Long userId = currentUserProvider.get().getId();
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
 
         return new AiUsageSummaryResponse(
                 usageRepository.sumByProvider(userId, today.with(DayOfWeek.MONDAY).atStartOfDay()),

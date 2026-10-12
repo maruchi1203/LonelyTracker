@@ -2,8 +2,12 @@ package com.lonelytracker.backend.habit.controller;
 
 import com.lonelytracker.backend.habit.dto.HabitCreateRequest;
 import com.lonelytracker.backend.habit.dto.HabitLogRequest;
+import com.lonelytracker.backend.habit.dto.HabitParseRequest;
+import com.lonelytracker.backend.habit.dto.HabitParseResponse;
+import com.lonelytracker.backend.habit.dto.HabitReorderRequest;
 import com.lonelytracker.backend.habit.dto.HabitResponse;
 import com.lonelytracker.backend.habit.dto.HabitUpdateRequest;
+import com.lonelytracker.backend.habit.service.HabitParseService;
 import com.lonelytracker.backend.habit.service.HabitService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +38,7 @@ import java.util.List;
 public class HabitController {
 
     private final HabitService habitService;
+    private final HabitParseService habitParseService;
 
     /**
      * 습관 목록과 그 구간의 기록
@@ -46,6 +51,15 @@ public class HabitController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return habitService.findAll(from, to);
+    }
+
+    /**
+     * 자연어 한 줄을 습관 초안으로 바꿈. 저장은 하지 않음
+     * 읽을 것이 없으면 빈 목록과 안내 문구가 옴
+     */
+    @PostMapping("/parse")
+    public HabitParseResponse parse(@Valid @RequestBody HabitParseRequest request) {
+        return habitParseService.parse(request.text());
     }
 
     @PostMapping
@@ -69,6 +83,16 @@ public class HabitController {
             @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate onDate,
             @Valid @RequestBody HabitLogRequest request) {
         habitService.log(id, onDate, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 한 카테고리 안의 습관 차례를 다시 정함
+     * 받은 차례대로 0부터 번호를 매김
+     */
+    @PatchMapping("/order")
+    public ResponseEntity<Void> reorder(@Valid @RequestBody HabitReorderRequest request) {
+        habitService.reorder(request.categoryId(), request.ids());
         return ResponseEntity.noContent().build();
     }
 

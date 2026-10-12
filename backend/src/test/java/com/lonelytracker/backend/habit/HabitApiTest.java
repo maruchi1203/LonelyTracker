@@ -1,5 +1,6 @@
 package com.lonelytracker.backend.habit;
 
+import com.lonelytracker.backend.habit.repository.HabitCategoryRepository;
 import com.lonelytracker.backend.habit.repository.HabitLogRepository;
 import com.lonelytracker.backend.habit.repository.HabitRepository;
 import com.lonelytracker.backend.support.IntegrationTest;
@@ -39,6 +40,9 @@ class HabitApiTest extends IntegrationTest {
     @Autowired
     HabitLogRepository logRepository;
 
+    @Autowired
+    HabitCategoryRepository categoryRepository;
+
     @AfterEach
     void clean() {
         // 기록이 습관을 참조한다. 습관을 먼저 지우면 외래 키가 걸린다
@@ -49,20 +53,20 @@ class HabitApiTest extends IntegrationTest {
     @Test
     @DisplayName("습관을 만들고 목록에서 읽는다")
     void createsAndLists() throws Exception {
-        create("{\"title\":\"팔굽혀펴기\",\"category\":\"BODY\""
+        create("{\"title\":\"팔굽혀펴기\",\"categoryId\":" + categoryId("운동")
                 + ",\"twoMinuteAction\":\"매트 깔기\"}");
 
         mvc.perform(get(BASE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title").value("팔굽혀펴기"))
-                .andExpect(jsonPath("$[0].category").value("BODY"))
+                .andExpect(jsonPath("$[0].categoryId").value((int) categoryId("운동")))
                 .andExpect(jsonPath("$[0].twoMinuteAction").value("매트 깔기"))
                 .andExpect(jsonPath("$[0].archived").value(false))
                 .andExpect(jsonPath("$[0].doneDates.length()").value(0));
     }
 
     @Test
-    @DisplayName("갈래는 필수다")
+    @DisplayName("카테고리는 필수다")
     void requiresCategory() throws Exception {
         mvc.perform(post(BASE).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"무언가\"}"))
@@ -72,7 +76,8 @@ class HabitApiTest extends IntegrationTest {
     @Test
     @DisplayName("해낸 날을 표시하면 목록에 실린다")
     void marksADay() throws Exception {
-        long id = create("{\"title\":\"명상\",\"category\":\"MIND\"}");
+        long id = create("{\"title\":\"명상\",\"categoryId\":"
+                + categoryId("마음챙김") + "}");
 
         log(id, "2026-09-11", "{\"done\":true,\"note\":\"5분\"}")
                 .andExpect(status().isNoContent());
@@ -85,7 +90,8 @@ class HabitApiTest extends IntegrationTest {
     @Test
     @DisplayName("같은 날을 두 번 표시해도 한 줄이다")
     void keepsOneRowPerDay() throws Exception {
-        long id = create("{\"title\":\"명상\",\"category\":\"MIND\"}");
+        long id = create("{\"title\":\"명상\",\"categoryId\":"
+                + categoryId("마음챙김") + "}");
 
         log(id, "2026-09-11", "{\"done\":true}").andExpect(status().isNoContent());
         log(id, "2026-09-11", "{\"done\":true,\"note\":\"고쳐 적음\"}")
@@ -98,7 +104,8 @@ class HabitApiTest extends IntegrationTest {
     @Test
     @DisplayName("되돌리면 그날 기록이 사라진다")
     void undoRemovesTheRow() throws Exception {
-        long id = create("{\"title\":\"명상\",\"category\":\"MIND\"}");
+        long id = create("{\"title\":\"명상\",\"categoryId\":"
+                + categoryId("마음챙김") + "}");
 
         log(id, "2026-09-11", "{\"done\":true}").andExpect(status().isNoContent());
         log(id, "2026-09-11", "{\"done\":false}").andExpect(status().isNoContent());
@@ -110,7 +117,8 @@ class HabitApiTest extends IntegrationTest {
     @Test
     @DisplayName("한 적 없는 날을 되돌려도 탈이 없다")
     void undoOnAnUntouchedDayIsFine() throws Exception {
-        long id = create("{\"title\":\"명상\",\"category\":\"MIND\"}");
+        long id = create("{\"title\":\"명상\",\"categoryId\":"
+                + categoryId("마음챙김") + "}");
 
         log(id, "2026-09-11", "{\"done\":false}").andExpect(status().isNoContent());
     }
@@ -118,7 +126,8 @@ class HabitApiTest extends IntegrationTest {
     @Test
     @DisplayName("구간 밖의 기록은 오지 않는다")
     void leavesOutOfWindowLogsOut() throws Exception {
-        long id = create("{\"title\":\"명상\",\"category\":\"MIND\"}");
+        long id = create("{\"title\":\"명상\",\"categoryId\":"
+                + categoryId("마음챙김") + "}");
 
         log(id, "2026-08-01", "{\"done\":true}").andExpect(status().isNoContent());
 
@@ -129,7 +138,8 @@ class HabitApiTest extends IntegrationTest {
     @Test
     @DisplayName("그만둬도 기록은 남는다")
     void archiveKeepsTheLogs() throws Exception {
-        long id = create("{\"title\":\"명상\",\"category\":\"MIND\"}");
+        long id = create("{\"title\":\"명상\",\"categoryId\":"
+                + categoryId("마음챙김") + "}");
         log(id, "2026-09-11", "{\"done\":true}").andExpect(status().isNoContent());
 
         mvc.perform(patch(BASE + "/" + id + "/archived?archived=true"))
@@ -142,22 +152,24 @@ class HabitApiTest extends IntegrationTest {
     }
 
     @Test
-    @DisplayName("수정하면 갈래도 바뀐다")
+    @DisplayName("수정하면 카테고리도 바뀐다")
     void updatesCategory() throws Exception {
-        long id = create("{\"title\":\"명상\",\"category\":\"MIND\"}");
+        long id = create("{\"title\":\"명상\",\"categoryId\":"
+                + categoryId("마음챙김") + "}");
 
         mvc.perform(put(BASE + "/" + id).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"필사\",\"category\":\"ART\""
+                .content("{\"title\":\"필사\",\"categoryId\":" + categoryId("예술")
                         + ",\"twoMinuteAction\":\"공책 펴기\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("필사"))
-                .andExpect(jsonPath("$.category").value("ART"));
+                .andExpect(jsonPath("$.categoryId").value((int) categoryId("예술")));
     }
 
     @Test
     @DisplayName("지우면 기록도 함께 사라진다")
     void deleteTakesTheLogs() throws Exception {
-        long id = create("{\"title\":\"명상\",\"category\":\"MIND\"}");
+        long id = create("{\"title\":\"명상\",\"categoryId\":"
+                + categoryId("마음챙김") + "}");
         log(id, "2026-09-11", "{\"done\":true}").andExpect(status().isNoContent());
 
         mvc.perform(delete(BASE + "/" + id)).andExpect(status().isNoContent());
@@ -169,6 +181,62 @@ class HabitApiTest extends IntegrationTest {
     @DisplayName("없는 습관은 404다")
     void missingHabitIsNotFound() throws Exception {
         mvc.perform(delete(BASE + "/999999")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("한 카테고리 안의 차례를 다시 세운다")
+    void reordersWithinACategory() throws Exception {
+        long body = categoryId("운동");
+        long first = create(habitBody("달리기", body));
+        long second = create(habitBody("수영", body));
+
+        mvc.perform(patch(BASE + "/order").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryId\":" + body
+                                + ",\"ids\":[" + second + "," + first + "]}"))
+                .andExpect(status().isNoContent());
+
+        mvc.perform(get(BASE))
+                .andExpect(jsonPath("$[0].title").value("수영"))
+                .andExpect(jsonPath("$[1].title").value("달리기"));
+    }
+
+    /*
+     * 카테고리를 넘나드는 이동은 습관 수정이 맡는다. 두 길이 겹치면 같은 규칙이
+     * 두 군데 생기고, 어느 쪽이 3단 검사를 하는지가 흐려진다
+     */
+    @Test
+    @DisplayName("다른 카테고리의 습관이 섞이면 거절한다")
+    void refusesAHabitFromAnotherCategory() throws Exception {
+        long body = categoryId("운동");
+        long mind = categoryId("마음챙김");
+        long running = create(habitBody("달리기", body));
+        long sitting = create(habitBody("명상", mind));
+
+        mvc.perform(patch(BASE + "/order").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryId\":" + body
+                                + ",\"ids\":[" + running + "," + sitting + "]}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("없는 카테고리의 차례는 404다")
+    void reorderInAMissingCategoryIsNotFound() throws Exception {
+        mvc.perform(patch(BASE + "/order").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"categoryId\":999999,\"ids\":[1]}"))
+                .andExpect(status().isNotFound());
+    }
+
+    private static String habitBody(String title, long categoryId) {
+        return "{\"title\":\"" + title + "\",\"categoryId\":" + categoryId + "}";
+    }
+
+    /** V3 가 심어 둔 카테고리. id 는 DB 가 정하므로 이름으로 찾는다 */
+    private long categoryId(String name) {
+        return categoryRepository.findAll().stream()
+                .filter(c -> c.getName().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("심어 둔 카테고리가 없다: " + name))
+                .getId();
     }
 
     /** 그날 표시 요청 */

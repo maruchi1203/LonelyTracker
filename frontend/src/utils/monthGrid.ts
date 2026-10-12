@@ -14,15 +14,22 @@ export function buildMonthDays(month: Date): Date[] {
   return Array.from({ length: weeks * 7 }, (_, i) => {
     const d = new Date(start)
     d.setDate(start.getDate() + i)
+
     return d
   })
+}
+
+/** 조회 구간. 둘 다 "YYYY-MM-DDTHH:mm:ss" */
+export interface MonthWindow {
+  from: string
+  to: string
 }
 
 /**
  * 조회할 기간. 그리드가 실제로 그리는 첫 칸부터 마지막 칸까지다.
  * 같은 함수가 칸과 기간을 함께 만들어야 둘이 어긋나지 않는다.
  */
-export function monthGridWindow(month: Date): { from: string; to: string } {
+export function monthGridWindow(month: Date): MonthWindow {
   const days = buildMonthDays(month)
   const first = days[0]
   const last = days[days.length - 1]
@@ -48,9 +55,11 @@ export function fromMonthParam(value: string | null): Date {
   const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
   const match = value?.match(/^(\d{4})-(\d{2})$/)
+
   if (!match) return thisMonth
 
   const month = Number(match[2])
+
   if (month < 1 || month > 12) return thisMonth
 
   return new Date(Number(match[1]), month - 1, 1)
