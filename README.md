@@ -10,7 +10,7 @@
 
 <br/>
 
-🤖 OpenAI Chat Competiton에 호환 AI API는 자유롭게 사용 가능 <br/>
+🤖 OpenAI Chat Competiton에 호환되는 AI API는 자유롭게 사용 가능 <br/>
 📦 DB도 **Neon 혹은 Supabase 같은 DB API**나 **로컬 DB**를 사용 가능
 
 ![Java](https://img.shields.io/badge/Java-21-007396)
@@ -73,7 +73,7 @@ intention)를 지키려면 시간·장소·2분 행동을 매번 적어야 하�
 
 ### 빠른 시작
 
-**DB를 [Neon](https://neon.com)에 맡기는 편이 편합니다.** <br/>
+**DB를 [Neon](https://neon.com)에게 맡기는 편이 가장 편합니다.** <br/>
 설치할 것이 JDK와 Node 뿐이며, 무료 저장공간이 1GB 이상입니다 (26.10.12 기준)
 
 ```bash
