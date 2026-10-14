@@ -4,7 +4,7 @@
 
 ### 혼자서도 꾸준히. AI 가 받아 적는 일정·습관 기록
 
-<img width="800" alt="리스트 탭" src="./.github/images/screenshot-list-260922.png" />
+<img width="800" alt="고독한 달력, LonelyTracker" src="[./.github/images/screenshot-list-260922.png](https://github.com/user-attachments/assets/8b877948-e2c2-4c42-b39d-32de182bcb40)" />
 
 **계정도 서버도 없이, clone 해서 내 컴퓨터에서 돌리는 일정 관리 앱입니다.**<br/>
 AI 는 설정이라 쓰던 API 키를 그대로 꽂습니다.
