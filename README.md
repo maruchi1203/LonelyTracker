@@ -2,12 +2,16 @@
 
 # LonelyTracker
 
-### 혼자서도 꾸준히. AI 가 받아 적는 일정·습관 기록
+### 혼자서도 꾸준히. AI가 받아 적는 일정·습관 기록
 
-<img width="800" alt="리스트 탭" src="./.github/images/screenshot-list-260922.png" />
+<img width="600" alt="고독한 달력, LonelyTracker" src="https://github.com/user-attachments/assets/8b877948-e2c2-4c42-b39d-32de182bcb40" />
 
-**계정도 서버도 없이, clone 해서 내 컴퓨터에서 돌리는 일정 관리 앱입니다.**<br/>
-AI 는 설정이라 쓰던 API 키를 그대로 꽂습니다.
+**계정도 서버도 없이, clone해서 내 컴퓨터에서 돌리는 AI 일정 관리 앱** 
+
+<br/>
+
+🤖 OpenAI Chat Competiton에 호환되는 AI API는 자유롭게 사용 가능 <br/>
+📦 DB도 **Neon 혹은 Supabase 같은 DB API**나 **로컬 DB**를 사용 가능
 
 [![Release](https://img.shields.io/github/v/release/maruchi1203/LonelyTracker)](https://github.com/maruchi1203/LonelyTracker/releases/latest)
 ![Java](https://img.shields.io/badge/Java-21-007396)
@@ -16,7 +20,8 @@ AI 는 설정이라 쓰던 API 키를 그대로 꽂습니다.
 ![React](https://img.shields.io/badge/React-19-61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6)
 
-> Claude Code 로 작업 중입니다. 개발자도 직접 코드를 수정하고 있지만 중대한 버그가 있을 수 있습니다.
+> Claude Code로 작업 중이며 **사용에 불편을 주는 버그**가 발생할 수도 있습니다. <br/>
+> **문제점**이나 **불편한 점**은 피드백 부탁드립니다. 소중한 의견 감사합니다😊
 
 </div>
 
@@ -83,7 +88,7 @@ java -jar LonelyTracker-1.0.0.jar
 
 ### 빠른 시작 (직접 빌드)
 
-**DB를 [Neon](https://neon.com)에 맡기는 편이 편합니다.** <br/>
+**DB를 [Neon](https://neon.com)에게 맡기는 편이 가장 편합니다.** <br/>
 설치할 것이 JDK와 Node 뿐이며, 무료 저장공간이 1GB 이상입니다 (26.10.12 기준)
 
 ```bash
